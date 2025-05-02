@@ -107,10 +107,17 @@ impl Identity {
     
     /// Verify a signature against this identity's public key
     pub fn verify(&self, data: &[u8], signature: &[u8]) -> Result<(), IdentityError> {
+        if signature.len() != 64 {
+            return Err(IdentityError::InvalidSignature);
+        }
+        
+        // Convert to fixed-size array
+        let mut sig_bytes = [0u8; 64];
+        sig_bytes.copy_from_slice(signature);
+        
         match self.public_key.verify(
             data, 
-            &ed25519_dalek::Signature::from_bytes(signature)
-                .map_err(|e| IdentityError::InvalidSignature)?
+            &ed25519_dalek::Signature::from_bytes(&sig_bytes)
         ) {
             Ok(_) => Ok(()),
             Err(_) => Err(IdentityError::InvalidSignature),

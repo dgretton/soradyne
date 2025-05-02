@@ -13,6 +13,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use super::{StorageProvider, StorageError, StorageConfig};
 
 /// A storage provider that uses the local file system
+#[derive(Clone)]
 pub struct LocalStorage {
     /// Configuration for this storage provider
     config: StorageConfig,

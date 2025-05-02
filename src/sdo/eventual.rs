@@ -161,10 +161,10 @@ impl<T: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> + 'static> E
             let mut changes_guard = self.changes.lock()
                 .map_err(|_| SDOError::InvalidOperation("Failed to acquire lock".into()))?;
                 
-            for change in changes {
+            for (version, val) in &changes {
                 // Check if we already have this version
-                if !changes_guard.iter().any(|(v, _)| v == &change.0) {
-                    changes_guard.push(change);
+                if !changes_guard.iter().any(|(v, _)| v == version) {
+                    changes_guard.push((version.clone(), val.clone()));
                 }
             }
         }

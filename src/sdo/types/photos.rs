@@ -6,7 +6,8 @@ use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 use std::collections::HashSet;
 
-use crate::sdo::{EventualSDO, SDOType, SDOError};
+use crate::sdo::{EventualSDO, SDOType};
+use crate::sdo::base::SDOError;
 
 /// Photo metadata
 #[derive(Clone, Debug, Serialize, Deserialize)]
