@@ -36,7 +36,7 @@ pub struct EventualSDO<T: Send + Sync + Clone + 'static> {
 
 impl<T: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> + 'static> EventualSDO<T> {
     /// Create a new eventually consistent SDO
-    pub fn new(name: &str, owner_id: Uuid, initial_value: T) -> Self {
+    pub fn create(name: &str, owner_id: Uuid, initial_value: T) -> Self {
         let metadata = SDOMetadata::new(name, SDOType::EventualConsistent, owner_id);
         let (update_tx, _) = broadcast::channel(16);
         

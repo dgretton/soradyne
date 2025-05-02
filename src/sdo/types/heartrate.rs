@@ -43,7 +43,7 @@ impl HeartRateSDO {
         let initial_data = HeartRateData::new(0.0, None);
         
         // Create the SDO
-        RealtimeSDO::new(name, owner_id, initial_data)
+        RealtimeSDO::create(name, owner_id, initial_data)
     }
     
     /// Update the heart rate
@@ -63,6 +63,6 @@ impl HeartRateSDO {
         start: chrono::DateTime<chrono::Utc>,
         end: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<(chrono::DateTime<chrono::Utc>, HeartRateData)>, crate::sdo::base::SDOError> {
-        self.get_history(start, end)
+        self.get_history_data(start, end)
     }
 }

@@ -35,7 +35,7 @@ pub struct RealtimeSDO<T: Send + Sync + Clone + 'static> {
 
 impl<T: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> + 'static> RealtimeSDO<T> {
     /// Create a new real-time SDO
-    pub fn new(name: &str, owner_id: Uuid, initial_value: T) -> Self {
+    pub fn create(name: &str, owner_id: Uuid, initial_value: T) -> Self {
         let metadata = SDOMetadata::new(name, SDOType::RealTime, owner_id);
         let (update_tx, _) = broadcast::channel(16);
         
@@ -94,7 +94,7 @@ impl<T: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> + 'static> R
     }
     
     /// Get the historical values of this SDO within a time range
-    pub fn get_history(&self, 
+    pub fn get_history_data(&self, 
                        start: chrono::DateTime<chrono::Utc>,
                        end: chrono::DateTime<chrono::Utc>) 
                        -> Result<Vec<(chrono::DateTime<chrono::Utc>, T)>, SDOError> {

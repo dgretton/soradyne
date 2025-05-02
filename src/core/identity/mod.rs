@@ -15,7 +15,7 @@ use rand::rngs::OsRng;
 use thiserror::Error;
 
 pub use key_management::{KeyPair, KeyType, KeyDerivation};
-pub use device::{Device, DeviceType, DeviceCapabilities};
+pub use device::{Device, DeviceType, DeviceCapability};
 pub use authentication::{AuthMethod, Credentials};
 
 /// Error types for identity operations

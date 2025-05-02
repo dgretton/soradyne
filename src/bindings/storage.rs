@@ -11,10 +11,12 @@ use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 
 use crate::storage::{
-    StorageProvider, StorageConfig, LocalStorage,
-    DissolutionManager, DissolutionMetadata,
-    CrystallizationManager, CrystallizationMetadata
+    StorageProvider, StorageConfig, LocalStorage
 };
+use crate::storage::dissolution::DissolutionManager;
+use crate::storage::dissolution::DissolutionMetadata;
+use crate::storage::crystallization::CrystallizationManager;
+use crate::storage::crystallization::CrystallizationMetadata;
 
 /// JavaScript representation of a storage configuration
 #[napi(object)]
