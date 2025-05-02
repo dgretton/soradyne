@@ -1,0 +1,29 @@
+{
+  "name": "soradyne",
+  "version": "0.1.0",
+  "description": "A protocol for secure, peer-to-peer shared self-data objects",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "example:heartrate": "ts-node examples/heartrate.ts",
+    "example:chat": "ts-node examples/chat.ts"
+  },
+  "keywords": [
+    "privacy",
+    "p2p",
+    "self-data",
+    "decentralized"
+  ],
+  "author": "rim",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^16.11.10",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "uuid": "^8.3.2"
+  }
+}
