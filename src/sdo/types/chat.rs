@@ -226,7 +226,7 @@ impl ChatSDO {
         let initial_data = ChatConversation::new(owner_id, Some(name.to_string()));
         
         // Create the SDO
-        EventualSDO::new(name, owner_id, initial_data)
+        EventualSDO::create(name, owner_id, initial_data)
     }
     
     /// Get the conversation

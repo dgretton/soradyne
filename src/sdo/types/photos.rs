@@ -122,7 +122,7 @@ impl PhotoAlbumSDO {
         let initial_data = PhotoAlbum::new(owner_id, name.to_string(), None);
         
         // Create the SDO
-        EventualSDO::new(name, owner_id, initial_data)
+        EventualSDO::create(name, owner_id, initial_data)
     }
     
     /// Get the album

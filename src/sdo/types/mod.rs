@@ -6,5 +6,4 @@
 pub mod heartrate;
 pub mod chat;
 pub mod photos;
-pub mod files;
 pub mod robotics;

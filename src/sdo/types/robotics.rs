@@ -91,7 +91,7 @@ impl RobotStateSDO {
         let initial_data = RobotState::new();
         
         // Create the SDO
-        RealtimeSDO::new(name, owner_id, initial_data)
+        RealtimeSDO::create(name, owner_id, initial_data)
     }
     
     /// Get the current robot state

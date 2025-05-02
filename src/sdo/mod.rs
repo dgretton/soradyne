@@ -16,5 +16,4 @@ pub use eventual::EventualSDO;
 pub use types::heartrate::HeartRateSDO;
 pub use types::chat::ChatSDO;
 pub use types::photos::PhotoAlbumSDO;
-pub use types::files::FileSDO;
 pub use types::robotics::RobotStateSDO;
