@@ -95,6 +95,61 @@ impl JsLocalStorage {
         let runtime = self.runtime.clone();
         
         Promise::new(move |resolve, reject| {
+            let inner_guard = inner.lock().unwrap();
+            if let Some(ref storage) = *inner_guard {
+                let storage_clone = storage.clone();
+                let data_vec = data.to_vec();
+                
+                runtime.spawn(async move {
+                    match storage_clone.store(data_vec).await {
+                        Ok(id) => resolve(id.to_string()),
+                        Err(e) => reject(Error::new(Status::GenericFailure, e.to_string())),
+                    }
+                });
+            } else {
+                reject(Error::new(Status::GenericFailure, "Storage not initialized"));
+            }
+        })
+    }
+    
+    /// Retrieve data by its identifier
+    #[napi]
+    pub fn retrieve(&self, id: String) -> Promise<Buffer> {
+        let inner = self.inner.clone();
+        let runtime = self.runtime.clone();
+        
+        Promise::new(move |resolve, reject| {
+            let id_uuid = match Uuid::parse_str(&id) {
+                Ok(uuid) => uuid,
+                Err(e) => {
+                    reject(Error::new(Status::GenericFailure, e.to_string()));
+                    return;
+                }
+            };
+            
+            let inner_guard = inner.lock().unwrap();
+            if let Some(ref storage) = *inner_guard {
+                let storage_clone = storage.clone();
+                
+                runtime.spawn(async move {
+                    match storage_clone.retrieve(id_uuid).await {
+                        Ok(data) => resolve(Buffer::from(data)),
+                        Err(e) => reject(Error::new(Status::GenericFailure, e.to_string())),
+                    }
+                });
+            } else {
+                reject(Error::new(Status::GenericFailure, "Storage not initialized"));
+            }
+        })
+    }
+    
+    /// Check if data exists
+    #[napi]
+    pub fn exists(&self, id: String) -> Promise<bool> {
+        let inner = self.inner.clone();
+        let runtime = self.runtime.clone();
+        
+        Promise::new(move |resolve, reject| {
             let id_uuid = match Uuid::parse_str(&id) {
                 Ok(uuid) => uuid,
                 Err(e) => {
@@ -411,59 +466,4 @@ fn to_crystallization_metadata(js_metadata: JsCrystallizationMetadata) -> Result
         size: js_metadata.size as usize,
         encrypted: js_metadata.encrypted,
     })
-}| {
-            let inner_guard = inner.lock().unwrap();
-            if let Some(ref storage) = *inner_guard {
-                let storage_clone = storage.clone();
-                let data_vec = data.to_vec();
-                
-                runtime.spawn(async move {
-                    match storage_clone.store(data_vec).await {
-                        Ok(id) => resolve(id.to_string()),
-                        Err(e) => reject(Error::new(Status::GenericFailure, e.to_string())),
-                    }
-                });
-            } else {
-                reject(Error::new(Status::GenericFailure, "Storage not initialized"));
-            }
-        })
-    }
-    
-    /// Retrieve data by its identifier
-    #[napi]
-    pub fn retrieve(&self, id: String) -> Promise<Buffer> {
-        let inner = self.inner.clone();
-        let runtime = self.runtime.clone();
-        
-        Promise::new(move |resolve, reject| {
-            let id_uuid = match Uuid::parse_str(&id) {
-                Ok(uuid) => uuid,
-                Err(e) => {
-                    reject(Error::new(Status::GenericFailure, e.to_string()));
-                    return;
-                }
-            };
-            
-            let inner_guard = inner.lock().unwrap();
-            if let Some(ref storage) = *inner_guard {
-                let storage_clone = storage.clone();
-                
-                runtime.spawn(async move {
-                    match storage_clone.retrieve(id_uuid).await {
-                        Ok(data) => resolve(Buffer::from(data)),
-                        Err(e) => reject(Error::new(Status::GenericFailure, e.to_string())),
-                    }
-                });
-            } else {
-                reject(Error::new(Status::GenericFailure, "Storage not initialized"));
-            }
-        })
-    }
-    
-    /// Check if data exists
-    #[napi]
-    pub fn exists(&self, id: String) -> Promise<bool> {
-        let inner = self.inner.clone();
-        let runtime = self.runtime.clone();
-        
-        Promise::new(move |resolve, reject
+}
