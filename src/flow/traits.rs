@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use crate::flow::error::FlowError;
+use crate::flow::FlowError;
 
 /// Trait for storage backends that can persist flow data
 pub trait StorageBackend {

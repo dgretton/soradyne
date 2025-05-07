@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
-use crate::flow::error::FlowError;
+use crate::flow::FlowError;
 use crate::flow::traits::StorageBackend;
 
 /// A storage backend that persists data to the local filesystem
