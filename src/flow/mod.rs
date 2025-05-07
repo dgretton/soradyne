@@ -13,7 +13,7 @@ pub mod traits;
 
 pub use conflict::{ConflictResolver, LastWriteWins};
 pub use error::FlowError;
-pub use traits::{StorageBackend, FlowAuthenticator, FlowType};
+pub use traits::{StorageBackend, FlowAuthenticator, FlowType, Diffable};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -115,6 +115,40 @@ where
             }
         }
     }
+    
+    /// Update the value using a diff and notify subscribers
+    /// This is more efficient for incremental updates as it avoids sending the entire object
+    pub fn update_with_diff<D>(&self, diff: &D) 
+    where 
+        T: Diffable<Diff = D>
+    {
+        if let Ok(mut metadata) = self.metadata.lock() {
+            metadata.version += 1;
+        }
+        
+        if let Ok(mut guard) = self.value.lock() {
+            let new_value = guard.apply(diff);
+            *guard = new_value.clone();
+            let _ = self.update_tx.send(new_value.clone());
+            if let Ok(subs) = self.subscribers.lock() {
+                for callback in subs.values() {
+                    callback(&new_value);
+                }
+            }
+        }
+    }
+    
+    /// Broadcast a diff to subscribers without updating the local value
+    /// This is useful when you want to send incremental updates to peers
+    pub fn broadcast_diff<D>(&self, diff: &D) 
+    where 
+        T: Diffable<Diff = D>
+    {
+        if let Ok(guard) = self.value.lock() {
+            let new_value = guard.apply(diff);
+            let _ = self.update_tx.send(new_value);
+        }
+    }
 
     /// Merge a remote value
     pub fn merge(&self, remote_value: T) {
@@ -122,6 +156,28 @@ where
             metadata.version += 1;
         }
         if let Ok(mut guard) = self.value.lock() {
+            let resolved = self.resolver.resolve(&*guard, &remote_value);
+            *guard = resolved.clone();
+            let _ = self.update_tx.send(resolved.clone());
+            if let Ok(subs) = self.subscribers.lock() {
+                for callback in subs.values() {
+                    callback(&resolved);
+                }
+            }
+        }
+    }
+    
+    /// Merge a remote diff
+    pub fn merge_diff<D>(&self, diff: &D) 
+    where 
+        T: Diffable<Diff = D>
+    {
+        if let Ok(mut metadata) = self.metadata.lock() {
+            metadata.version += 1;
+        }
+        
+        if let Ok(mut guard) = self.value.lock() {
+            let remote_value = guard.apply(diff);
             let resolved = self.resolver.resolve(&*guard, &remote_value);
             *guard = resolved.clone();
             let _ = self.update_tx.send(resolved.clone());

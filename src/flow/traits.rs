@@ -1,6 +1,18 @@
 use uuid::Uuid;
 use crate::flow::FlowError;
 
+/// Trait for types that can be diffed and patched
+pub trait Diffable {
+    /// The type representing a diff/delta between two instances
+    type Diff;
+    
+    /// Create a diff between self and another instance
+    fn diff(&self, other: &Self) -> Self::Diff;
+    
+    /// Apply a diff to self, returning a new instance
+    fn apply(&self, diff: &Self::Diff) -> Self;
+}
+
 /// Trait for storage backends that can persist flow data
 pub trait StorageBackend {
     /// Store data for a specific flow
