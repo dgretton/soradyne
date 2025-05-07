@@ -8,7 +8,7 @@ use serde_json;
 use crate::types::heartrate::Heartrate;
 use crate::flow::SelfDataFlow;
 use crate::flow::FlowError;
-use crate::network::discovery::{PeerDiscovery, NoOpDiscovery, DiscoveredPeer};
+use crate::network::discovery::{PeerDiscovery, DiscoveredPeer};
 
 pub struct NetworkBridge {
     peers: Arc<Mutex<Vec<Arc<Mutex<OwnedWriteHalf>>>>>,
@@ -35,7 +35,7 @@ impl NetworkBridge {
             discovery.start_discovery()?;
             
             // Set up callback for newly discovered peers
-            let peers_clone = self.peers.clone();
+            let _peers_clone = self.peers.clone();
             discovery.on_peer_discovered(Box::new(move |peer| {
                 println!("[NetworkBridge] Discovered peer: {:?}", peer);
                 // In a real implementation, we would automatically connect to the peer

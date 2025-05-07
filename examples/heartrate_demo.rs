@@ -5,7 +5,7 @@
 
 use soradyne::types::heartrate::{Heartrate, HeartrateFlow};
 use soradyne::network::connection::NetworkBridge;
-use soradyne::network::{NoOpDiscovery, LanDiscovery};
+use soradyne::network::NoOpDiscovery;
 use soradyne::flow::FlowType;
 use soradyne::storage::LocalFileStorage;
 use uuid::Uuid;
