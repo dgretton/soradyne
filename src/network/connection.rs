@@ -7,15 +7,62 @@ use tokio::sync::Mutex;
 use serde_json;
 use crate::types::heartrate::Heartrate;
 use crate::flow::SelfDataFlow;
+use crate::flow::FlowError;
+use crate::network::discovery::{PeerDiscovery, NoOpDiscovery, DiscoveredPeer};
 
 pub struct NetworkBridge {
     peers: Arc<Mutex<Vec<Arc<Mutex<OwnedWriteHalf>>>>>,
+    discovery: Option<Arc<dyn PeerDiscovery + Send + Sync>>,
 }
 
 impl NetworkBridge {
     pub fn new() -> Self {
         Self {
             peers: Arc::new(Mutex::new(Vec::new())),
+            discovery: None,
+        }
+    }
+    
+    /// Set the discovery mechanism for this network bridge
+    pub fn with_discovery(mut self, discovery: impl PeerDiscovery + Send + Sync + 'static) -> Self {
+        self.discovery = Some(Arc::new(discovery));
+        self
+    }
+    
+    /// Start peer discovery
+    pub fn start_discovery(&self) -> Result<(), FlowError> {
+        if let Some(discovery) = &self.discovery {
+            discovery.start_discovery()?;
+            
+            // Set up callback for newly discovered peers
+            let peers_clone = self.peers.clone();
+            discovery.on_peer_discovered(Box::new(move |peer| {
+                println!("[NetworkBridge] Discovered peer: {:?}", peer);
+                // In a real implementation, we would automatically connect to the peer
+                // For now, just log the discovery
+            }));
+            
+            Ok(())
+        } else {
+            Err(FlowError::PersistenceError("No discovery mechanism configured".to_string()))
+        }
+    }
+    
+    /// Stop peer discovery
+    pub fn stop_discovery(&self) -> Result<(), FlowError> {
+        if let Some(discovery) = &self.discovery {
+            discovery.stop_discovery()
+        } else {
+            Err(FlowError::PersistenceError("No discovery mechanism configured".to_string()))
+        }
+    }
+    
+    /// Get discovered peers
+    pub fn get_discovered_peers(&self) -> Vec<DiscoveredPeer> {
+        if let Some(discovery) = &self.discovery {
+            discovery.get_discovered_peers()
+        } else {
+            Vec::new()
         }
     }
 

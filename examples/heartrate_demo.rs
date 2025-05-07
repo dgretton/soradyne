@@ -5,6 +5,7 @@
 
 use soradyne::types::heartrate::{Heartrate, HeartrateFlow};
 use soradyne::network::connection::NetworkBridge;
+use soradyne::network::{NoOpDiscovery, LanDiscovery};
 use soradyne::flow::FlowType;
 use soradyne::storage::LocalFileStorage;
 use uuid::Uuid;
@@ -26,7 +27,14 @@ async fn main() {
         FlowType::RealTimeScalar,
     ).with_storage(storage));
 
-    let bridge = Arc::new(NetworkBridge::new());
+    // Create a network bridge with discovery
+    let bridge = Arc::new(NetworkBridge::new()
+        .with_discovery(NoOpDiscovery));
+    
+    // Start peer discovery (this is a no-op in this example)
+    if let Err(e) = bridge.start_discovery() {
+        eprintln!("Failed to start discovery: {}", e);
+    }
 
     // Start listening for incoming peer connections (adjust port as needed)
     let flow_clone = flow.clone();
