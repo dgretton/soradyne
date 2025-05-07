@@ -5,6 +5,8 @@
 
 use soradyne::types::heartrate::{Heartrate, HeartrateFlow};
 use soradyne::network::connection::NetworkBridge;
+use soradyne::flow::FlowType;
+use soradyne::storage::LocalFileStorage;
 use uuid::Uuid;
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,11 +15,16 @@ use tokio::time::sleep;
 #[tokio::main]
 async fn main() {
     let device_id = Uuid::new_v4();
+    
+    // Create a local file storage backend
+    let storage = LocalFileStorage::new("./data").expect("Failed to create storage directory");
+    
     let flow = Arc::new(HeartrateFlow::new(
         "heartrate_demo",
         device_id,
         Heartrate::new(70.0, device_id),
-    ));
+        FlowType::RealTimeScalar,
+    ).with_storage(storage));
 
     let bridge = Arc::new(NetworkBridge::new());
 
@@ -60,7 +67,7 @@ async fn main() {
         flow.update(new_reading.clone());
 
         // Persist after each update
-        flow.persist_to_disk("heartrate_sync.json");
+        flow.persist().unwrap_or_else(|e| eprintln!("Failed to persist: {}", e));
 
         // Broadcast to peers
         bridge.broadcast(&new_reading);
@@ -78,6 +85,6 @@ async fn main() {
     flow.merge(remote_reading);
 
     // Persist final state
-    flow.persist_to_disk("heartrate_sync.json");
+    flow.persist().unwrap_or_else(|e| eprintln!("Failed to persist: {}", e));
 }
 
