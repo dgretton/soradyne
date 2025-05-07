@@ -3,10 +3,9 @@
 //! This example demonstrates using the Diffable trait for efficient updates
 //! to robot joint positions.
 
-use std::collections::HashMap;
 use uuid::Uuid;
-use soradyne_sdf::flow::{self, SelfDataFlow, FlowType, Diffable};
-use soradyne_sdf::flow::examples::robot_joints::{
+use soradyne::flow::{self, SelfDataFlow, FlowType, Diffable};
+use soradyne::flow::examples::robot_joints::{
     RobotJointState, RobotJointDiff, JointDiff, JointPosition, create_robot_joint_flow
 };
 
