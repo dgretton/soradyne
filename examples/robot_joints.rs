@@ -4,9 +4,8 @@
 //! to robot joint positions.
 
 use uuid::Uuid;
-use soradyne::flow::{self, SelfDataFlow, FlowType, Diffable};
 use soradyne::flow::examples::robot_joints::{
-    RobotJointState, RobotJointDiff, JointDiff, JointPosition, create_robot_joint_flow
+    RobotJointDiff, JointDiff, create_robot_joint_flow
 };
 
 fn main() {
