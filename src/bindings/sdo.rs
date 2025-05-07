@@ -9,11 +9,9 @@ use uuid::Uuid;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 
-use crate::sdo::{
-    SelfDataObject, SDOMetadata, SDOType, SDOAccess, 
-    HeartRateSDO, HeartRateData, 
-    ChatSDO, ChatConversation, ChatMessage
-};
+use crate::sdo::SelfDataObject;
+use crate::sdo::types::heartrate::{HeartRateSDO, HeartRateData};
+use crate::sdo::types::chat::{ChatSDO, ChatConversation, ChatMessage};
 
 /// JavaScript representation of an SDO type
 #[napi]

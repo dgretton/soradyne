@@ -10,7 +10,7 @@ mod authentication;
 use std::collections::HashMap;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
-use ed25519_dalek::{Keypair, SecretKey, PublicKey, Signer, Verifier};
+use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Signer, Verifier};
 use rand::rngs::OsRng;
 use thiserror::Error;
 

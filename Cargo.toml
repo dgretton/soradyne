@@ -18,8 +18,7 @@ async-trait = "0.1"
 base64 = "0.13"
 
 # Cryptography
-ed25519-dalek = "2.0.0"
-x25519-dalek = "2.0.0"
+ed25519-dalek = "1.0"
 sha2 = "0.10"
 rand = "0.8"
 hmac = "0.12"

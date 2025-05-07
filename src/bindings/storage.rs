@@ -4,6 +4,7 @@
 //! to be used from Node.js via TypeScript.
 
 use napi::bindgen_prelude::*;
+use napi::bindgen_prelude::Promise;
 use napi_derive::napi;
 use uuid::Uuid;
 use std::path::PathBuf;

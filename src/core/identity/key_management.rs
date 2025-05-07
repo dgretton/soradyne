@@ -2,7 +2,8 @@
 //!
 //! This module handles cryptographic keys, their derivation, and serialization.
 
-use ed25519_dalek::{SecretKey, PublicKey};
+use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Signer, Verifier};
+
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use std::fmt;
 
