@@ -10,6 +10,7 @@ mod subscription;
 mod persistence;
 mod routing;
 pub mod traits;
+pub mod examples;
 
 pub use conflict::{ConflictResolver, LastWriteWins};
 pub use error::FlowError;
