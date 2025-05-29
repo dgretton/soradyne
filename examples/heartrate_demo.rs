@@ -51,7 +51,7 @@ async fn main() {
     let bridge_clone2 = bridge.clone();
     tokio::spawn(async move {
         bridge_clone2
-            .connect("192.168.1.42:5000")  // replace with actual peer IP/port
+            .connect("192.168.1.42:5001")  // replace with actual peer IP/port
             .await
             .unwrap();
     });
