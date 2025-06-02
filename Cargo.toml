@@ -65,7 +65,3 @@ required-features = []
 [[bin]]
 name = "block_storage_cli"
 path = "src/bin/block_storage_cli.rs"
-
-[[bench]]
-name = "block_storage_bench"
-harness = false
