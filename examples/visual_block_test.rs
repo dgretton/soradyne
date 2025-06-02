@@ -18,15 +18,13 @@ const TEST_IMAGES: &[(&str, &str, &str)] = &[
     ("https://httpbin.org/image/jpeg", "httpbin_test.jpg", "A simple JPEG test image"),
     ("https://httpbin.org/image/png", "httpbin_test.png", "A simple PNG test image"),
     
-    // Placeholder images with different sizes
-    ("https://via.placeholder.com/300x200/ff0000/ffffff?text=RED+TEST", "red_300x200.png", "Red test image 300x200"),
-    ("https://via.placeholder.com/500x300/00ff00/000000?text=GREEN+TEST", "green_500x300.png", "Green test image 500x300"),
-    ("https://via.placeholder.com/800x600/0000ff/ffffff?text=BLUE+TEST", "blue_800x600.png", "Blue test image 800x600"),
-    
-    // Random images from Picsum (Lorem Ipsum for photos)
+    // Random images from Picsum (Lorem Ipsum for photos) - more reliable
+    ("https://picsum.photos/300/200", "picsum_300x200.jpg", "Random photo 300x200"),
     ("https://picsum.photos/400/300", "picsum_400x300.jpg", "Random photo 400x300"),
+    ("https://picsum.photos/500/300", "picsum_500x300.jpg", "Random photo 500x300"),
     ("https://picsum.photos/600/400", "picsum_600x400.jpg", "Random photo 600x400"),
     ("https://picsum.photos/800/600", "picsum_800x600.jpg", "Random photo 800x600"),
+    ("https://picsum.photos/1024/768", "picsum_1024x768.jpg", "Random photo 1024x768"),
 ];
 
 #[tokio::main]
