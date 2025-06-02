@@ -29,3 +29,7 @@ lto = true
 opt-level = 3
 codegen-units = 1
 panic = "abort"
+
+[[example]]
+name = "block_storage_example"
+path = "examples/block_storage_example.rs"
