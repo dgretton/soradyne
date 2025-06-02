@@ -5,6 +5,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
 use chrono::Utc;
+use serde::{Serialize, Deserialize};
 
 use crate::storage::block::*;
 use crate::storage::erasure::ErasureEncoder;
