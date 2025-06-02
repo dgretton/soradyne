@@ -4,7 +4,7 @@ use tokio;
 use uuid::Uuid;
 
 use soradyne::storage::block_manager::BlockManager;
-use soradyne::storage::media::{PhotoStorage, VideoStorage};
+use soradyne::types::media::{PhotoStorage, VideoStorage};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -116,11 +116,11 @@ async fn test_photo_storage(block_manager: &BlockManager) -> Result<(), Box<dyn 
     println!("Created mock photo data: {} bytes", mock_photo_data.len());
     
     // Store the photo
-    let photo_id = photo_storage.store_photo(&mock_photo_data, "test_photo.jpg").await?;
-    println!("Photo stored with ID: {}", photo_id);
+    let photo_metadata = photo_storage.save_photo("test_photo.jpg", "image/jpeg", &mock_photo_data).await?;
+    println!("Photo stored with ID: {}", photo_metadata.id);
     
     // Retrieve the photo
-    let retrieved_photo = photo_storage.get_photo(&photo_id).await?;
+    let retrieved_photo = photo_storage.load_photo(&photo_metadata).await?;
     assert_eq!(mock_photo_data, retrieved_photo);
     println!("✓ Photo storage and retrieval verified");
     
@@ -138,11 +138,11 @@ async fn test_video_storage(block_manager: &BlockManager) -> Result<(), Box<dyn 
     println!("Created mock video data: {} bytes", mock_video_data.len());
     
     // Store the video
-    let video_id = video_storage.store_video(&mock_video_data, "test_video.mp4").await?;
-    println!("Video stored with ID: {}", video_id);
+    let video_metadata = video_storage.save_video("test_video.mp4", "video/mp4", &mock_video_data).await?;
+    println!("Video stored with ID: {}", video_metadata.id);
     
     // Retrieve the video
-    let retrieved_video = video_storage.get_video(&video_id).await?;
+    let retrieved_video = video_storage.load_video(&video_metadata).await?;
     assert_eq!(mock_video_data, retrieved_video);
     println!("✓ Video storage and retrieval verified");
     
