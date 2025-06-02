@@ -62,6 +62,11 @@ name = "visual_block_test"
 path = "examples/visual_block_test.rs"
 required-features = []
 
+[[example]]
+name = "large_video_test"
+path = "examples/large_video_test.rs"
+required-features = []
+
 [[bin]]
 name = "block_storage_cli"
 path = "src/bin/block_storage_cli.rs"
