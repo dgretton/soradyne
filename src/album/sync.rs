@@ -4,7 +4,6 @@ use super::crdt::*;
 use super::album::*;
 use super::operations::*;
 use crate::storage::block_manager::BlockManager;
-use crate::flow::FlowError;
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
 
@@ -150,7 +149,7 @@ impl AlbumSyncManager {
     }
     
     /// Handle incoming sync request
-    pub fn handle_sync_request(&self, album_id: &str, last_seen: LogicalTime) -> Option<SyncMessage> {
+    pub fn handle_sync_request(&self, album_id: &str, _last_seen: LogicalTime) -> Option<SyncMessage> {
         if let Some(album) = self.albums.get(album_id) {
             // For now, always send full album data
             // TODO: Implement incremental sync based on last_seen

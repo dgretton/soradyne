@@ -11,6 +11,7 @@ use crate::storage::block::*;
 use crate::storage::erasure::ErasureEncoder;
 use crate::flow::FlowError;
 
+#[derive(Debug)]
 pub struct BlockManager {
     rimsd_directories: Vec<PathBuf>,
     metadata_store: Arc<RwLock<BlockMetadataStore>>,
