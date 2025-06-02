@@ -54,16 +54,17 @@ fn setup_test_rimsd_directories() -> Result<Vec<PathBuf>, Box<dyn std::error::Er
     let base_temp = std::env::temp_dir();
     let mut rimsd_dirs = Vec::new();
     
-    // Create 3 test .rimsd directories
+    // Create 3 test directories with hidden .rimsd subdirectories
     for i in 0..3 {
-        let rimsd_dir = base_temp.join(format!("soradyne_test_{}.rimsd", i));
+        let test_dir = base_temp.join(format!("soradyne_test_{}", i));
+        let rimsd_dir = test_dir.join(".rimsd");
         
         // Remove existing directory if it exists
-        if rimsd_dir.exists() {
-            std::fs::remove_dir_all(&rimsd_dir)?;
+        if test_dir.exists() {
+            std::fs::remove_dir_all(&test_dir)?;
         }
         
-        // Create the directory
+        // Create the test directory and hidden .rimsd subdirectory
         std::fs::create_dir_all(&rimsd_dir)?;
         rimsd_dirs.push(rimsd_dir);
     }

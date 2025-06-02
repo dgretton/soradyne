@@ -81,10 +81,11 @@ impl VisualTestSession {
         std::fs::create_dir_all(&test_dir)?;
         std::fs::create_dir_all(&results_dir)?;
         
-        // Create rimsd directories
+        // Create rimsd directories (hidden .rimsd subdirectories)
         let mut rimsd_dirs = Vec::new();
         for i in 0..4 {
-            let rimsd_dir = test_dir.join(format!("rimsd_{}.rimsd", i));
+            let device_dir = test_dir.join(format!("rimsd_{}", i));
+            let rimsd_dir = device_dir.join(".rimsd");
             std::fs::create_dir_all(&rimsd_dir)?;
             rimsd_dirs.push(rimsd_dir);
         }
