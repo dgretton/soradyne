@@ -3,10 +3,11 @@
 //! This example demonstrates creating albums, adding media, and syncing
 //! between two local "replicas" to test the CRDT functionality.
 
-use std::sync::Arc;
 use tokio;
-
 use soradyne::album::*;
+use tempfile::TempDir;
+use std::path::PathBuf;
+use std::sync::Arc;
 use soradyne::storage::block_manager::BlockManager;
 
 #[tokio::main]
@@ -16,8 +17,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing CRDT-based album synchronization locally\n");
     
     // Create two sync managers (simulating two devices)
-    let (mut alice_sync, _temp_dir_alice) = test_utils::create_test_sync_manager();
-    let (mut bob_sync, _temp_dir_bob) = test_utils::create_test_sync_manager();
+    let (mut alice_sync, _temp_dir_alice) = create_test_sync_manager();
+    let (mut bob_sync, _temp_dir_bob) = create_test_sync_manager();
     
     // Alice creates an album
     println!("📸 Alice creates a photo album...");
@@ -162,6 +163,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   - All data converged correctly");
     
     Ok(())
+}
+
+fn create_test_sync_manager() -> (AlbumSyncManager, TempDir) {
+    let temp_dir = TempDir::new().unwrap();
+    let test_dir = temp_dir.path().to_path_buf();
+    
+    // Create rimsd directories
+    let mut rimsd_dirs = Vec::new();
+    for i in 0..3 {
+        let device_dir = test_dir.join(format!("rimsd_{}", i));
+        let rimsd_dir = device_dir.join(".rimsd");
+        std::fs::create_dir_all(&rimsd_dir).unwrap();
+        rimsd_dirs.push(rimsd_dir);
+    }
+    
+    let metadata_path = test_dir.join("metadata.json");
+    let block_manager = Arc::new(BlockManager::new(
+        rimsd_dirs,
+        metadata_path,
+        2, // threshold
+        3, // total_shards
+    ).unwrap());
+    
+    let sync_manager = AlbumSyncManager::new(block_manager, "test_replica".to_string());
+    
+    (sync_manager, temp_dir)
 }
 
 fn create_mock_photo_data() -> Vec<u8> {
