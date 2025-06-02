@@ -62,7 +62,12 @@ impl PhotoStorage {
     pub async fn load_photo(&self, metadata: &PhotoMetadata) 
         -> Result<Vec<u8>, FlowError> {
         if let Some(root_block) = metadata.root_block {
-            self.block_manager.read_block(&root_block).await
+            let file = BlockFile::from_existing(
+                self.block_manager.clone(), 
+                root_block, 
+                metadata.size
+            );
+            file.read().await
         } else {
             Err(FlowError::PersistenceError("Photo has no data".to_string()))
         }
@@ -101,7 +106,12 @@ impl VideoStorage {
     pub async fn load_video(&self, metadata: &VideoMetadata) 
         -> Result<Vec<u8>, FlowError> {
         if let Some(root_block) = metadata.root_block {
-            self.block_manager.read_block(&root_block).await
+            let file = BlockFile::from_existing(
+                self.block_manager.clone(), 
+                root_block, 
+                metadata.size
+            );
+            file.read().await
         } else {
             Err(FlowError::PersistenceError("Video has no data".to_string()))
         }
