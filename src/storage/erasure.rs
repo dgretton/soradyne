@@ -58,7 +58,6 @@ impl ErasureEncoder {
         }
         
         // Simple reconstruction from data shards
-        let shard_size = shards.values().next().unwrap().len();
         let mut result = Vec::new();
         
         for i in 0..self.threshold {

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
 use crate::storage::block::*;
 use crate::storage::erasure::ErasureEncoder;
@@ -157,7 +157,7 @@ impl BlockManager {
             self.read_direct_block(&metadata).await
         } else {
             // Indirect block - read addresses and recursively read blocks
-            self.read_indirect_block(&metadata).await
+            Box::pin(self.read_indirect_block(&metadata)).await
         }
     }
     
@@ -196,7 +196,7 @@ impl BlockManager {
         // Read all referenced blocks
         let mut result = Vec::new();
         for address in addresses {
-            let block_data = self.read_block(&address).await?;
+            let block_data = Box::pin(self.read_block(&address)).await?;
             result.extend_from_slice(&block_data);
         }
         
