@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio;
-use uuid::Uuid;
 
 use soradyne::storage::block_manager::BlockManager;
 use soradyne::types::media::{PhotoStorage, VideoStorage};
@@ -23,12 +22,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let threshold = 2; // Need at least 2 shards to reconstruct
     let total_shards = 3; // Create 3 shards total
     
-    let block_manager = BlockManager::new(
+    let block_manager = Arc::new(BlockManager::new(
         rimsd_dirs.clone(),
         metadata_path,
         threshold,
         total_shards,
-    )?;
+    )?);
     
     println!("BlockManager created with threshold={}, total_shards={}", threshold, total_shards);
     
@@ -73,7 +72,7 @@ fn setup_test_rimsd_directories() -> Result<Vec<PathBuf>, Box<dyn std::error::Er
 }
 
 /// Test basic block read/write operations
-async fn test_basic_block_operations(block_manager: &BlockManager) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_basic_block_operations(block_manager: &Arc<BlockManager>) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Testing Basic Block Operations ---");
     
     // Test writing a small block
@@ -106,10 +105,10 @@ async fn test_basic_block_operations(block_manager: &BlockManager) -> Result<(),
 }
 
 /// Test photo storage functionality
-async fn test_photo_storage(block_manager: &BlockManager) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_photo_storage(block_manager: &Arc<BlockManager>) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Testing Photo Storage ---");
     
-    let photo_storage = PhotoStorage::new(Arc::new(block_manager.clone()));
+    let photo_storage = PhotoStorage::new(block_manager.clone());
     
     // Create some mock photo data (in reality this would be JPEG/PNG data)
     let mock_photo_data = create_mock_image_data("JPEG", 1920, 1080);
@@ -128,10 +127,10 @@ async fn test_photo_storage(block_manager: &BlockManager) -> Result<(), Box<dyn 
 }
 
 /// Test video storage functionality
-async fn test_video_storage(block_manager: &BlockManager) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_video_storage(block_manager: &Arc<BlockManager>) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Testing Video Storage ---");
     
-    let video_storage = VideoStorage::new(Arc::new(block_manager.clone()));
+    let video_storage = VideoStorage::new(block_manager.clone());
     
     // Create some mock video data (in reality this would be MP4/AVI data)
     let mock_video_data = create_mock_video_data(1920, 1080, 30); // 30 seconds at 1080p
