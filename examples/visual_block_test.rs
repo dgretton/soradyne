@@ -10,7 +10,7 @@ use tokio;
 use sha2::{Sha256, Digest};
 
 use soradyne::storage::block_manager::BlockManager;
-use soradyne::types::media::{PhotoStorage, VideoStorage};
+use soradyne::types::media::PhotoStorage;
 
 /// High-quality test images from reliable sources
 const TEST_IMAGES: &[(&str, &str, &str)] = &[
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("This test downloads real images, stores them using block storage,");
     println!("and creates before/after files for visual verification.\n");
     
-    let test_session = VisualTestSession::new().await?;
+    let mut test_session = VisualTestSession::new().await?;
     
     // Run the comprehensive test
     test_session.run_visual_test().await?;
