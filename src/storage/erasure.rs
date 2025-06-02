@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 /// Simple erasure encoder using XOR-based Reed-Solomon-like encoding
 /// This is a placeholder implementation - in production you'd use a proper library
+#[derive(Debug)]
 pub struct ErasureEncoder {
     threshold: usize,
     total_shards: usize,

@@ -20,6 +20,7 @@ pub struct BlockManager {
     total_shards: usize,
 }
 
+#[derive(Debug)]
 pub struct BlockMetadataStore {
     blocks: HashMap<BlockId, BlockMetadata>,
     metadata_path: PathBuf,
