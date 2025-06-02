@@ -23,6 +23,11 @@ pub struct BlockMetadataStore {
     metadata_path: PathBuf,
 }
 
+#[derive(Serialize, Deserialize)]
+struct SerializableBlockStore {
+    blocks: HashMap<String, BlockMetadata>,
+}
+
 impl BlockMetadataStore {
     pub fn load_or_create(metadata_path: PathBuf) -> Result<Self, FlowError> {
         let blocks = if metadata_path.exists() {
@@ -30,9 +35,24 @@ impl BlockMetadataStore {
                 FlowError::PersistenceError(format!("Failed to read metadata: {}", e))
             )?;
             
-            serde_json::from_slice(&data).map_err(|e|
+            let serializable: SerializableBlockStore = serde_json::from_slice(&data).map_err(|e|
                 FlowError::PersistenceError(format!("Failed to parse metadata: {}", e))
-            )?
+            )?;
+            
+            // Convert hex string keys back to BlockId
+            let mut blocks = HashMap::new();
+            for (hex_key, metadata) in serializable.blocks {
+                let block_id = hex::decode(&hex_key).map_err(|e|
+                    FlowError::PersistenceError(format!("Invalid block ID in metadata: {}", e))
+                )?;
+                if block_id.len() != 32 {
+                    return Err(FlowError::PersistenceError("Invalid block ID length".to_string()));
+                }
+                let mut id = [0u8; 32];
+                id.copy_from_slice(&block_id);
+                blocks.insert(id, metadata);
+            }
+            blocks
         } else {
             HashMap::new()
         };
@@ -57,7 +77,18 @@ impl BlockMetadataStore {
     }
     
     fn save(&self) -> Result<(), FlowError> {
-        let data = serde_json::to_vec_pretty(&self.blocks).map_err(|e|
+        // Convert BlockId keys to hex strings for JSON serialization
+        let mut serializable_blocks = HashMap::new();
+        for (block_id, metadata) in &self.blocks {
+            let hex_key = hex::encode(block_id);
+            serializable_blocks.insert(hex_key, metadata.clone());
+        }
+        
+        let serializable = SerializableBlockStore {
+            blocks: serializable_blocks,
+        };
+        
+        let data = serde_json::to_vec_pretty(&serializable).map_err(|e|
             FlowError::PersistenceError(format!("Failed to serialize metadata: {}", e))
         )?;
         
