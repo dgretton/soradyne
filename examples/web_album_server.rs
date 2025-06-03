@@ -91,7 +91,7 @@ impl WebAlbumServer {
             4, // total_shards
         )?);
         
-        let mut server = Self {
+        let server = Self {
             albums: Arc::new(RwLock::new(HashMap::new())),
             block_manager,
             data_dir,
@@ -149,7 +149,7 @@ impl WebAlbumServer {
         Ok(())
     }
     
-    async fn save_albums_to_blocks(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn save_albums_to_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let albums = self.albums.read().await;
         
         // Create an index mapping album IDs to their block IDs
@@ -329,6 +329,7 @@ async fn handle_get_albums(server: Arc<WebAlbumServer>) -> Result<impl Reply, wa
 
 async fn handle_create_album(req: CreateAlbumRequest, server: Arc<WebAlbumServer>) -> Result<impl Reply, warp::Rejection> {
     let album_id = Uuid::new_v4().to_string();
+    let album_id_clone = album_id.clone();
     
     let album = MediaAlbum {
         album_id: album_id.clone(),
@@ -349,7 +350,7 @@ async fn handle_create_album(req: CreateAlbumRequest, server: Arc<WebAlbumServer
     // Save albums to block storage
     let server_clone = Arc::clone(&server);
     tokio::spawn(async move {
-        if let Err(e) = save_album_update(server_clone, album_id.clone()).await {
+        if let Err(e) = save_album_update(server_clone, album_id_clone).await {
             eprintln!("Failed to save albums to blocks: {}", e);
         }
     });
@@ -647,7 +648,7 @@ fn generate_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::
     Ok(buffer)
 }
 
-async fn save_album_update(server: Arc<WebAlbumServer>, album_id: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn save_album_update(server: Arc<WebAlbumServer>, _album_id: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // This is a simplified version that saves all albums
     // In a production system, you'd want to save only the changed album
     let albums = server.albums.read().await;
