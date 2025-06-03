@@ -97,11 +97,14 @@ impl WebAlbumServer {
     pub async fn start_server(self: Arc<Self>, port: u16) -> Result<(), Box<dyn std::error::Error>> {
         let server = Arc::clone(&self);
         
-        // CORS headers for local development
+        // Enable better logging
+        env_logger::init();
+        
+        // CORS headers for local development - make it more permissive
         let cors = warp::cors()
             .allow_any_origin()
-            .allow_headers(vec!["content-type"])
-            .allow_methods(vec!["GET", "POST", "PUT", "DELETE"]);
+            .allow_headers(vec!["content-type", "authorization", "accept"])
+            .allow_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"]);
         
         // Static files route
         let static_files = warp::path("static")
@@ -145,7 +148,8 @@ impl WebAlbumServer {
             .and(warp::post())
             .and(warp::multipart::form().max_length(50 * 1024 * 1024)) // 50MB max
             .and(with_server(Arc::clone(&server)))
-            .and_then(handle_upload_media);
+            .and_then(handle_upload_media)
+            .recover(handle_rejection);
         
         // Get media thumbnail
         let get_thumbnail = api
@@ -190,6 +194,9 @@ impl WebAlbumServer {
             .and(warp::get())
             .map(|| warp::reply::html(include_str!("../web_static/index.html")));
         
+        // Add logging filter to see all requests
+        let log = warp::log("api");
+        
         let routes = root
             .or(static_files)
             .or(get_albums)
@@ -199,7 +206,8 @@ impl WebAlbumServer {
             .or(get_thumbnail)
             .or(add_comment)
             .or(rotate_media)
-            .with(cors);
+            .with(cors)
+            .with(log);
         
         println!("🌐 Starting web album server on http://localhost:{}", port);
         println!("📁 Album interface available at http://localhost:{}", port);
@@ -288,18 +296,34 @@ async fn handle_upload_media(
     use futures_util::TryStreamExt;
     use bytes::BufMut;
     
-    let parts: Vec<_> = form.try_collect().await.map_err(|_| warp::reject::reject())?;
+    println!("Received upload request for album: {}", album_id);
     
+    // Collect all parts from the multipart stream
+    let parts: Result<Vec<_>, _> = form.try_collect().await;
+    let parts = parts.map_err(|e| {
+        eprintln!("Multipart form error: {}", e);
+        warp::reject::reject()
+    })?;
+
+    println!("Received {} parts in multipart form", parts.len());
+
     for part in parts {
+        println!("Processing part: {:?}", part.name());
         if part.name() == "file" {
             let filename = part.filename().unwrap_or("unknown").to_string();
-            let data: Vec<u8> = part.stream()
+            
+            // Properly read the data from the part
+            let data: Result<Vec<u8>, _> = part.stream()
                 .try_fold(Vec::new(), |mut vec, data| {
                     vec.put(data);
                     async move { Ok(vec) }
                 })
-                .await
-                .map_err(|_| warp::reject::reject())?;
+                .await;
+            
+            let data = data.map_err(|e| {
+                eprintln!("Failed to read multipart data: {}", e);
+                warp::reject::reject()
+            })?;
             
             let media_id = Uuid::new_v4().to_string();
             
@@ -335,23 +359,31 @@ async fn handle_upload_media(
                             }
                             Err(e) => {
                                 eprintln!("Failed to apply operation: {}", e);
-                                return Ok(warp::reply::json(&serde_json::json!({"error": "Failed to apply operation"})));
+                                return Ok(warp::reply::json(&serde_json::json!({
+                                    "error": "Failed to apply operation"
+                                })));
                             }
                         }
                     } else {
                         eprintln!("Album {} not found", album_id);
-                        return Ok(warp::reply::json(&serde_json::json!({"error": "Album not found"})));
+                        return Ok(warp::reply::json(&serde_json::json!({
+                            "error": "Album not found"
+                        })));
                     }
                 }
                 Err(e) => {
                     eprintln!("Failed to store media data: {}", e);
-                    return Ok(warp::reply::json(&serde_json::json!({"error": "Failed to store media"})));
+                    return Ok(warp::reply::json(&serde_json::json!({
+                        "error": "Failed to store media"
+                    })));
                 }
             }
         }
     }
     
-    Ok(warp::reply::json(&serde_json::json!({"error": "No file found"})))
+    Ok(warp::reply::json(&serde_json::json!({
+        "error": "No file found in upload"
+    })))
 }
 
 async fn handle_get_thumbnail(
@@ -441,6 +473,34 @@ async fn handle_rotate_media(
     } else {
         Ok(warp::reply::json(&serde_json::json!({"error": "Album not found"})))
     }
+}
+
+async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, std::convert::Infallible> {
+    eprintln!("Request rejection: {:?}", err);
+    
+    let code;
+    let message;
+    
+    if err.is_not_found() {
+        code = warp::http::StatusCode::NOT_FOUND;
+        message = "NOT_FOUND";
+    } else if let Some(_) = err.find::<warp::filters::body::BodyDeserializeError>() {
+        code = warp::http::StatusCode::BAD_REQUEST;
+        message = "BAD_REQUEST";
+    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+        code = warp::http::StatusCode::METHOD_NOT_ALLOWED;
+        message = "METHOD_NOT_ALLOWED";
+    } else {
+        code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
+        message = "INTERNAL_SERVER_ERROR";
+    }
+    
+    let json = warp::reply::json(&serde_json::json!({
+        "error": message,
+        "code": code.as_u16()
+    }));
+    
+    Ok(warp::reply::with_status(json, code))
 }
 
 fn create_placeholder_thumbnail() -> Vec<u8> {
