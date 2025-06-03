@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 # Core functionality
@@ -84,6 +84,3 @@ name = "renderer_test"
 path = "examples/renderer_test.rs"
 required-features = []
 
-[[bin]]
-name = "block_storage_cli"
-path = "src/bin/block_storage_cli.rs"
