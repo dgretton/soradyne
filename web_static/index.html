@@ -99,35 +99,27 @@
         }
         
         .media-item {
-            border: 1px solid #ddd;
             border-radius: 8px;
             overflow: hidden;
             background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
         
         .media-thumbnail {
             width: 100%;
-            height: 150px;
+            height: 200px;
             background: #f0f0f0;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #999;
-        }
-        
-        .media-info {
-            padding: 10px;
-        }
-        
-        .media-info h4 {
-            margin: 0 0 5px 0;
-            font-size: 0.9em;
-            color: #333;
-        }
-        
-        .media-info .meta {
-            font-size: 0.8em;
-            color: #666;
         }
         
         .upload-area {
@@ -364,17 +356,9 @@
                         <div class="media-thumbnail">
                             <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" 
                                  alt="${item.filename}" 
-                                 style="max-width: 100%; max-height: 100%; object-fit: cover;"
+                                 style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <div style="display: none;">📷</div>
-                        </div>
-                        <div class="media-info">
-                            <h4>${item.filename}</h4>
-                            <div class="meta">
-                                ${item.comments.length} comments
-                                ${item.rotation !== 0 ? `• ${item.rotation}° rotated` : ''}
-                                ${item.has_crop ? '• cropped' : ''}
-                            </div>
+                            <div style="display: none; color: #999; font-size: 2em;">📷</div>
                         </div>
                     `;
                     
