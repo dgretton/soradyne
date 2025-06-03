@@ -50,7 +50,7 @@ impl EditOp {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SetMediaPayload {
-    pub block_id: BlockId,
+    pub block_id: [u8; 32],
     pub media_type: MediaType,
     pub filename: String,
     pub size: usize,
@@ -117,7 +117,7 @@ pub struct DeletePayload {
 // === Operation Builders ===
 
 impl EditOp {
-    pub fn set_media(author: ReplicaId, block_id: BlockId, media_type: MediaType, filename: String, size: usize) -> Self {
+    pub fn set_media(author: ReplicaId, block_id: [u8; 32], media_type: MediaType, filename: String, size: usize) -> Self {
         let payload = SetMediaPayload { block_id, media_type, filename, size };
         Self::new(author, "set_media".to_string(), serde_json::to_value(payload).unwrap())
     }

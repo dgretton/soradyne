@@ -90,9 +90,10 @@ pub struct MediaState {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MediaInfo {
-    pub block_id: BlockId,
+    pub block_id: [u8; 32],
     pub media_type: MediaType,
     pub filename: String,
+    pub mime_type: String,
     pub size: usize,
     pub added_by: ReplicaId,
     pub added_at: LogicalTime,
@@ -147,10 +148,17 @@ impl Reducer<EditOp> for MediaReducer {
         match op.op_type.as_str() {
             "set_media" => {
                 if let Ok(payload) = serde_json::from_value::<SetMediaPayload>(op.payload.clone()) {
+                    let mime_type = match payload.media_type {
+                        MediaType::Photo => "image/jpeg".to_string(),
+                        MediaType::Video => "video/mp4".to_string(),
+                        MediaType::Audio => "audio/mp3".to_string(),
+                    };
+                    
                     state.media = Some(MediaInfo {
                         block_id: payload.block_id,
                         media_type: payload.media_type,
                         filename: payload.filename,
+                        mime_type,
                         size: payload.size,
                         added_by: op.author(),
                         added_at: op.timestamp(),

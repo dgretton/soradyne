@@ -8,6 +8,8 @@ use chrono::Utc;
 use serde::{Serialize, Deserialize};
 
 use crate::storage::block::*;
+
+const BLOCK_SIZE: usize = 32 * 1024 * 1024; // 32MB
 use crate::storage::erasure::ErasureEncoder;
 use crate::flow::FlowError;
 
@@ -22,7 +24,7 @@ pub struct BlockManager {
 
 #[derive(Debug)]
 pub struct BlockMetadataStore {
-    blocks: HashMap<BlockId, BlockMetadata>,
+    blocks: HashMap<[u8; 32], BlockMetadata>,
     metadata_path: PathBuf,
 }
 
@@ -42,7 +44,7 @@ impl BlockMetadataStore {
                 FlowError::PersistenceError(format!("Failed to parse metadata: {}", e))
             )?;
             
-            // Convert hex string keys back to BlockId
+            // Convert hex string keys back to [u8; 32]
             let mut blocks = HashMap::new();
             for (hex_key, metadata) in serializable.blocks {
                 let block_id = hex::decode(&hex_key).map_err(|e|
@@ -71,7 +73,7 @@ impl BlockMetadataStore {
         self.save()
     }
     
-    pub fn get_block(&self, id: &BlockId) -> Result<BlockMetadata, FlowError> {
+    pub fn get_block(&self, id: &[u8; 32]) -> Result<BlockMetadata, FlowError> {
         self.blocks.get(id)
             .cloned()
             .ok_or_else(|| FlowError::PersistenceError(
@@ -80,7 +82,7 @@ impl BlockMetadataStore {
     }
     
     fn save(&self) -> Result<(), FlowError> {
-        // Convert BlockId keys to hex strings for JSON serialization
+        // Convert [u8; 32] keys to hex strings for JSON serialization
         let mut serializable_blocks = HashMap::new();
         for (block_id, metadata) in &self.blocks {
             let hex_key = hex::encode(block_id);
@@ -126,7 +128,7 @@ impl BlockManager {
         })
     }
     
-    pub async fn write_direct_block(&self, data: &[u8]) -> Result<BlockId, FlowError> {
+    pub async fn write_direct_block(&self, data: &[u8]) -> Result<[u8; 32], FlowError> {
         if data.len() > BLOCK_SIZE {
             return Err(FlowError::PersistenceError(
                 format!("Data size {} exceeds block size {}", data.len(), BLOCK_SIZE)
@@ -183,7 +185,7 @@ impl BlockManager {
         Ok(id)
     }
     
-    pub async fn read_block(&self, id: &BlockId) -> Result<Vec<u8>, FlowError> {
+    pub async fn read_block(&self, id: &[u8; 32]) -> Result<Vec<u8>, FlowError> {
         let metadata = self.metadata_store.read().await.get_block(id)?;
         
         if metadata.directness == 0 {
@@ -237,7 +239,7 @@ impl BlockManager {
         Ok(result)
     }
     
-    fn generate_block_id(&self) -> BlockId {
+    fn generate_block_id(&self) -> [u8; 32] {
         // Use a cryptographic hash of UUID + timestamp
         let mut hasher = Sha256::new();
         hasher.update(Uuid::new_v4().as_bytes());
@@ -248,7 +250,7 @@ impl BlockManager {
         id
     }
     
-    fn shard_path(&self, rimsd_dir: &Path, block_id: &BlockId, shard_index: usize) -> PathBuf {
+    fn shard_path(&self, rimsd_dir: &Path, block_id: &[u8; 32], shard_index: usize) -> PathBuf {
         // Use first 4 bytes of block ID for directory structure
         let hex_id = hex::encode(block_id);
         rimsd_dir
@@ -262,16 +264,16 @@ impl BlockManager {
         Uuid::new_v4()
     }
     
-    fn parse_addresses(&self, data: &[u8]) -> Result<Vec<BlockId>, FlowError> {
-        if data.len() % BLOCK_ID_SIZE != 0 {
+    fn parse_addresses(&self, data: &[u8]) -> Result<Vec<[u8; 32]>, FlowError> {
+        if data.len() % 32 != 0 {
             return Err(FlowError::PersistenceError(
                 "Invalid indirect block data".to_string()
             ));
         }
         
         let mut addresses = Vec::new();
-        for chunk in data.chunks_exact(BLOCK_ID_SIZE) {
-            let mut id = [0u8; BLOCK_ID_SIZE];
+        for chunk in data.chunks_exact(32) {
+            let mut id = [0u8; 32];
             id.copy_from_slice(chunk);
             addresses.push(id);
         }
