@@ -12,8 +12,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use tempfile::TempDir;
 
-use soradyne::album::*;
+use soradyne::album::album::*;
+use soradyne::album::operations::*;
+use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
+use soradyne::flow::error::FlowError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -59,8 +62,8 @@ struct RotateRequest {
 }
 
 pub struct WebAlbumServer {
-    sync_manager: Arc<RwLock<AlbumSyncManager>>,
-    albums: Arc<RwLock<HashMap<String, String>>>, // album_id -> album_name
+    albums: Arc<RwLock<HashMap<String, MediaAlbum>>>, // album_id -> album
+    block_manager: Arc<BlockManager>,
     _temp_dir: TempDir, // Keep alive for the duration of the server
 }
 
@@ -86,11 +89,9 @@ impl WebAlbumServer {
             4, // total_shards
         )?);
         
-        let sync_manager = AlbumSyncManager::new(block_manager, "web_server".to_string());
-        
         Ok(Self {
-            sync_manager: Arc::new(RwLock::new(sync_manager)),
             albums: Arc::new(RwLock::new(HashMap::new())),
+            block_manager,
             _temp_dir: temp_dir,
         })
     }
@@ -219,11 +220,11 @@ fn with_server(server: Arc<WebAlbumServer>) -> impl Filter<Extract = (Arc<WebAlb
 
 async fn handle_get_albums(server: Arc<WebAlbumServer>) -> Result<impl Reply, warp::Rejection> {
     let albums = server.albums.read().await;
-    let album_list: Vec<AlbumResponse> = albums.iter().map(|(id, name)| {
+    let album_list: Vec<AlbumResponse> = albums.iter().map(|(id, album)| {
         AlbumResponse {
             id: id.clone(),
-            name: name.clone(),
-            item_count: 0, // TODO: Get actual count
+            name: album.metadata.name.clone(),
+            item_count: album.items.len(),
         }
     }).collect();
     
@@ -231,47 +232,43 @@ async fn handle_get_albums(server: Arc<WebAlbumServer>) -> Result<impl Reply, wa
 }
 
 async fn handle_create_album(req: CreateAlbumRequest, server: Arc<WebAlbumServer>) -> Result<impl Reply, warp::Rejection> {
-    let mut sync_manager = server.sync_manager.write().await;
+    let album_id = Uuid::new_v4().to_string();
     
-    match sync_manager.create_album(req.name.clone()) {
-        Ok(album_id) => {
-            let mut albums = server.albums.write().await;
-            albums.insert(album_id.clone(), req.name.clone());
-            
-            let response = AlbumResponse {
-                id: album_id,
-                name: req.name,
-                item_count: 0,
-            };
-            Ok(warp::reply::json(&response))
-        }
-        Err(e) => {
-            eprintln!("Failed to create album: {}", e);
-            Ok(warp::reply::json(&serde_json::json!({"error": "Failed to create album"})))
-        }
-    }
+    let mut album = MediaAlbum {
+        album_id: album_id.clone(),
+        items: HashMap::new(),
+        metadata: AlbumMetadata {
+            name: req.name.clone(),
+            created_at: chrono::Utc::now().timestamp() as u64,
+            owner: "web_user".to_string(),
+        },
+        block_manager: Some(Arc::clone(&server.block_manager)),
+    };
+    
+    let mut albums = server.albums.write().await;
+    albums.insert(album_id.clone(), album);
+    
+    let response = AlbumResponse {
+        id: album_id,
+        name: req.name,
+        item_count: 0,
+    };
+    Ok(warp::reply::json(&response))
 }
 
 async fn handle_get_album(album_id: String, server: Arc<WebAlbumServer>) -> Result<impl Reply, warp::Rejection> {
-    let sync_manager = server.sync_manager.read().await;
+    let albums = server.albums.read().await;
     
-    if let Some(album) = sync_manager.get_album(&album_id) {
-        let states = album.reduce_all();
-        let media_items: Vec<MediaItemResponse> = states.iter().map(|(media_id, state)| {
-            let comments: Vec<CommentResponse> = state.comments.iter().map(|comment| {
-                CommentResponse {
-                    author: comment.author.clone(),
-                    text: comment.text.clone(),
-                    timestamp: comment.timestamp,
-                }
-            }).collect();
+    if let Some(album) = albums.get(&album_id) {
+        let media_items: Vec<MediaItemResponse> = album.items.iter().map(|(media_id, crdt)| {
+            let state = MediaReducer::reduce(&crdt.ops).unwrap_or_default();
             
             MediaItemResponse {
                 id: media_id.clone(),
-                filename: state.media.as_ref().map(|m| m.filename.clone()).unwrap_or_default(),
-                media_type: state.media.as_ref().map(|m| m.mime_type.clone()).unwrap_or_default(),
-                size: state.media.as_ref().map(|m| m.size).unwrap_or(0),
-                comments,
+                filename: format!("media_{}", media_id), // Placeholder filename
+                media_type: "image/jpeg".to_string(), // Placeholder type
+                size: 0, // Placeholder size
+                comments: Vec::new(), // TODO: Extract comments from state
                 rotation: state.rotation,
                 has_crop: state.crop.is_some(),
                 markup_count: state.markup.len(),
@@ -292,8 +289,6 @@ async fn handle_upload_media(
     use futures_util::TryStreamExt;
     use bytes::BufMut;
     
-    let mut sync_manager = server.sync_manager.write().await;
-    
     let parts: Vec<_> = form.try_collect().await.map_err(|_| warp::reject::reject())?;
     
     for part in parts {
@@ -307,29 +302,39 @@ async fn handle_upload_media(
                 .await
                 .map_err(|_| warp::reject::reject())?;
             
-            // Determine media type from filename
-            let media_type = if filename.to_lowercase().ends_with(".jpg") || filename.to_lowercase().ends_with(".jpeg") {
-                MediaType::Photo
-            } else if filename.to_lowercase().ends_with(".png") {
-                MediaType::Photo
-            } else if filename.to_lowercase().ends_with(".mp4") || filename.to_lowercase().ends_with(".mov") {
-                MediaType::Video
-            } else {
-                MediaType::Photo // Default
-            };
-            
             let media_id = Uuid::new_v4().to_string();
             
-            match sync_manager.add_media_to_album(&album_id, media_id.clone(), &data, media_type, filename).await {
-                Ok(_) => {
-                    return Ok(warp::reply::json(&serde_json::json!({
-                        "success": true,
-                        "media_id": media_id
-                    })));
+            // Store the media data in block storage
+            match server.block_manager.write_direct_block(&data).await {
+                Ok(block_id) => {
+                    // Create an operation to add media
+                    let op = EditOp {
+                        op_id: Uuid::new_v4().to_string(),
+                        timestamp: chrono::Utc::now().timestamp() as u64,
+                        author: "web_user".to_string(),
+                        op_type: "add_media".to_string(),
+                        payload: serde_json::json!({
+                            "filename": filename,
+                            "block_id": hex::encode(block_id),
+                            "size": data.len()
+                        }),
+                    };
+                    
+                    // Add to album
+                    let mut albums = server.albums.write().await;
+                    if let Some(album) = albums.get_mut(&album_id) {
+                        let crdt = album.get_or_create(&media_id);
+                        let _ = crdt.apply_local(op);
+                        
+                        return Ok(warp::reply::json(&serde_json::json!({
+                            "success": true,
+                            "media_id": media_id
+                        })));
+                    }
                 }
                 Err(e) => {
-                    eprintln!("Failed to add media: {}", e);
-                    return Ok(warp::reply::json(&serde_json::json!({"error": "Failed to upload media"})));
+                    eprintln!("Failed to store media data: {}", e);
+                    return Ok(warp::reply::json(&serde_json::json!({"error": "Failed to store media"})));
                 }
             }
         }
@@ -343,21 +348,18 @@ async fn handle_get_thumbnail(
     media_id: String,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let sync_manager = server.sync_manager.read().await;
+    let albums = server.albums.read().await;
     
-    if let Some(album) = sync_manager.get_album(&album_id) {
+    if let Some(album) = albums.get(&album_id) {
         if let Some(crdt) = album.items.get(&media_id) {
-            let state = crdt.reduce();
-            if let Some(media) = &state.media {
-                // TODO: Generate thumbnail using renderer
-                // For now, return a placeholder
-                let placeholder = create_placeholder_thumbnail();
-                return Ok(warp::reply::with_header(
-                    placeholder,
-                    "content-type",
-                    "image/png"
-                ));
-            }
+            // For now, return a placeholder thumbnail
+            // TODO: Extract block_id from operations and generate real thumbnail
+            let placeholder = create_placeholder_thumbnail();
+            return Ok(warp::reply::with_header(
+                placeholder,
+                "content-type",
+                "image/png"
+            ));
         }
     }
     
@@ -374,16 +376,28 @@ async fn handle_add_comment(
     req: AddCommentRequest,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let mut sync_manager = server.sync_manager.write().await;
+    let comment_op = EditOp {
+        op_id: Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now().timestamp() as u64,
+        author: req.author,
+        op_type: "add_comment".to_string(),
+        payload: serde_json::json!({
+            "text": req.text
+        }),
+    };
     
-    let comment_op = EditOp::add_comment(req.author, req.text, None);
-    
-    match sync_manager.apply_operation(&album_id, &media_id, comment_op) {
-        Ok(_) => Ok(warp::reply::json(&serde_json::json!({"success": true}))),
-        Err(e) => {
-            eprintln!("Failed to add comment: {}", e);
-            Ok(warp::reply::json(&serde_json::json!({"error": "Failed to add comment"})))
+    let mut albums = server.albums.write().await;
+    if let Some(album) = albums.get_mut(&album_id) {
+        let crdt = album.get_or_create(&media_id);
+        match crdt.apply_local(comment_op) {
+            Ok(_) => Ok(warp::reply::json(&serde_json::json!({"success": true}))),
+            Err(e) => {
+                eprintln!("Failed to add comment: {}", e);
+                Ok(warp::reply::json(&serde_json::json!({"error": "Failed to add comment"})))
+            }
         }
+    } else {
+        Ok(warp::reply::json(&serde_json::json!({"error": "Album not found"})))
     }
 }
 
@@ -393,16 +407,28 @@ async fn handle_rotate_media(
     req: RotateRequest,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let mut sync_manager = server.sync_manager.write().await;
+    let rotate_op = EditOp {
+        op_id: Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now().timestamp() as u64,
+        author: req.author,
+        op_type: "rotate".to_string(),
+        payload: serde_json::json!({
+            "degrees": req.degrees
+        }),
+    };
     
-    let rotate_op = EditOp::rotate(req.author, req.degrees);
-    
-    match sync_manager.apply_operation(&album_id, &media_id, rotate_op) {
-        Ok(_) => Ok(warp::reply::json(&serde_json::json!({"success": true}))),
-        Err(e) => {
-            eprintln!("Failed to rotate media: {}", e);
-            Ok(warp::reply::json(&serde_json::json!({"error": "Failed to rotate media"})))
+    let mut albums = server.albums.write().await;
+    if let Some(album) = albums.get_mut(&album_id) {
+        let crdt = album.get_or_create(&media_id);
+        match crdt.apply_local(rotate_op) {
+            Ok(_) => Ok(warp::reply::json(&serde_json::json!({"success": true}))),
+            Err(e) => {
+                eprintln!("Failed to rotate media: {}", e);
+                Ok(warp::reply::json(&serde_json::json!({"error": "Failed to rotate media"})))
+            }
         }
+    } else {
+        Ok(warp::reply::json(&serde_json::json!({"error": "Album not found"})))
     }
 }
 
