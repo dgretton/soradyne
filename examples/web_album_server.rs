@@ -634,7 +634,43 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, std:
     Ok(warp::reply::with_status(json, code))
 }
 
-fn generate_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn generate_thumbnail(media_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Try to detect if this is a video file by checking the first few bytes
+    if is_video_file(media_data) {
+        generate_video_thumbnail(media_data)
+    } else {
+        generate_image_thumbnail(media_data)
+    }
+}
+
+fn is_video_file(data: &[u8]) -> bool {
+    if data.len() < 12 {
+        return false;
+    }
+    
+    // Check for common video file signatures
+    // MP4/MOV files start with specific patterns
+    if data.len() >= 8 {
+        // Check for MP4 ftyp box
+        if &data[4..8] == b"ftyp" {
+            return true;
+        }
+    }
+    
+    // Check for WebM signature
+    if data.len() >= 4 && &data[0..4] == b"\x1A\x45\xDF\xA3" {
+        return true;
+    }
+    
+    // Check for AVI signature
+    if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"AVI " {
+        return true;
+    }
+    
+    false
+}
+
+fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Load the image from the data
     let img = image::load_from_memory(image_data)?;
     
@@ -645,6 +681,54 @@ fn generate_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::
     let mut buffer = Vec::new();
     thumbnail.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(80))?;
     
+    Ok(buffer)
+}
+
+fn generate_video_thumbnail(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // For now, create a video-specific placeholder thumbnail
+    // In a full implementation, you'd use FFmpeg to extract a frame
+    create_video_placeholder_thumbnail()
+}
+
+fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbImage, Rgb};
+    
+    let mut img = RgbImage::new(150, 150);
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let center_x = 75;
+        let center_y = 75;
+        let distance = ((x as i32 - center_x).pow(2) + (y as i32 - center_y).pow(2)) as f32;
+        
+        // Create a play button icon
+        if distance < 60.0 * 60.0 {
+            // Background circle
+            *pixel = Rgb([50, 50, 50]); // Dark background
+            
+            // Play triangle
+            let triangle_left = 50;
+            let triangle_right = 100;
+            let triangle_top = 55;
+            let triangle_bottom = 95;
+            
+            if x >= triangle_left && x <= triangle_right && y >= triangle_top && y <= triangle_bottom {
+                // Simple triangle approximation
+                let relative_y = y as i32 - triangle_top as i32;
+                let triangle_height = triangle_bottom - triangle_top;
+                let triangle_width = triangle_right - triangle_left;
+                let expected_x = triangle_left + (relative_y * triangle_width / triangle_height as i32) as u32;
+                
+                if x >= triangle_left && x <= expected_x {
+                    *pixel = Rgb([255, 255, 255]); // White play button
+                }
+            }
+        } else {
+            *pixel = Rgb([240, 240, 240]); // Light gray background
+        }
+    }
+    
+    let mut buffer = Vec::new();
+    let dynamic_img = image::DynamicImage::ImageRgb8(img);
+    dynamic_img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
     Ok(buffer)
 }
 
