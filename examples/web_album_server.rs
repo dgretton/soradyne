@@ -4,7 +4,6 @@
 //! using Soradyne's block storage and CRDT album system.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::{Filter, Reply};
@@ -16,7 +15,6 @@ use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
-use soradyne::flow::error::FlowError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -223,7 +221,7 @@ async fn handle_get_albums(server: Arc<WebAlbumServer>) -> Result<impl Reply, wa
     let album_list: Vec<AlbumResponse> = albums.iter().map(|(id, album)| {
         AlbumResponse {
             id: id.clone(),
-            name: album.metadata.name.clone(),
+            name: album.metadata.title.clone(),
             item_count: album.items.len(),
         }
     }).collect();
@@ -238,9 +236,10 @@ async fn handle_create_album(req: CreateAlbumRequest, server: Arc<WebAlbumServer
         album_id: album_id.clone(),
         items: HashMap::new(),
         metadata: AlbumMetadata {
-            name: req.name.clone(),
+            title: req.name.clone(),
+            created_by: "web_user".to_string(),
             created_at: chrono::Utc::now().timestamp() as u64,
-            owner: "web_user".to_string(),
+            shared_with: HashMap::new(),
         },
         block_manager: Some(Arc::clone(&server.block_manager)),
     };
@@ -261,7 +260,7 @@ async fn handle_get_album(album_id: String, server: Arc<WebAlbumServer>) -> Resu
     
     if let Some(album) = albums.get(&album_id) {
         let media_items: Vec<MediaItemResponse> = album.items.iter().map(|(media_id, crdt)| {
-            let state = MediaReducer::reduce(&crdt.ops).unwrap_or_default();
+            let state = crdt.reduce();
             
             MediaItemResponse {
                 id: media_id.clone(),
@@ -309,7 +308,7 @@ async fn handle_upload_media(
                 Ok(block_id) => {
                     // Create an operation to add media
                     let op = EditOp {
-                        op_id: Uuid::new_v4().to_string(),
+                        op_id: Uuid::new_v4(),
                         timestamp: chrono::Utc::now().timestamp() as u64,
                         author: "web_user".to_string(),
                         op_type: "add_media".to_string(),
@@ -351,7 +350,7 @@ async fn handle_get_thumbnail(
     let albums = server.albums.read().await;
     
     if let Some(album) = albums.get(&album_id) {
-        if let Some(crdt) = album.items.get(&media_id) {
+        if let Some(_crdt) = album.items.get(&media_id) {
             // For now, return a placeholder thumbnail
             // TODO: Extract block_id from operations and generate real thumbnail
             let placeholder = create_placeholder_thumbnail();
@@ -377,7 +376,7 @@ async fn handle_add_comment(
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
     let comment_op = EditOp {
-        op_id: Uuid::new_v4().to_string(),
+        op_id: Uuid::new_v4(),
         timestamp: chrono::Utc::now().timestamp() as u64,
         author: req.author,
         op_type: "add_comment".to_string(),
@@ -408,7 +407,7 @@ async fn handle_rotate_media(
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
     let rotate_op = EditOp {
-        op_id: Uuid::new_v4().to_string(),
+        op_id: Uuid::new_v4(),
         timestamp: chrono::Utc::now().timestamp() as u64,
         author: req.author,
         op_type: "rotate".to_string(),
