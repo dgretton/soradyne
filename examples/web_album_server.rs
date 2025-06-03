@@ -148,8 +148,7 @@ impl WebAlbumServer {
             .and(warp::post())
             .and(warp::multipart::form().max_length(50 * 1024 * 1024)) // 50MB max
             .and(with_server(Arc::clone(&server)))
-            .and_then(handle_upload_media)
-            .recover(handle_rejection);
+            .and_then(handle_upload_media);
         
         // Get media thumbnail
         let get_thumbnail = api
@@ -206,6 +205,7 @@ impl WebAlbumServer {
             .or(get_thumbnail)
             .or(add_comment)
             .or(rotate_media)
+            .recover(handle_rejection)
             .with(cors)
             .with(log);
         
