@@ -5,11 +5,11 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::path::PathBuf;
 use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use tempfile::TempDir;
 
 use soradyne::album::album::*;
 use soradyne::album::operations::*;
@@ -62,24 +62,28 @@ struct RotateRequest {
 pub struct WebAlbumServer {
     albums: Arc<RwLock<HashMap<String, MediaAlbum>>>, // album_id -> album
     block_manager: Arc<BlockManager>,
-    _temp_dir: TempDir, // Keep alive for the duration of the server
+    data_dir: PathBuf,
+    albums_index_block_id: Option<[u8; 32]>, // Block ID containing the album index
 }
 
 impl WebAlbumServer {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let temp_dir = TempDir::new()?;
-        let test_dir = temp_dir.path().to_path_buf();
+        // Use a persistent data directory in the user's home directory
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let data_dir = PathBuf::from(home_dir).join(".soradyne_albums");
+        std::fs::create_dir_all(&data_dir)?;
         
         // Create rimsd directories
         let mut rimsd_dirs = Vec::new();
         for i in 0..4 {
-            let device_dir = test_dir.join(format!("rimsd_{}", i));
+            let device_dir = data_dir.join(format!("rimsd_{}", i));
             let rimsd_dir = device_dir.join(".rimsd");
             std::fs::create_dir_all(&rimsd_dir)?;
             rimsd_dirs.push(rimsd_dir);
         }
         
-        let metadata_path = test_dir.join("metadata.json");
+        let metadata_path = data_dir.join("metadata.json");
+        
         let block_manager = Arc::new(BlockManager::new(
             rimsd_dirs,
             metadata_path,
@@ -87,11 +91,96 @@ impl WebAlbumServer {
             4, // total_shards
         )?);
         
-        Ok(Self {
+        let mut server = Self {
             albums: Arc::new(RwLock::new(HashMap::new())),
             block_manager,
-            _temp_dir: temp_dir,
-        })
+            data_dir,
+            albums_index_block_id: None,
+        };
+        
+        Ok(server)
+    }
+    
+    pub async fn initialize(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Load existing albums from block storage
+        self.load_albums_from_blocks().await?;
+        Ok(())
+    }
+    
+    async fn load_albums_from_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Try to load the albums index from a known location
+        let index_file = self.data_dir.join("albums_index.txt");
+        
+        if index_file.exists() {
+            let index_content = std::fs::read_to_string(&index_file)?;
+            if let Ok(block_id_bytes) = hex::decode(index_content.trim()) {
+                if block_id_bytes.len() == 32 {
+                    let mut block_id = [0u8; 32];
+                    block_id.copy_from_slice(&block_id_bytes);
+                    self.albums_index_block_id = Some(block_id);
+                    
+                    // Load the albums index
+                    if let Ok(index_data) = self.block_manager.read_block(&block_id).await {
+                        if let Ok(index_json) = String::from_utf8(index_data) {
+                            if let Ok(album_index): Result<HashMap<String, [u8; 32]>, _> = serde_json::from_str(&index_json) {
+                                // Load each album from its block
+                                let mut albums = HashMap::new();
+                                for (album_id, album_block_id) in album_index {
+                                    if let Ok(album_data) = self.block_manager.read_block(&album_block_id).await {
+                                        if let Ok(album_json) = String::from_utf8(album_data) {
+                                            if let Ok(mut album): Result<MediaAlbum, _> = serde_json::from_str(&album_json) {
+                                                // Restore the block manager reference
+                                                album.block_manager = Some(Arc::clone(&self.block_manager));
+                                                albums.insert(album_id, album);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                *self.albums.write().await = albums;
+                                println!("Loaded {} albums from block storage", self.albums.read().await.len());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    async fn save_albums_to_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let albums = self.albums.read().await;
+        
+        // Create an index mapping album IDs to their block IDs
+        let mut album_index = HashMap::new();
+        
+        // Save each album to its own block
+        for (album_id, album) in albums.iter() {
+            // Create a serializable version without the block manager
+            let mut serializable_album = album.clone();
+            serializable_album.block_manager = None;
+            
+            let album_json = serde_json::to_string_pretty(&serializable_album)?;
+            let album_data = album_json.as_bytes();
+            
+            // Store the album in a block
+            let album_block_id = self.block_manager.write_direct_block(album_data).await?;
+            album_index.insert(album_id.clone(), album_block_id);
+        }
+        
+        // Save the index to a block
+        let index_json = serde_json::to_string_pretty(&album_index)?;
+        let index_data = index_json.as_bytes();
+        let index_block_id = self.block_manager.write_direct_block(index_data).await?;
+        
+        // Store the index block ID in a simple file for bootstrapping
+        let index_file = self.data_dir.join("albums_index.txt");
+        std::fs::write(&index_file, hex::encode(index_block_id))?;
+        
+        self.albums_index_block_id = Some(index_block_id);
+        
+        Ok(())
     }
     
     pub async fn start_server(self: Arc<Self>, port: u16) -> Result<(), Box<dyn std::error::Error>> {
@@ -255,6 +344,15 @@ async fn handle_create_album(req: CreateAlbumRequest, server: Arc<WebAlbumServer
     
     let mut albums = server.albums.write().await;
     albums.insert(album_id.clone(), album);
+    drop(albums); // Release the lock before saving
+    
+    // Save albums to block storage
+    let server_clone = Arc::clone(&server);
+    tokio::spawn(async move {
+        if let Err(e) = save_album_update(server_clone, album_id.clone()).await {
+            eprintln!("Failed to save albums to blocks: {}", e);
+        }
+    });
     
     let response = AlbumResponse {
         id: album_id,
@@ -355,6 +453,18 @@ async fn handle_upload_media(
                         match crdt.apply_local(op) {
                             Ok(_) => {
                                 println!("Successfully added media {} to album {}", media_id, album_id);
+                                
+                                // Save albums to block storage
+                                drop(albums); // Release the lock before saving
+                                let server_clone = Arc::clone(&server);
+                                tokio::spawn(async move {
+                                    // We can't easily get a mutable reference here, so we'll implement
+                                    // a different approach for saving individual album updates
+                                    if let Err(e) = save_album_update(server_clone, album_id.clone()).await {
+                                        eprintln!("Failed to save album update: {}", e);
+                                    }
+                                });
+                                
                                 return Ok(warp::reply::json(&serde_json::json!({
                                     "success": true,
                                     "media_id": media_id
@@ -537,6 +647,40 @@ fn generate_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::
     Ok(buffer)
 }
 
+async fn save_album_update(server: Arc<WebAlbumServer>, album_id: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // This is a simplified version that saves all albums
+    // In a production system, you'd want to save only the changed album
+    let albums = server.albums.read().await;
+    
+    // Create an index mapping album IDs to their block IDs
+    let mut album_index = HashMap::new();
+    
+    // Save each album to its own block
+    for (id, album) in albums.iter() {
+        // Create a serializable version without the block manager
+        let mut serializable_album = album.clone();
+        serializable_album.block_manager = None;
+        
+        let album_json = serde_json::to_string_pretty(&serializable_album)?;
+        let album_data = album_json.as_bytes();
+        
+        // Store the album in a block
+        let album_block_id = server.block_manager.write_direct_block(album_data).await?;
+        album_index.insert(id.clone(), album_block_id);
+    }
+    
+    // Save the index to a block
+    let index_json = serde_json::to_string_pretty(&album_index)?;
+    let index_data = index_json.as_bytes();
+    let index_block_id = server.block_manager.write_direct_block(index_data).await?;
+    
+    // Store the index block ID in a simple file for bootstrapping
+    let index_file = server.data_dir.join("albums_index.txt");
+    std::fs::write(&index_file, hex::encode(index_block_id))?;
+    
+    Ok(())
+}
+
 fn create_placeholder_thumbnail() -> Vec<u8> {
     // Create a simple 150x150 placeholder image with a camera icon pattern
     use image::{RgbImage, Rgb};
@@ -565,7 +709,9 @@ fn create_placeholder_thumbnail() -> Vec<u8> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let server = Arc::new(WebAlbumServer::new()?);
+    let mut server = WebAlbumServer::new()?;
+    server.initialize().await?;
+    let server = Arc::new(server);
     server.start_server(3030).await?;
     Ok(())
 }
