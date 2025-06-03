@@ -151,7 +151,7 @@ impl BlockManager {
         // Distribute shards across rimsd directories
         let mut shard_locations = Vec::new();
         for (i, shard) in shards.iter().enumerate() {
-            let rimsd_dir = &self.rimsd_directories[i % self.rimsd_directories.len()];
+            let rimsd_dir = &self.rimsd_directories[i % self.rimsd_directories.len()].as_path();
             let shard_path = self.shard_path(rimsd_dir, &id, i);
             
             // Write shard to disk
