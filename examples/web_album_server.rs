@@ -399,7 +399,7 @@ async fn handle_get_thumbnail(
     if let Some(album) = albums.get(&album_id) {
         if let Some(crdt) = album.items.get(&media_id) {
             // Try to find the block_id from the operations
-            for op in &crdt.ops {
+            for op in crdt.ops() {
                 if op.op_type == "add_media" {
                     if let Some(block_id_hex) = op.payload.get("block_id").and_then(|v| v.as_str()) {
                         if let Ok(block_id_bytes) = hex::decode(block_id_hex) {
