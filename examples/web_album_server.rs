@@ -15,6 +15,7 @@ use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
+use soradyne::album::reducer::MediaReducer;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -303,32 +304,42 @@ async fn handle_upload_media(
             
             let media_id = Uuid::new_v4().to_string();
             
+            println!("Uploading file: {} ({} bytes)", filename, data.len());
+            
             // Store the media data in block storage
             match server.block_manager.write_direct_block(&data).await {
                 Ok(block_id) => {
                     // Create an operation to add media
-                    let op = EditOp {
-                        op_id: Uuid::new_v4(),
-                        timestamp: chrono::Utc::now().timestamp() as u64,
-                        author: "web_user".to_string(),
-                        op_type: "add_media".to_string(),
-                        payload: serde_json::json!({
+                    let op = EditOp::new(
+                        "web_user".to_string(),
+                        "add_media".to_string(),
+                        serde_json::json!({
                             "filename": filename,
                             "block_id": hex::encode(block_id),
                             "size": data.len()
-                        }),
-                    };
+                        })
+                    );
                     
                     // Add to album
                     let mut albums = server.albums.write().await;
                     if let Some(album) = albums.get_mut(&album_id) {
                         let crdt = album.get_or_create(&media_id);
-                        let _ = crdt.apply_local(op);
-                        
-                        return Ok(warp::reply::json(&serde_json::json!({
-                            "success": true,
-                            "media_id": media_id
-                        })));
+                        match crdt.apply_local(op) {
+                            Ok(_) => {
+                                println!("Successfully added media {} to album {}", media_id, album_id);
+                                return Ok(warp::reply::json(&serde_json::json!({
+                                    "success": true,
+                                    "media_id": media_id
+                                })));
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to apply operation: {}", e);
+                                return Ok(warp::reply::json(&serde_json::json!({"error": "Failed to apply operation"})));
+                            }
+                        }
+                    } else {
+                        eprintln!("Album {} not found", album_id);
+                        return Ok(warp::reply::json(&serde_json::json!({"error": "Album not found"})));
                     }
                 }
                 Err(e) => {
@@ -375,15 +386,13 @@ async fn handle_add_comment(
     req: AddCommentRequest,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let comment_op = EditOp {
-        op_id: Uuid::new_v4(),
-        timestamp: chrono::Utc::now().timestamp() as u64,
-        author: req.author,
-        op_type: "add_comment".to_string(),
-        payload: serde_json::json!({
+    let comment_op = EditOp::new(
+        req.author,
+        "add_comment".to_string(),
+        serde_json::json!({
             "text": req.text
-        }),
-    };
+        })
+    );
     
     let mut albums = server.albums.write().await;
     if let Some(album) = albums.get_mut(&album_id) {
@@ -406,15 +415,13 @@ async fn handle_rotate_media(
     req: RotateRequest,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let rotate_op = EditOp {
-        op_id: Uuid::new_v4(),
-        timestamp: chrono::Utc::now().timestamp() as u64,
-        author: req.author,
-        op_type: "rotate".to_string(),
-        payload: serde_json::json!({
+    let rotate_op = EditOp::new(
+        req.author,
+        "rotate".to_string(),
+        serde_json::json!({
             "degrees": req.degrees
-        }),
-    };
+        })
+    );
     
     let mut albums = server.albums.write().await;
     if let Some(album) = albums.get_mut(&album_id) {
