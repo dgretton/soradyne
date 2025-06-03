@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soradyne Photo Albums</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .nav button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .nav button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .nav button.active {
+            background: rgba(255,255,255,0.4);
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .albums-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .album-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .album-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .album-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .album-card .meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .media-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        
+        .media-thumbnail {
+            width: 100%;
+            height: 150px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+        }
+        
+        .media-info {
+            padding: 10px;
+        }
+        
+        .media-info h4 {
+            margin: 0 0 5px 0;
+            font-size: 0.9em;
+            color: #333;
+        }
+        
+        .media-info .meta {
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: border-color 0.2s;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        .upload-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+        
+        .modal-buttons button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .modal-buttons .primary {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 Soradyne Photo Albums</h1>
+            <div class="nav">
+                <button id="albums-tab" class="active">Albums</button>
+                <button id="create-album-btn">+ New Album</button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Albums View -->
+            <div id="albums-view">
+                <div id="albums-grid" class="albums-grid">
+                    <!-- Albums will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Album Detail View -->
+            <div id="album-view" class="hidden">
+                <button class="back-btn" onclick="showAlbumsView()">← Back to Albums</button>
+                <h2 id="album-title">Album Name</h2>
+                
+                <div class="upload-area" id="upload-area">
+                    <p>📁 Drop images and videos here or <button class="upload-btn" onclick="document.getElementById('file-input').click()">Choose Files</button></p>
+                    <input type="file" id="file-input" multiple accept="image/*,video/*">
+                </div>
+                
+                <div id="media-grid" class="media-grid">
+                    <!-- Media items will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Album Modal -->
+    <div id="create-album-modal" class="modal">
+        <div class="modal-content">
+            <h3>Create New Album</h3>
+            <input type="text" id="album-name-input" placeholder="Album name">
+            <div class="modal-buttons">
+                <button onclick="hideCreateAlbumModal()">Cancel</button>
+                <button class="primary" onclick="createAlbum()">Create</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentAlbumId = null;
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAlbums();
+            setupEventListeners();
+        });
+        
+        function setupEventListeners() {
+            // File upload
+            const fileInput = document.getElementById('file-input');
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Drag and drop
+            const uploadArea = document.getElementById('upload-area');
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+            
+            // Create album button
+            document.getElementById('create-album-btn').addEventListener('click', showCreateAlbumModal);
+            
+            // Album name input enter key
+            document.getElementById('album-name-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    createAlbum();
+                }
+            });
+        }
+        
+        async function loadAlbums() {
+            try {
+                const response = await fetch('/api/albums');
+                const albums = await response.json();
+                
+                const grid = document.getElementById('albums-grid');
+                grid.innerHTML = '';
+                
+                albums.forEach(album => {
+                    const card = document.createElement('div');
+                    card.className = 'album-card';
+                    card.onclick = () => openAlbum(album.id, album.name);
+                    
+                    card.innerHTML = `
+                        <h3>${album.name}</h3>
+                        <div class="meta">${album.item_count} items</div>
+                    `;
+                    
+                    grid.appendChild(card);
+                });
+                
+                if (albums.length === 0) {
+                    grid.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1 / -1;">No albums yet. Create your first album!</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load albums:', error);
+            }
+        }
+        
+        async function openAlbum(albumId, albumName) {
+            currentAlbumId = albumId;
+            document.getElementById('album-title').textContent = albumName;
+            
+            showAlbumView();
+            await loadAlbumMedia(albumId);
+        }
+        
+        async function loadAlbumMedia(albumId) {
+            try {
+                const response = await fetch(`/api/albums/${albumId}`);
+                const mediaItems = await response.json();
+                
+                const grid = document.getElementById('media-grid');
+                grid.innerHTML = '';
+                
+                mediaItems.forEach(item => {
+                    const mediaDiv = document.createElement('div');
+                    mediaDiv.className = 'media-item';
+                    
+                    mediaDiv.innerHTML = `
+                        <div class="media-thumbnail">
+                            <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" 
+                                 alt="${item.filename}" 
+                                 style="max-width: 100%; max-height: 100%; object-fit: cover;"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <div style="display: none;">📷</div>
+                        </div>
+                        <div class="media-info">
+                            <h4>${item.filename}</h4>
+                            <div class="meta">
+                                ${item.comments.length} comments
+                                ${item.rotation !== 0 ? `• ${item.rotation}° rotated` : ''}
+                                ${item.has_crop ? '• cropped' : ''}
+                            </div>
+                        </div>
+                    `;
+                    
+                    grid.appendChild(mediaDiv);
+                });
+                
+                if (mediaItems.length === 0) {
+                    grid.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1 / -1;">No media in this album. Upload some photos or videos!</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load album media:', error);
+            }
+        }
+        
+        function showAlbumsView() {
+            document.getElementById('albums-view').classList.remove('hidden');
+            document.getElementById('album-view').classList.add('hidden');
+            currentAlbumId = null;
+        }
+        
+        function showAlbumView() {
+            document.getElementById('albums-view').classList.add('hidden');
+            document.getElementById('album-view').classList.remove('hidden');
+        }
+        
+        function showCreateAlbumModal() {
+            document.getElementById('create-album-modal').style.display = 'block';
+            document.getElementById('album-name-input').focus();
+        }
+        
+        function hideCreateAlbumModal() {
+            document.getElementById('create-album-modal').style.display = 'none';
+            document.getElementById('album-name-input').value = '';
+        }
+        
+        async function createAlbum() {
+            const name = document.getElementById('album-name-input').value.trim();
+            if (!name) return;
+            
+            try {
+                const response = await fetch('/api/albums', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name }),
+                });
+                
+                if (response.ok) {
+                    hideCreateAlbumModal();
+                    await loadAlbums();
+                } else {
+                    alert('Failed to create album');
+                }
+            } catch (error) {
+                console.error('Failed to create album:', error);
+                alert('Failed to create album');
+            }
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files);
+            uploadFiles(files);
+        }
+        
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            uploadFiles(files);
+        }
+        
+        async function uploadFiles(files) {
+            if (!currentAlbumId) return;
+            
+            for (const file of files) {
+                await uploadFile(file);
+            }
+            
+            // Reload the album after uploads
+            await loadAlbumMedia(currentAlbumId);
+        }
+        
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`/api/albums/${currentAlbumId}/media`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to upload:', file.name);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

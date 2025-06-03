@@ -84,3 +84,38 @@ name = "renderer_test"
 path = "examples/renderer_test.rs"
 required-features = []
 
+[package]
+name = "soradyne"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+sha2 = "0.10"
+image = "0.24"
+tempfile = "3.0"
+warp = "0.3"
+futures-util = "0.3"
+bytes = "1.0"
+reqwest = { version = "0.11", features = ["stream"] }
+base64 = "0.21"
+chrono = { version = "0.4", features = ["serde"] }
+
+[[bin]]
+name = "web_album_server"
+path = "examples/web_album_server.rs"
+
+[[bin]]
+name = "album_sync_test"
+path = "examples/album_sync_test.rs"
+
+[[bin]]
+name = "visual_block_test"
+path = "examples/visual_block_test.rs"
+
+[[bin]]
+name = "renderer_test"
+path = "examples/renderer_test.rs"
