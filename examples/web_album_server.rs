@@ -295,7 +295,6 @@ async fn handle_upload_media(
     content_type: String,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    use futures_util::TryStreamExt;
     
     println!("Received upload request for album: {}", album_id);
     println!("Content-Type: {}", content_type);
@@ -398,15 +397,32 @@ async fn handle_get_thumbnail(
     let albums = server.albums.read().await;
     
     if let Some(album) = albums.get(&album_id) {
-        if let Some(_crdt) = album.items.get(&media_id) {
-            // For now, return a placeholder thumbnail
-            // TODO: Extract block_id from operations and generate real thumbnail
-            let placeholder = create_placeholder_thumbnail();
-            return Ok(warp::reply::with_header(
-                placeholder,
-                "content-type",
-                "image/png"
-            ));
+        if let Some(crdt) = album.items.get(&media_id) {
+            // Try to find the block_id from the operations
+            for op in &crdt.ops {
+                if op.op_type == "add_media" {
+                    if let Some(block_id_hex) = op.payload.get("block_id").and_then(|v| v.as_str()) {
+                        if let Ok(block_id_bytes) = hex::decode(block_id_hex) {
+                            if block_id_bytes.len() == 32 {
+                                let mut block_id = [0u8; 32];
+                                block_id.copy_from_slice(&block_id_bytes);
+                                
+                                // Try to read the original image data
+                                if let Ok(image_data) = server.block_manager.read_block(&block_id).await {
+                                    // Generate thumbnail from the actual image
+                                    if let Ok(thumbnail) = generate_thumbnail(&image_data) {
+                                        return Ok(warp::reply::with_header(
+                                            thumbnail,
+                                            "content-type",
+                                            "image/jpeg"
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -507,14 +523,38 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, std:
     Ok(warp::reply::with_status(json, code))
 }
 
+fn generate_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Load the image from the data
+    let img = image::load_from_memory(image_data)?;
+    
+    // Resize to thumbnail size (150x150) while maintaining aspect ratio
+    let thumbnail = img.thumbnail(150, 150);
+    
+    // Encode as JPEG
+    let mut buffer = Vec::new();
+    thumbnail.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(80))?;
+    
+    Ok(buffer)
+}
+
 fn create_placeholder_thumbnail() -> Vec<u8> {
-    // Create a simple 150x150 placeholder image
+    // Create a simple 150x150 placeholder image with a camera icon pattern
     use image::{RgbImage, Rgb};
     
     let mut img = RgbImage::new(150, 150);
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let gray = ((x + y) % 50) as u8 * 5;
-        *pixel = Rgb([gray, gray, gray]);
+        // Create a simple camera icon pattern
+        let center_x = 75;
+        let center_y = 75;
+        let distance = ((x as i32 - center_x).pow(2) + (y as i32 - center_y).pow(2)) as f32;
+        
+        if distance < 30.0 * 30.0 {
+            *pixel = Rgb([100, 100, 100]); // Dark gray circle
+        } else if distance < 50.0 * 50.0 {
+            *pixel = Rgb([200, 200, 200]); // Light gray ring
+        } else {
+            *pixel = Rgb([240, 240, 240]); // Very light gray background
+        }
     }
     
     let mut buffer = Vec::new();
