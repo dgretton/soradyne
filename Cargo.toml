@@ -36,6 +36,11 @@ base64 = { version = "0.21", optional = true }
 # Additional dependencies for album system
 tempfile = "3.8"
 
+# Rendering dependencies
+image = "0.24"
+imageproc = "0.23"
+ab_glyph = "0.2"
+
 [dev-dependencies]
 # Testing utilities
 tempfile = "3.8"
@@ -73,6 +78,11 @@ required-features = []
 [[example]]
 name = "album_sync_test"
 path = "examples/album_sync_test.rs"
+required-features = []
+
+[[example]]
+name = "renderer_test"
+path = "examples/renderer_test.rs"
 required-features = []
 
 [[bin]]

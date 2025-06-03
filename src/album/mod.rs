@@ -7,8 +7,10 @@ pub mod crdt;
 pub mod album;
 pub mod operations;
 pub mod sync;
+pub mod renderer;
 
 pub use crdt::*;
 pub use album::*;
 pub use operations::*;
 pub use sync::*;
+pub use renderer::*;
