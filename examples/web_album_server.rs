@@ -146,7 +146,8 @@ impl WebAlbumServer {
             .and(warp::path("media"))
             .and(warp::path::end())
             .and(warp::post())
-            .and(warp::multipart::form().max_length(50 * 1024 * 1024)) // 50MB max
+            .and(warp::body::bytes())
+            .and(warp::header::<String>("content-type"))
             .and(with_server(Arc::clone(&server)))
             .and_then(handle_upload_media);
         
@@ -290,38 +291,41 @@ async fn handle_get_album(album_id: String, server: Arc<WebAlbumServer>) -> Resu
 
 async fn handle_upload_media(
     album_id: String,
-    form: warp::multipart::FormData,
+    body: bytes::Bytes,
+    content_type: String,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
     use futures_util::TryStreamExt;
-    use bytes::BufMut;
     
     println!("Received upload request for album: {}", album_id);
+    println!("Content-Type: {}", content_type);
+    println!("Body size: {} bytes", body.len());
     
-    // Collect all parts from the multipart stream
-    let parts: Result<Vec<_>, _> = form.try_collect().await;
-    let parts = parts.map_err(|e| {
-        eprintln!("Multipart form error: {}", e);
+    // Parse the boundary from content-type
+    let boundary = content_type
+        .split("boundary=")
+        .nth(1)
+        .ok_or_else(|| {
+            eprintln!("No boundary found in content-type");
+            warp::reject::reject()
+        })?;
+    
+    println!("Boundary: {}", boundary);
+    
+    // Use multer to parse the multipart data
+    let mut multipart = multer::Multipart::new(futures_util::stream::once(async { Ok::<_, std::io::Error>(body) }), boundary);
+    
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        eprintln!("Multipart parsing error: {}", e);
         warp::reject::reject()
-    })?;
-
-    println!("Received {} parts in multipart form", parts.len());
-
-    for part in parts {
-        println!("Processing part: {:?}", part.name());
-        if part.name() == "file" {
-            let filename = part.filename().unwrap_or("unknown").to_string();
-            
-            // Properly read the data from the part
-            let data: Result<Vec<u8>, _> = part.stream()
-                .try_fold(Vec::new(), |mut vec, data| {
-                    vec.put(data);
-                    async move { Ok(vec) }
-                })
-                .await;
-            
-            let data = data.map_err(|e| {
-                eprintln!("Failed to read multipart data: {}", e);
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+        println!("Processing field: {}", name);
+        
+        if name == "file" {
+            let filename = field.file_name().unwrap_or("unknown").to_string();
+            let data = field.bytes().await.map_err(|e| {
+                eprintln!("Failed to read field data: {}", e);
                 warp::reject::reject()
             })?;
             
