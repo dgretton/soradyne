@@ -14,6 +14,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("======================");
     println!("Testing multi-resolution rendering with edits and markup\n");
     
+    // Create output directory for test results
+    let output_dir = std::path::Path::new("renderer_test_output");
+    if output_dir.exists() {
+        std::fs::remove_dir_all(output_dir)?;
+    }
+    std::fs::create_dir_all(output_dir)?;
+    println!("📁 Created output directory: {:?}\n", output_dir);
+    
     // Create a test media state with various edits
     let mut media_state = MediaState::default();
     
@@ -73,38 +81,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Thumbnail
     println!("   📱 Generating thumbnail...");
     let thumbnail = media_state.render_thumbnail(&test_image_data)?;
-    fs::write("test_thumbnail.png", &thumbnail)?;
-    println!("      Saved: test_thumbnail.png ({} bytes)", thumbnail.len());
+    let thumbnail_path = output_dir.join("thumbnail.png");
+    fs::write(&thumbnail_path, &thumbnail)?;
+    println!("      Saved: {:?} ({} bytes)", thumbnail_path, thumbnail.len());
     
     // Preview
     println!("   🖥️  Generating preview...");
     let preview = media_state.render_preview(&test_image_data)?;
-    fs::write("test_preview.png", &preview)?;
-    println!("      Saved: test_preview.png ({} bytes)", preview.len());
+    let preview_path = output_dir.join("preview.png");
+    fs::write(&preview_path, &preview)?;
+    println!("      Saved: {:?} ({} bytes)", preview_path, preview.len());
     
     // Full resolution
     println!("   🎯 Generating full resolution...");
     let full = media_state.render(&test_image_data, RenderResolution::Full)?;
-    fs::write("test_full.png", &full)?;
-    println!("      Saved: test_full.png ({} bytes)", full.len());
+    let full_path = output_dir.join("full_resolution.png");
+    fs::write(&full_path, &full)?;
+    println!("      Saved: {:?} ({} bytes)", full_path, full.len());
     
     // Custom resolution
     println!("   ⚙️  Generating custom 400x300...");
     let custom = media_state.render(&test_image_data, RenderResolution::Custom(400, 300))?;
-    fs::write("test_custom.png", &custom)?;
-    println!("      Saved: test_custom.png ({} bytes)", custom.len());
+    let custom_path = output_dir.join("custom_400x300.png");
+    fs::write(&custom_path, &custom)?;
+    println!("      Saved: {:?} ({} bytes)", custom_path, custom.len());
     
     println!("\n✅ Renderer test completed successfully!");
-    println!("   Generated files:");
-    println!("   - test_thumbnail.png (thumbnail)");
-    println!("   - test_preview.png (preview)");
-    println!("   - test_full.png (full resolution)");
-    println!("   - test_custom.png (400x300 custom)");
+    println!("   Generated files in {:?}:", output_dir);
+    println!("   - thumbnail.png (thumbnail)");
+    println!("   - preview.png (preview)");
+    println!("   - full_resolution.png (full resolution)");
+    println!("   - custom_400x300.png (400x300 custom)");
     println!("\n💡 Open these files to verify:");
     println!("   - Crop applied (10% border removed)");
     println!("   - 90° rotation applied");
     println!("   - Red circle at top-left");
     println!("   - Green rectangle at bottom-right");
+    println!("\n🌐 Quick view command:");
+    println!("   open {:?}", output_dir);
     
     Ok(())
 }
