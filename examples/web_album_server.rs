@@ -122,13 +122,13 @@ impl WebAlbumServer {
                     // Load the albums index
                     if let Ok(index_data) = self.block_manager.read_block(&block_id).await {
                         if let Ok(index_json) = String::from_utf8(index_data) {
-                            if let Ok(album_index): Result<HashMap<String, [u8; 32]>, _> = serde_json::from_str(&index_json) {
+                            if let Ok(album_index) = serde_json::from_str::<HashMap<String, [u8; 32]>>(&index_json) {
                                 // Load each album from its block
                                 let mut albums = HashMap::new();
                                 for (album_id, album_block_id) in album_index {
                                     if let Ok(album_data) = self.block_manager.read_block(&album_block_id).await {
                                         if let Ok(album_json) = String::from_utf8(album_data) {
-                                            if let Ok(mut album): Result<MediaAlbum, _> = serde_json::from_str(&album_json) {
+                                            if let Ok(mut album) = serde_json::from_str::<MediaAlbum>(&album_json) {
                                                 // Restore the block manager reference
                                                 album.block_manager = Some(Arc::clone(&self.block_manager));
                                                 albums.insert(album_id, album);
@@ -149,7 +149,7 @@ impl WebAlbumServer {
         Ok(())
     }
     
-    async fn save_albums_to_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn save_albums_to_blocks(&self) -> Result<(), Box<dyn std::error::Error>> {
         let albums = self.albums.read().await;
         
         // Create an index mapping album IDs to their block IDs
