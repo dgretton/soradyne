@@ -15,7 +15,6 @@ use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
-use soradyne::album::reducer::MediaReducer;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -233,7 +232,7 @@ async fn handle_get_albums(server: Arc<WebAlbumServer>) -> Result<impl Reply, wa
 async fn handle_create_album(req: CreateAlbumRequest, server: Arc<WebAlbumServer>) -> Result<impl Reply, warp::Rejection> {
     let album_id = Uuid::new_v4().to_string();
     
-    let mut album = MediaAlbum {
+    let album = MediaAlbum {
         album_id: album_id.clone(),
         items: HashMap::new(),
         metadata: AlbumMetadata {
@@ -310,15 +309,17 @@ async fn handle_upload_media(
             match server.block_manager.write_direct_block(&data).await {
                 Ok(block_id) => {
                     // Create an operation to add media
-                    let op = EditOp::new(
-                        "web_user".to_string(),
-                        "add_media".to_string(),
-                        serde_json::json!({
+                    let op = EditOp {
+                        op_id: Uuid::new_v4(),
+                        timestamp: chrono::Utc::now().timestamp() as u64,
+                        author: "web_user".to_string(),
+                        op_type: "add_media".to_string(),
+                        payload: serde_json::json!({
                             "filename": filename,
                             "block_id": hex::encode(block_id),
                             "size": data.len()
-                        })
-                    );
+                        }),
+                    };
                     
                     // Add to album
                     let mut albums = server.albums.write().await;
@@ -386,13 +387,15 @@ async fn handle_add_comment(
     req: AddCommentRequest,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let comment_op = EditOp::new(
-        req.author,
-        "add_comment".to_string(),
-        serde_json::json!({
+    let comment_op = EditOp {
+        op_id: Uuid::new_v4(),
+        timestamp: chrono::Utc::now().timestamp() as u64,
+        author: req.author,
+        op_type: "add_comment".to_string(),
+        payload: serde_json::json!({
             "text": req.text
-        })
-    );
+        }),
+    };
     
     let mut albums = server.albums.write().await;
     if let Some(album) = albums.get_mut(&album_id) {
@@ -415,13 +418,15 @@ async fn handle_rotate_media(
     req: RotateRequest,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
-    let rotate_op = EditOp::new(
-        req.author,
-        "rotate".to_string(),
-        serde_json::json!({
+    let rotate_op = EditOp {
+        op_id: Uuid::new_v4(),
+        timestamp: chrono::Utc::now().timestamp() as u64,
+        author: req.author,
+        op_type: "rotate".to_string(),
+        payload: serde_json::json!({
             "degrees": req.degrees
-        })
-    );
+        }),
+    };
     
     let mut albums = server.albums.write().await;
     if let Some(album) = albums.get_mut(&album_id) {
