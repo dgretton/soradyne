@@ -28,7 +28,7 @@ sha2 = "0.10.9"
 reqwest = { version = "0.11", features = ["stream", "json"] }
 
 # Image processing (optional, for metadata extraction)
-image = { version = "0.24", optional = true }
+image = "0.24"
 
 # Base64 encoding for testing
 base64 = { version = "0.21", optional = true }
@@ -37,7 +37,6 @@ base64 = { version = "0.21", optional = true }
 tempfile = "3.8"
 
 # Rendering dependencies
-image = "0.24"
 imageproc = "0.23"
 ab_glyph = "0.2"
 
