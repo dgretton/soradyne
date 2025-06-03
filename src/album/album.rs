@@ -4,7 +4,6 @@ use super::crdt::*;
 use super::operations::*;
 use std::collections::{HashMap, HashSet};
 use serde::{Serialize, Deserialize};
-use crate::storage::block::BlockId;
 use crate::storage::block_manager::BlockManager;
 use std::sync::Arc;
 

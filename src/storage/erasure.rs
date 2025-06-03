@@ -3,6 +3,7 @@
 use crate::flow::FlowError;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct ErasureEncoder {
     threshold: usize,
     total_shards: usize,

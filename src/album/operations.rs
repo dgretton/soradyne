@@ -3,7 +3,6 @@
 use super::crdt::*;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
-use crate::storage::block::BlockId;
 
 // === Edit Operation ===
 

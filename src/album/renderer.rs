@@ -6,10 +6,9 @@
 use super::album::{MediaState, CropData, MarkupElement};
 use super::operations::MarkupType;
 use serde::{Serialize, Deserialize};
-use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage, imageops::FilterType};
+use image::{DynamicImage, Rgba, RgbaImage, imageops::FilterType};
 use imageproc::drawing::{draw_filled_circle_mut, draw_hollow_circle_mut, draw_filled_rect_mut, draw_hollow_rect_mut, draw_line_segment_mut};
 use imageproc::rect::Rect;
-use std::collections::HashMap;
 
 // === Rendering Configuration ===
 
@@ -334,7 +333,7 @@ impl MediaRenderer {
         Ok(())
     }
     
-    fn draw_text(&self, canvas: &mut RgbaImage, data: &serde_json::Value, _width: u32, _height: u32) -> Result<(), RenderError> {
+    fn draw_text(&self, _canvas: &mut RgbaImage, data: &serde_json::Value, _width: u32, _height: u32) -> Result<(), RenderError> {
         let _text: TextMarkup = serde_json::from_value(data.clone())
             .map_err(|e| RenderError::InvalidMarkup(format!("Text markup: {}", e)))?;
         
