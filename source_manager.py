@@ -4,7 +4,7 @@ Soradyne Source Manager
 
 This script helps manage the concatenated Soradyne source code file.
 It allows you to:
-- Generate a new concatenated file from all source files (Rust and TypeScript)
+- Generate a new concatenated file from all source files (Rust, HTML, Python, TOML)
 - Add a new file to the existing concatenated file
 - View all files currently included in the concatenation
 """
@@ -20,8 +20,11 @@ class SoradyneManager:
         self.source_dir = source_dir
         self.output_file = output_file
         self.rust_files = []
-        self.ts_files = []
-        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules']
+        self.html_files = []
+        self.python_files = []
+        self.toml_files = []
+        self.other_files = []
+        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__']
         
     def collect_files(self):
         """Collect all Rust and TypeScript source files in the source directory"""
@@ -30,18 +33,19 @@ class SoradyneManager:
 
         # Clear existing lists
         self.rust_files = []
-        self.ts_files = []
+        self.html_files = []
+        self.python_files = []
+        self.toml_files = []
         self.other_files = []
         
-        # Start with key Rust files
+        # Start with key files
         self._add_if_exists('lib.rs', self.rust_files)
         self._add_if_exists('src/lib.rs', self.rust_files)
         self._add_if_exists('src/core/mod.rs', self.rust_files)
+        self._add_if_exists('Cargo.toml', self.toml_files)
+        self._add_if_exists('web_static/index.html', self.html_files)
         
-        # Start with key TypeScript files
-        self._add_if_exists('ts/src/index.ts', self.ts_files)
-        
-        # Find all Rust and TypeScript files in the source directory
+        # Find all source files in the source directory
         for root, dirs, files in os.walk(self.source_dir):
             # Skip excluded directories
             dirs[:] = [d for d in dirs if d not in self.excluded_dirs]
@@ -55,22 +59,38 @@ class SoradyneManager:
                     if rel_path not in self.rust_files:
                         self.rust_files.append(rel_path)
                 
-                # Collect TypeScript files
-                elif file.endswith('.ts') and not file.endswith('.d.ts'):
-                    if rel_path not in self.ts_files:
-                        self.ts_files.append(rel_path)
+                # Collect HTML files
+                elif file.endswith('.html'):
+                    if rel_path not in self.html_files:
+                        self.html_files.append(rel_path)
+                
+                # Collect Python files
+                elif file.endswith('.py'):
+                    if rel_path not in self.python_files:
+                        self.python_files.append(rel_path)
+                
+                # Collect TOML files
+                elif file.endswith('.toml'):
+                    if rel_path not in self.toml_files:
+                        self.toml_files.append(rel_path)
         
         for rel_path in included_files:
-            if rel_path not in self.rust_files and rel_path not in self.ts_files:
+            if (rel_path not in self.rust_files and rel_path not in self.html_files and 
+                rel_path not in self.python_files and rel_path not in self.toml_files):
                 if rel_path.endswith('.rs'):
                     self._add_if_exists(rel_path, self.rust_files)
-                elif rel_path.endswith('.ts'):
-                    self._add_if_exists(rel_path, self.ts_files)
+                elif rel_path.endswith('.html'):
+                    self._add_if_exists(rel_path, self.html_files)
+                elif rel_path.endswith('.py'):
+                    self._add_if_exists(rel_path, self.python_files)
+                elif rel_path.endswith('.toml'):
+                    self._add_if_exists(rel_path, self.toml_files)
                 else:
                     self._add_if_exists(rel_path, self.other_files)
         
-        print(f"Found {len(self.rust_files)} Rust files, {len(self.ts_files)} TypeScript files and {len(self.other_files)} other files.")
-        return self.rust_files, self.ts_files, self.other_files
+        total_files = len(self.rust_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.other_files)
+        print(f"Found {len(self.rust_files)} Rust files, {len(self.html_files)} HTML files, {len(self.python_files)} Python files, {len(self.toml_files)} TOML files, and {len(self.other_files)} other files.")
+        return self.rust_files, self.html_files, self.python_files, self.toml_files, self.other_files
         
     def _add_if_exists(self, file_path, file_list):
         """Add a file to the list if it exists"""
@@ -88,7 +108,8 @@ class SoradyneManager:
             output.write("=====================================================================\n")
             output.write("= SORADYNE PROTOCOL - COMPLETE SOURCE CODE                         =\n")
             output.write(f"= Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}                           =\n")
-            output.write(f"= Total files: {len(self.rust_files) + len(self.ts_files)}                                               =\n")
+            total_files = len(self.rust_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.other_files)
+            output.write(f"= Total files: {total_files}                                               =\n")
             output.write("=====================================================================\n\n")
             
             # Add Rust files
@@ -109,44 +130,82 @@ class SoradyneManager:
                 except UnicodeDecodeError:
                     output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
             
-            # Add TypeScript files
+            # Add HTML files
             output.write("\n\n\n=====================================================================\n")
-            output.write("= TYPESCRIPT SOURCE CODE                                          =\n")
+            output.write("= HTML FILES                                                      =\n")
             output.write("=====================================================================\n\n")
             
-            for file_path in self.ts_files:
+            for file_path in self.html_files:
                 full_path = os.path.join(self.source_dir, file_path)
                 
-                output.write("\n\n// =====================================================================\n")
-                output.write(f"// FILE: {file_path}\n")
-                output.write("// =====================================================================\n\n")
+                output.write("\n\n<!-- =====================================================================\n")
+                output.write(f"FILE: {file_path}\n")
+                output.write("===================================================================== -->\n\n")
                 
                 try:
                     with open(full_path, 'r', encoding='utf-8') as input_file:
                         output.write(input_file.read())
                 except UnicodeDecodeError:
-                    output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
-        
-            output.write("\n\n// =====================================================================\n")
-            output.write("= OTHER FILES                                                  =\n")
+                    output.write(f"<!-- [Error reading file: {file_path} - possible binary content] -->\n")
+            
+            # Add Python files
+            output.write("\n\n\n=====================================================================\n")
+            output.write("= PYTHON FILES                                                    =\n")
             output.write("=====================================================================\n\n")
-
-            for file_path in self.other_files:
+            
+            for file_path in self.python_files:
                 full_path = os.path.join(self.source_dir, file_path)
                 
-                output.write("\n\n// =====================================================================\n")
-                output.write(f"// FILE: {file_path}\n")
-                output.write("// =====================================================================\n\n")
+                output.write("\n\n# =====================================================================\n")
+                output.write(f"# FILE: {file_path}\n")
+                output.write("# =====================================================================\n\n")
                 
                 try:
                     with open(full_path, 'r', encoding='utf-8') as input_file:
                         output.write(input_file.read())
                 except UnicodeDecodeError:
-                    output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
-
-            output.write("\n\n// =====================================================================\n")
-            output.write("= END OF FILES                                                  =\n")
+                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
+            
+            # Add TOML files
+            output.write("\n\n\n=====================================================================\n")
+            output.write("= TOML FILES                                                      =\n")
             output.write("=====================================================================\n\n")
+            
+            for file_path in self.toml_files:
+                full_path = os.path.join(self.source_dir, file_path)
+                
+                output.write("\n\n# =====================================================================\n")
+                output.write(f"# FILE: {file_path}\n")
+                output.write("# =====================================================================\n\n")
+                
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as input_file:
+                        output.write(input_file.read())
+                except UnicodeDecodeError:
+                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
+            
+                # Add other files
+                if self.other_files:
+                    output.write("\n\n\n=====================================================================\n")
+                    output.write("= OTHER FILES                                                     =\n")
+                    output.write("=====================================================================\n\n")
+
+                    for file_path in self.other_files:
+                        full_path = os.path.join(self.source_dir, file_path)
+                    
+                        output.write("\n\n// =====================================================================\n")
+                        output.write(f"// FILE: {file_path}\n")
+                        output.write("// =====================================================================\n\n")
+                    
+                        try:
+                            with open(full_path, 'r', encoding='utf-8') as input_file:
+                                output.write(input_file.read())
+                        except UnicodeDecodeError:
+                            output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
+
+                output.write("\n\n// =====================================================================\n")
+                output.write("= END OF FILES                                                    =\n")
+                output.write("=====================================================================\n\n")
 
         print(f"Concatenation complete! Output file: {self.output_file}")
         
@@ -204,22 +263,33 @@ class SoradyneManager:
         print(f"Files included in {self.output_file}:")
         
         rust_files = [f for f in included_files if f.endswith('.rs')]
-        ts_files = [f for f in included_files if f.endswith('.ts')]
+        html_files = [f for f in included_files if f.endswith('.html')]
+        python_files = [f for f in included_files if f.endswith('.py')]
+        toml_files = [f for f in included_files if f.endswith('.toml')]
+        other_files = [f for f in included_files if not (f.endswith('.rs') or f.endswith('.html') or f.endswith('.py') or f.endswith('.toml'))]
         
         print("\nRust files:")
         for i, file_path in enumerate(rust_files):
             print(f"{i+1}. {file_path}")
         
-        print("\nTypeScript files:")
-        for i, file_path in enumerate(ts_files):
+        print("\nHTML files:")
+        for i, file_path in enumerate(html_files):
+            print(f"{i+1}. {file_path}")
+        
+        print("\nPython files:")
+        for i, file_path in enumerate(python_files):
+            print(f"{i+1}. {file_path}")
+        
+        print("\nTOML files:")
+        for i, file_path in enumerate(toml_files):
             print(f"{i+1}. {file_path}")
 
-        print("\nOther files:")
-        for i, file_path in enumerate(included_files):
-            if not (file_path.endswith('.rs') or file_path.endswith('.ts')):
+        if other_files:
+            print("\nOther files:")
+            for i, file_path in enumerate(other_files):
                 print(f"{i+1}. {file_path}")
         
-        print(f"\nTotal: {len(included_files)} files ({len(rust_files)} Rust, {len(ts_files)} TypeScript)")
+        print(f"\nTotal: {len(included_files)} files ({len(rust_files)} Rust, {len(html_files)} HTML, {len(python_files)} Python, {len(toml_files)} TOML)")
 
 def main():
     parser = argparse.ArgumentParser(description='Manage Soradyne source code concatenation')
