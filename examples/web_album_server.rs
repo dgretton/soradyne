@@ -583,8 +583,6 @@ impl WebAlbumServer {
                         ${items.map(item => `
                             <div class="media-item">
                                 <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" class="thumbnail" />
-                                <div class="media-filename">${item.filename}</div>
-                                <button onclick="rotateMedia('${albumId}', '${item.id}')">🔄 Rotate</button>
                             </div>
                         `).join('')}
                     </div>
