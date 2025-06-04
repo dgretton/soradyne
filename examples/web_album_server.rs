@@ -758,9 +758,18 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, std:
 
 fn generate_thumbnail(media_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Try to detect if this is a video file by checking the first few bytes
-    if is_video_file(media_data) {
+    let is_video = is_video_file(media_data);
+    println!("Generating thumbnail: is_video={}, data_len={}", is_video, media_data.len());
+    
+    if media_data.len() >= 12 {
+        println!("First 12 bytes: {:?}", &media_data[0..12]);
+    }
+    
+    if is_video {
+        println!("Generating video thumbnail");
         generate_video_thumbnail(media_data)
     } else {
+        println!("Generating image thumbnail");
         generate_image_thumbnail(media_data)
     }
 }
@@ -787,6 +796,24 @@ fn is_video_file(data: &[u8]) -> bool {
     // Check for AVI signature
     if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"AVI " {
         return true;
+    }
+    
+    // Check for QuickTime/MOV signature
+    if data.len() >= 8 && &data[4..8] == b"moov" {
+        return true;
+    }
+    
+    // Check for additional MP4 variants
+    if data.len() >= 12 {
+        let ftyp_slice = &data[4..8];
+        if ftyp_slice == b"ftyp" {
+            let brand = &data[8..12];
+            // Common MP4 brands
+            if brand == b"isom" || brand == b"mp41" || brand == b"mp42" || 
+               brand == b"avc1" || brand == b"dash" || brand == b"iso2" {
+                return true;
+            }
+        }
     }
     
     false
@@ -816,35 +843,38 @@ fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
     use image::{RgbImage, Rgb};
     
     let mut img = RgbImage::new(150, 150);
+    
+    // Create a dark background with a prominent play button
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let center_x = 75;
         let center_y = 75;
-        let distance = ((x as i32 - center_x).pow(2) + (y as i32 - center_y).pow(2)) as f32;
         
-        // Create a play button icon
-        if distance < 60.0 * 60.0 {
-            // Background circle
-            *pixel = Rgb([50, 50, 50]); // Dark background
+        // Create a dark video-like background
+        *pixel = Rgb([30, 30, 30]);
+        
+        // Draw a large white play triangle
+        let triangle_size = 30;
+        let left_x = center_x - triangle_size / 2;
+        let right_x = center_x + triangle_size / 2;
+        let top_y = center_y - triangle_size / 2;
+        let bottom_y = center_y + triangle_size / 2;
+        
+        // Check if we're inside the triangle
+        if x >= left_x && x <= right_x && y >= top_y && y <= bottom_y {
+            let relative_x = x as i32 - left_x as i32;
+            let relative_y = y as i32 - top_y as i32;
+            let triangle_height = triangle_size;
             
-            // Play triangle
-            let triangle_left = 50;
-            let triangle_right = 100;
-            let triangle_top = 55;
-            let triangle_bottom = 95;
-            
-            if x >= triangle_left && x <= triangle_right && y >= triangle_top && y <= triangle_bottom {
-                // Simple triangle approximation
-                let relative_y = y as i32 - triangle_top as i32;
-                let triangle_height = triangle_bottom - triangle_top;
-                let triangle_width = triangle_right - triangle_left;
-                let expected_x = triangle_left + (relative_y * triangle_width as i32 / triangle_height as i32) as u32;
-                
-                if x >= triangle_left && x <= expected_x {
-                    *pixel = Rgb([255, 255, 255]); // White play button
-                }
+            // Create a proper triangle shape
+            let expected_width = (relative_y * triangle_size as i32) / triangle_height as i32;
+            if relative_x <= expected_width {
+                *pixel = Rgb([255, 255, 255]); // White play button
             }
-        } else {
-            *pixel = Rgb([240, 240, 240]); // Light gray background
+        }
+        
+        // Add a subtle border to make it look more like a video thumbnail
+        if x < 3 || x >= 147 || y < 3 || y >= 147 {
+            *pixel = Rgb([100, 100, 100]); // Gray border
         }
     }
     
