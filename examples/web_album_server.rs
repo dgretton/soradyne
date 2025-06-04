@@ -302,9 +302,30 @@ impl WebAlbumServer {
         println!("🌐 Starting web album server on http://localhost:{}", port);
         println!("📁 Album interface available at http://localhost:{}", port);
         
-        warp::serve(routes)
-            .run(([127, 0, 0, 1], port))
-            .await;
+        // Try to bind to the port, if it fails, try the next few ports
+        let mut current_port = port;
+        let max_attempts = 10;
+        
+        for attempt in 0..max_attempts {
+            match warp::serve(routes.clone()).try_bind(([127, 0, 0, 1], current_port)) {
+                Ok(server) => {
+                    if current_port != port {
+                        println!("🔄 Port {} was busy, using port {} instead", port, current_port);
+                        println!("🌐 Starting web album server on http://localhost:{}", current_port);
+                        println!("📁 Album interface available at http://localhost:{}", current_port);
+                    }
+                    server.await;
+                    break;
+                }
+                Err(_) => {
+                    current_port += 1;
+                    if attempt == max_attempts - 1 {
+                        eprintln!("❌ Could not bind to any port from {} to {}", port, current_port);
+                        return Err("Failed to bind to any available port".into());
+                    }
+                }
+            }
+        }
         
         Ok(())
     }
