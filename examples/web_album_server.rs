@@ -10,13 +10,12 @@ use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::Utc;
 
 use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
-use soradyne::flow::error::FlowError;
+use soradyne::flow::FlowError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -406,7 +405,7 @@ impl WebAlbumServer {
         let max_attempts = 10;
         
         for attempt in 0..max_attempts {
-            match std::net::TcpListener::bind(([127, 0, 0, 1], current_port)) {
+            match std::net::TcpListener::bind((std::net::Ipv4Addr::new(127, 0, 0, 1), current_port)) {
                 Ok(_) => {
                     if current_port != port {
                         println!("🔄 Port {} was busy, using port {} instead", port, current_port);
@@ -415,7 +414,7 @@ impl WebAlbumServer {
                     }
                     
                     warp::serve(routes)
-                        .run(([127, 0, 0, 1], current_port))
+                        .run((std::net::Ipv4Addr::new(127, 0, 0, 1), current_port))
                         .await;
                     break;
                 }

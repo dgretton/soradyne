@@ -5,7 +5,7 @@
 //! for live distributed data flows with eventual consistency.
 
 mod conflict;
-mod error;
+pub mod error;
 mod subscription;
 mod persistence;
 mod routing;
