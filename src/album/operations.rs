@@ -4,6 +4,18 @@ use super::crdt::*;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
+// Type aliases
+pub type MediaId = String;
+pub type UserId = String;
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Permission {
+    View,
+    Comment,
+    Edit,
+    Admin,
+}
+
 // === Edit Operation ===
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
