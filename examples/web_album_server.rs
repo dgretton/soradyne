@@ -336,7 +336,7 @@ impl WebAlbumServer {
             const container = document.getElementById('albums');
             container.innerHTML = `
                 <h3>Album Contents</h3>
-                <input type="file" id="fileInput" accept="image/*,video/*" />
+                <input type="file" id="fileInput" accept="image/*,video/*,audio/*" />
                 <button onclick="uploadFile('${albumId}')">Upload</button>
                 <button onclick="loadAlbums()">Back to Albums</button>
                 <div>
@@ -556,6 +556,15 @@ async fn handle_upload_media(
             // Store the media data in block storage
             match server.block_manager.write_direct_block(&data).await {
                 Ok(block_id) => {
+                    // Detect media type
+                    let media_type = if is_video_file(&data) {
+                        "video"
+                    } else if is_audio_file(&data) {
+                        "audio"
+                    } else {
+                        "image"
+                    };
+                    
                     // Create an operation to add media
                     let op = EditOp {
                         op_id: Uuid::new_v4(),
@@ -565,7 +574,8 @@ async fn handle_upload_media(
                         payload: serde_json::json!({
                             "filename": filename,
                             "block_id": hex::encode(block_id),
-                            "size": data.len()
+                            "size": data.len(),
+                            "media_type": media_type
                         }),
                     };
                     
@@ -757,9 +767,11 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, std:
 }
 
 fn generate_thumbnail(media_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Try to detect if this is a video file by checking the first few bytes
+    // Try to detect the media type by checking the first few bytes
     let is_video = is_video_file(media_data);
-    println!("Generating thumbnail: is_video={}, data_len={}", is_video, media_data.len());
+    let is_audio = is_audio_file(media_data);
+    
+    println!("Generating thumbnail: is_video={}, is_audio={}, data_len={}", is_video, is_audio, media_data.len());
     
     if media_data.len() >= 12 {
         println!("First 12 bytes: {:?}", &media_data[0..12]);
@@ -768,6 +780,9 @@ fn generate_thumbnail(media_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::
     if is_video {
         println!("Generating video thumbnail");
         generate_video_thumbnail(media_data)
+    } else if is_audio {
+        println!("Generating audio thumbnail");
+        generate_audio_thumbnail(media_data)
     } else {
         println!("Generating image thumbnail");
         generate_image_thumbnail(media_data)
@@ -819,6 +834,55 @@ fn is_video_file(data: &[u8]) -> bool {
     false
 }
 
+fn is_audio_file(data: &[u8]) -> bool {
+    if data.len() < 12 {
+        return false;
+    }
+    
+    // Check for MP3 signature
+    if data.len() >= 3 {
+        // MP3 with ID3v2 tag
+        if &data[0..3] == b"ID3" {
+            return true;
+        }
+        // MP3 frame sync
+        if data.len() >= 2 && data[0] == 0xFF && (data[1] & 0xE0) == 0xE0 {
+            return true;
+        }
+    }
+    
+    // Check for FLAC signature
+    if data.len() >= 4 && &data[0..4] == b"fLaC" {
+        return true;
+    }
+    
+    // Check for OGG signature (Vorbis/Opus)
+    if data.len() >= 4 && &data[0..4] == b"OggS" {
+        return true;
+    }
+    
+    // Check for WAV signature
+    if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"WAVE" {
+        return true;
+    }
+    
+    // Check for M4A (AAC in MP4 container)
+    if data.len() >= 12 {
+        let ftyp_slice = &data[4..8];
+        if ftyp_slice == b"ftyp" {
+            let brand = &data[8..12];
+            // Common M4A brands
+            if brand == b"M4A " || brand == b"mp42" || brand == b"isom" {
+                // Additional check to distinguish from video
+                // This is a simplified check - in practice you'd need more sophisticated detection
+                return true;
+            }
+        }
+    }
+    
+    false
+}
+
 fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Load the image from the data
     let img = image::load_from_memory(image_data)?;
@@ -849,7 +913,6 @@ fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error:
     // This is a simpler approach than using the FFmpeg Rust bindings
     
     use std::process::Command;
-    use std::io::Write;
     
     // Create temporary files
     let temp_dir = std::env::temp_dir();
@@ -888,6 +951,55 @@ fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error:
             Err("FFmpeg frame extraction failed".into())
         }
     }
+}
+
+fn generate_audio_thumbnail(_audio_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // For now, create an audio-specific placeholder thumbnail
+    // TODO: In the future, extract audio waveform data and create a waveform visualization
+    create_audio_placeholder_thumbnail()
+}
+
+fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbImage, Rgb};
+    
+    let mut img = RgbImage::new(150, 150);
+    
+    // Create a dark background with audio waveform-like visualization
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let center_x = 75;
+        let center_y = 75;
+        
+        // Create a dark audio-like background
+        *pixel = Rgb([20, 25, 35]); // Dark blue-gray background
+        
+        // Draw simplified waveform bars
+        let bar_width = 4;
+        let bar_spacing = 6;
+        let num_bars = 150 / bar_spacing;
+        
+        for i in 0..num_bars {
+            let bar_x = i * bar_spacing + 10;
+            let bar_height = 20 + ((i * 7) % 40); // Varying heights for waveform effect
+            let bar_top = center_y - bar_height / 2;
+            let bar_bottom = center_y + bar_height / 2;
+            
+            if x >= bar_x && x < bar_x + bar_width && y >= bar_top && y <= bar_bottom {
+                // Create gradient effect for bars
+                let intensity = 255 - ((y as i32 - bar_top as i32).abs() * 100 / bar_height as i32).min(100) as u8;
+                *pixel = Rgb([intensity / 3, intensity / 2, intensity]); // Blue-ish gradient
+            }
+        }
+        
+        // Add a subtle border
+        if x < 2 || x >= 148 || y < 2 || y >= 148 {
+            *pixel = Rgb([60, 70, 90]); // Lighter border
+        }
+    }
+    
+    let mut buffer = Vec::new();
+    let dynamic_img = image::DynamicImage::ImageRgb8(img);
+    dynamic_img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    Ok(buffer)
 }
 
 fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
