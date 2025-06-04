@@ -406,12 +406,11 @@ impl WebAlbumServer {
         .modal-image {
             max-width: 90vw;
             max-height: 90vh;
-            width: 600px;
+            width: 90vw;
             height: auto;
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            transition: opacity 0.5s ease;
         }
         
         .thumbnail:hover {
@@ -849,48 +848,13 @@ impl WebAlbumServer {
             // Show modal with thumbnail first
             const thumbnailUrl = `/api/albums/${albumId}/media/${mediaId}/thumbnail`;
             modalImage.src = thumbnailUrl;
-            modalImage.classList.add('loading');
             modal.classList.add('show');
             resolutionIndicator.textContent = 'Thumbnail';
             
-            // Start loading medium resolution
+            // Start loading high resolution directly
             setTimeout(() => {
-                loadMediumResolution(albumId, mediaId);
+                loadHighResolution(albumId, mediaId);
             }, 100);
-        }
-        
-        function loadMediumResolution(albumId, mediaId) {
-            const modalImage = document.getElementById('modalImage');
-            const resolutionIndicator = document.getElementById('resolutionIndicator');
-            const modalLoading = document.getElementById('modalLoading');
-            
-            modalLoading.style.display = 'block';
-            resolutionIndicator.textContent = 'Loading medium...';
-            
-            // Create a new image to preload medium resolution
-            const mediumImg = new Image();
-            mediumImg.onload = function() {
-                modalImage.src = mediumImg.src;
-                modalImage.classList.remove('loading');
-                resolutionIndicator.textContent = 'Medium Resolution';
-                modalLoading.style.display = 'none';
-                
-                // Start loading high resolution after a short delay
-                setTimeout(() => {
-                    loadHighResolution(albumId, mediaId);
-                }, 500);
-            };
-            mediumImg.onerror = function() {
-                modalLoading.style.display = 'none';
-                resolutionIndicator.textContent = 'Thumbnail (medium failed)';
-                // Still try to load high resolution
-                setTimeout(() => {
-                    loadHighResolution(albumId, mediaId);
-                }, 500);
-            };
-            
-            // Use the medium resolution endpoint
-            mediumImg.src = `/api/albums/${albumId}/media/${mediaId}/medium`;
         }
         
         function loadHighResolution(albumId, mediaId) {
@@ -905,17 +869,14 @@ impl WebAlbumServer {
             // Create a new image to preload high resolution
             const highImg = new Image();
             highImg.onload = function() {
-                modalImage.classList.add('loading');
-                setTimeout(() => {
-                    modalImage.src = highImg.src;
-                    modalImage.classList.remove('loading');
-                    resolutionIndicator.textContent = 'High Resolution';
-                    modalLoading.style.display = 'none';
-                }, 200); // Small delay for smooth transition
+                // Smoothly transition without blanking out
+                modalImage.src = highImg.src;
+                resolutionIndicator.textContent = 'High Resolution';
+                modalLoading.style.display = 'none';
             };
             highImg.onerror = function() {
                 modalLoading.style.display = 'none';
-                resolutionIndicator.textContent = 'Medium Resolution (high failed)';
+                resolutionIndicator.textContent = 'Thumbnail (high resolution failed)';
             };
             
             // Use the high resolution endpoint
