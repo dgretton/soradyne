@@ -1,8 +1,8 @@
 //! Synchronization utilities for albums
 
-use super::crdt::{CrdtError, ReplicaId, LogicalTime, CrdtCollection};
+use super::crdt::{CrdtError, ReplicaId, LogicalTime, CrdtCollection, OpId};
 use super::album::{MediaAlbum, AlbumMetadata};
-use super::operations::{EditOp, MediaId, MediaType, OpId};
+use super::operations::{EditOp, MediaId, MediaType};
 use crate::storage::block_manager::BlockManager;
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
