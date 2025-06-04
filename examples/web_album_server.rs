@@ -851,10 +851,44 @@ impl WebAlbumServer {
             modal.classList.add('show');
             resolutionIndicator.textContent = 'Thumbnail';
             
-            // Start loading high resolution directly
+            // Start loading medium resolution
             setTimeout(() => {
-                loadHighResolution(albumId, mediaId);
+                loadMediumResolution(albumId, mediaId);
             }, 100);
+        }
+        
+        function loadMediumResolution(albumId, mediaId) {
+            const modalImage = document.getElementById('modalImage');
+            const resolutionIndicator = document.getElementById('resolutionIndicator');
+            const modalLoading = document.getElementById('modalLoading');
+            
+            modalLoading.style.display = 'block';
+            modalLoading.textContent = 'Loading medium resolution...';
+            resolutionIndicator.textContent = 'Loading medium...';
+            
+            // Create a new image to preload medium resolution
+            const mediumImg = new Image();
+            mediumImg.onload = function() {
+                modalImage.src = mediumImg.src;
+                resolutionIndicator.textContent = 'Medium Resolution';
+                modalLoading.style.display = 'none';
+                
+                // Start loading high resolution after a short delay
+                setTimeout(() => {
+                    loadHighResolution(albumId, mediaId);
+                }, 500);
+            };
+            mediumImg.onerror = function() {
+                modalLoading.style.display = 'none';
+                resolutionIndicator.textContent = 'Thumbnail (medium failed)';
+                // Still try to load high resolution
+                setTimeout(() => {
+                    loadHighResolution(albumId, mediaId);
+                }, 500);
+            };
+            
+            // Use the medium resolution endpoint
+            mediumImg.src = `/api/albums/${albumId}/media/${mediaId}/medium`;
         }
         
         function loadHighResolution(albumId, mediaId) {
@@ -876,7 +910,7 @@ impl WebAlbumServer {
             };
             highImg.onerror = function() {
                 modalLoading.style.display = 'none';
-                resolutionIndicator.textContent = 'Thumbnail (high resolution failed)';
+                resolutionIndicator.textContent = 'Medium Resolution (high failed)';
             };
             
             // Use the high resolution endpoint
