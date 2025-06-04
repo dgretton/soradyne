@@ -10,11 +10,13 @@ use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use chrono::Utc;
 
 use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
+use soradyne::flow::error::FlowError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -278,10 +280,107 @@ impl WebAlbumServer {
             .and(with_server(Arc::clone(&server)))
             .and_then(handle_rotate_media);
         
-        // Root route serves the main HTML page
+        // Root route serves a simple HTML page
         let root = warp::path::end()
             .and(warp::get())
-            .map(|| warp::reply::html(include_str!("../web_static/index.html")));
+            .map(|| warp::reply::html(r#"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Soradyne Web Album</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .album { border: 1px solid #ccc; margin: 10px; padding: 20px; }
+        .media-item { display: inline-block; margin: 10px; text-align: center; }
+        .thumbnail { width: 150px; height: 150px; object-fit: cover; }
+        button { padding: 10px 20px; margin: 5px; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Soradyne Web Album</h1>
+    <div id="app">
+        <h2>Albums</h2>
+        <div id="albums"></div>
+        <button onclick="createAlbum()">Create New Album</button>
+    </div>
+    
+    <script>
+        async function loadAlbums() {
+            const response = await fetch('/api/albums');
+            const albums = await response.json();
+            const container = document.getElementById('albums');
+            container.innerHTML = albums.map(album => `
+                <div class="album">
+                    <h3>${album.name}</h3>
+                    <p>Items: ${album.item_count}</p>
+                    <button onclick="viewAlbum('${album.id}')">View Album</button>
+                </div>
+            `).join('');
+        }
+        
+        async function createAlbum() {
+            const name = prompt('Album name:');
+            if (name) {
+                await fetch('/api/albums', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                loadAlbums();
+            }
+        }
+        
+        async function viewAlbum(albumId) {
+            const response = await fetch(`/api/albums/${albumId}`);
+            const items = await response.json();
+            const container = document.getElementById('albums');
+            container.innerHTML = `
+                <h3>Album Contents</h3>
+                <input type="file" id="fileInput" accept="image/*,video/*" />
+                <button onclick="uploadFile('${albumId}')">Upload</button>
+                <button onclick="loadAlbums()">Back to Albums</button>
+                <div>
+                    ${items.map(item => `
+                        <div class="media-item">
+                            <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" class="thumbnail" />
+                            <p>${item.filename}</p>
+                            <button onclick="rotateMedia('${albumId}', '${item.id}')">Rotate</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        async function uploadFile(albumId) {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                await fetch(`/api/albums/${albumId}/media`, {
+                    method: 'POST',
+                    body: formData
+                });
+                viewAlbum(albumId);
+            }
+        }
+        
+        async function rotateMedia(albumId, mediaId) {
+            await fetch(`/api/albums/${albumId}/media/${mediaId}/rotate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ degrees: 90, author: 'web_user' })
+            });
+            viewAlbum(albumId);
+        }
+        
+        loadAlbums();
+    </script>
+</body>
+</html>
+            "#));
         
         // Add logging filter to see all requests
         let log = warp::log("api");
