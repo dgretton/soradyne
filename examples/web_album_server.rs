@@ -556,7 +556,7 @@ async fn handle_upload_media(
             
             // Store the media data in block storage using BlockFile for large files
             let block_file = BlockFile::new(Arc::clone(&server.block_manager));
-            match block_file.write(&data).await {
+            match block_file.append(&data).await {
                 Ok(()) => {
                     let block_id = block_file.root_block().await
                         .ok_or_else(|| {
