@@ -684,7 +684,7 @@ fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::e
     Ok(buffer)
 }
 
-fn generate_video_thumbnail(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn generate_video_thumbnail(_video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // For now, create a video-specific placeholder thumbnail
     // In a full implementation, you'd use FFmpeg to extract a frame
     create_video_placeholder_thumbnail()
@@ -715,7 +715,7 @@ fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
                 let relative_y = y as i32 - triangle_top as i32;
                 let triangle_height = triangle_bottom - triangle_top;
                 let triangle_width = triangle_right - triangle_left;
-                let expected_x = triangle_left + (relative_y * triangle_width / triangle_height as i32) as u32;
+                let expected_x = triangle_left + (relative_y * triangle_width as i32 / triangle_height as i32) as u32;
                 
                 if x >= triangle_left && x <= expected_x {
                     *pixel = Rgb([255, 255, 255]); // White play button
