@@ -833,10 +833,61 @@ fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::e
     Ok(buffer)
 }
 
-fn generate_video_thumbnail(_video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // For now, create a video-specific placeholder thumbnail
-    // In a full implementation, you'd use FFmpeg to extract a frame
+fn generate_video_thumbnail(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Try to extract a frame using FFmpeg first
+    if let Ok(frame_data) = extract_video_frame(video_data) {
+        // Generate thumbnail from the extracted frame
+        return generate_image_thumbnail(&frame_data);
+    }
+    
+    // Fall back to placeholder if FFmpeg extraction fails
     create_video_placeholder_thumbnail()
+}
+
+fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Try using FFmpeg command line tool to extract a frame
+    // This is a simpler approach than using the FFmpeg Rust bindings
+    
+    use std::process::Command;
+    use std::io::Write;
+    
+    // Create temporary files
+    let temp_dir = std::env::temp_dir();
+    let input_path = temp_dir.join(format!("video_input_{}.mp4", uuid::Uuid::new_v4()));
+    let output_path = temp_dir.join(format!("frame_output_{}.jpg", uuid::Uuid::new_v4()));
+    
+    // Write video data to temporary file
+    std::fs::write(&input_path, video_data)?;
+    
+    // Extract frame at 1 second using FFmpeg
+    let output = Command::new("ffmpeg")
+        .args(&[
+            "-i", input_path.to_str().unwrap(),
+            "-ss", "00:00:01.000",  // Seek to 1 second
+            "-vframes", "1",        // Extract 1 frame
+            "-q:v", "2",           // High quality
+            "-y",                  // Overwrite output
+            output_path.to_str().unwrap()
+        ])
+        .output();
+    
+    // Clean up input file
+    let _ = std::fs::remove_file(&input_path);
+    
+    match output {
+        Ok(result) if result.status.success() => {
+            // Read the extracted frame
+            let frame_data = std::fs::read(&output_path)?;
+            // Clean up output file
+            let _ = std::fs::remove_file(&output_path);
+            Ok(frame_data)
+        }
+        _ => {
+            // Clean up output file if it exists
+            let _ = std::fs::remove_file(&output_path);
+            Err("FFmpeg frame extraction failed".into())
+        }
+    }
 }
 
 fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -854,25 +905,20 @@ fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
         
         // Draw a large white play triangle
         let triangle_size = 30;
-        let left_x = center_x - triangle_size / 2;
-        let right_x = center_x + triangle_size / 2;
-        let top_y = center_y - triangle_size / 2;
-        let bottom_y = center_y + triangle_size / 2;
         
         // Draw a proper right-pointing triangle (play button)
-        let triangle_center_y = center_y;
         let triangle_left = center_x - triangle_size / 3;
         let triangle_right = center_x + triangle_size / 3;
         
         // Check if we're in the triangle area
         if x >= triangle_left && x <= triangle_right {
             let relative_x = x as i32 - triangle_left as i32;
-            let triangle_width = triangle_right - triangle_left;
+            let triangle_width = (triangle_right - triangle_left) as i32;
             
-            // Calculate the triangle bounds at this x position
-            let half_height_at_x = (relative_x * triangle_size as i32) / (triangle_width as i32 * 2);
-            let top_bound = triangle_center_y as i32 - half_height_at_x;
-            let bottom_bound = triangle_center_y as i32 + half_height_at_x;
+            // Calculate the triangle bounds at this x position (right-pointing)
+            let half_height_at_x = (relative_x * triangle_size as i32) / (triangle_width * 2);
+            let top_bound = center_y as i32 - half_height_at_x;
+            let bottom_bound = center_y as i32 + half_height_at_x;
             
             if y as i32 >= top_bound && y as i32 <= bottom_bound {
                 *pixel = Rgb([255, 255, 255]); // White play button
