@@ -859,15 +859,22 @@ fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
         let top_y = center_y - triangle_size / 2;
         let bottom_y = center_y + triangle_size / 2;
         
-        // Check if we're inside the triangle
-        if x >= left_x && x <= right_x && y >= top_y && y <= bottom_y {
-            let relative_x = x as i32 - left_x as i32;
-            let relative_y = y as i32 - top_y as i32;
-            let triangle_height = triangle_size;
+        // Draw a proper right-pointing triangle (play button)
+        let triangle_center_y = center_y;
+        let triangle_left = center_x - triangle_size / 3;
+        let triangle_right = center_x + triangle_size / 3;
+        
+        // Check if we're in the triangle area
+        if x >= triangle_left && x <= triangle_right {
+            let relative_x = x as i32 - triangle_left as i32;
+            let triangle_width = triangle_right - triangle_left;
             
-            // Create a proper triangle shape
-            let expected_width = (relative_y * triangle_size as i32) / triangle_height as i32;
-            if relative_x <= expected_width {
+            // Calculate the triangle bounds at this x position
+            let half_height_at_x = (relative_x * triangle_size as i32) / (triangle_width as i32 * 2);
+            let top_bound = triangle_center_y as i32 - half_height_at_x;
+            let bottom_bound = triangle_center_y as i32 + half_height_at_x;
+            
+            if y as i32 >= top_bound && y as i32 <= bottom_bound {
                 *pixel = Rgb([255, 255, 255]); // White play button
             }
         }
