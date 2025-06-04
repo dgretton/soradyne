@@ -15,6 +15,7 @@ use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
+use soradyne::storage::block_file::BlockFile;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -553,9 +554,15 @@ async fn handle_upload_media(
             
             println!("Uploading file: {} ({} bytes)", filename, data.len());
             
-            // Store the media data in block storage
-            match server.block_manager.write_direct_block(&data).await {
-                Ok(block_id) => {
+            // Store the media data in block storage using BlockFile for large files
+            let block_file = crate::storage::block_file::BlockFile::new(Arc::clone(&server.block_manager));
+            match block_file.write(&data).await {
+                Ok(()) => {
+                    let block_id = block_file.root_block().await
+                        .ok_or_else(|| {
+                            eprintln!("Failed to get root block ID after write");
+                            warp::reject::reject()
+                        })?;
                     // Detect media type
                     let media_type = if is_video_file(&data) {
                         "video"
@@ -966,7 +973,7 @@ fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
     
     // Create a dark background with audio waveform-like visualization
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let center_x = 75;
+        let _center_x = 75;
         let center_y = 75;
         
         // Create a dark audio-like background
