@@ -15,7 +15,6 @@ use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
-use soradyne::flow::FlowError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -406,7 +405,8 @@ impl WebAlbumServer {
         
         for attempt in 0..max_attempts {
             match std::net::TcpListener::bind((std::net::Ipv4Addr::new(127, 0, 0, 1), current_port)) {
-                Ok(_) => {
+                Ok(listener) => {
+                    drop(listener); // Release the port for warp to use
                     if current_port != port {
                         println!("🔄 Port {} was busy, using port {} instead", port, current_port);
                         println!("🌐 Starting web album server on http://localhost:{}", current_port);
@@ -416,7 +416,7 @@ impl WebAlbumServer {
                     warp::serve(routes)
                         .run((std::net::Ipv4Addr::new(127, 0, 0, 1), current_port))
                         .await;
-                    break;
+                    return Ok(());
                 }
                 Err(_) => {
                     current_port += 1;
