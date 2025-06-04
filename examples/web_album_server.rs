@@ -289,92 +289,410 @@ impl WebAlbumServer {
     <title>Soradyne Web Album</title>
     <meta charset="utf-8">
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .album { border: 1px solid #ccc; margin: 10px; padding: 20px; }
-        .media-item { display: inline-block; margin: 10px; text-align: center; }
-        .thumbnail { width: 150px; height: 150px; object-fit: cover; }
-        button { padding: 10px 20px; margin: 5px; }
-        input[type="file"] { margin: 10px 0; }
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        h2 {
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+        
+        .album {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            margin: 15px 0;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .album:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .media-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .thumbnail {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .media-filename {
+            font-size: 0.9em;
+            color: #4a5568;
+            margin-bottom: 10px;
+            word-break: break-word;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 4px 12px rgba(113, 128, 150, 0.4);
+        }
+        
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background: #f7fafc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area.drag-over {
+            border-color: #667eea;
+            background: #edf2f7;
+            transform: scale(1.02);
+        }
+        
+        .upload-area:hover {
+            border-color: #a0aec0;
+            background: #edf2f7;
+        }
+        
+        .upload-text {
+            color: #4a5568;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+        
+        .upload-subtext {
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .back-button {
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #48bb78;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            background: #f56565;
+        }
     </style>
 </head>
 <body>
-    <h1>Soradyne Web Album</h1>
-    <div id="app">
-        <h2>Albums</h2>
-        <div id="albums"></div>
-        <button onclick="createAlbum()">Create New Album</button>
+    <div class="container">
+        <h1>🎨 Soradyne Web Album</h1>
+        <div id="app">
+            <h2>Albums</h2>
+            <div id="albums"></div>
+            <button onclick="createAlbum()">✨ Create New Album</button>
+        </div>
     </div>
     
+    <div id="notification" class="notification"></div>
+    
     <script>
+        let currentAlbumId = null;
+        
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${isError ? 'error' : ''} show`;
+            setTimeout(() => {
+                notification.className = 'notification';
+            }, 3000);
+        }
+        
         async function loadAlbums() {
-            const response = await fetch('/api/albums');
-            const albums = await response.json();
-            const container = document.getElementById('albums');
-            container.innerHTML = albums.map(album => `
-                <div class="album">
-                    <h3>${album.name}</h3>
-                    <p>Items: ${album.item_count}</p>
-                    <button onclick="viewAlbum('${album.id}')">View Album</button>
-                </div>
-            `).join('');
+            try {
+                const response = await fetch('/api/albums');
+                const albums = await response.json();
+                const container = document.getElementById('albums');
+                container.innerHTML = albums.map(album => `
+                    <div class="album">
+                        <h3>📁 ${album.name}</h3>
+                        <p>Items: ${album.item_count}</p>
+                        <button onclick="viewAlbum('${album.id}')">View Album</button>
+                    </div>
+                `).join('');
+                currentAlbumId = null;
+            } catch (error) {
+                showNotification('Failed to load albums', true);
+            }
         }
         
         async function createAlbum() {
             const name = prompt('Album name:');
             if (name) {
-                await fetch('/api/albums', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                });
-                loadAlbums();
+                try {
+                    await fetch('/api/albums', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    showNotification('Album created successfully!');
+                    loadAlbums();
+                } catch (error) {
+                    showNotification('Failed to create album', true);
+                }
             }
         }
         
         async function viewAlbum(albumId) {
-            const response = await fetch(`/api/albums/${albumId}`);
-            const items = await response.json();
-            const container = document.getElementById('albums');
-            container.innerHTML = `
-                <h3>Album Contents</h3>
-                <input type="file" id="fileInput" accept="image/*,video/*,audio/*" />
-                <button onclick="uploadFile('${albumId}')">Upload</button>
-                <button onclick="loadAlbums()">Back to Albums</button>
-                <div>
-                    ${items.map(item => `
-                        <div class="media-item">
-                            <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" class="thumbnail" />
-                            <p>${item.filename}</p>
-                            <button onclick="rotateMedia('${albumId}', '${item.id}')">Rotate</button>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
+            currentAlbumId = albumId;
+            try {
+                const response = await fetch(`/api/albums/${albumId}`);
+                const items = await response.json();
+                const container = document.getElementById('albums');
+                container.innerHTML = `
+                    <div class="controls">
+                        <button class="back-button" onclick="loadAlbums()">← Back to Albums</button>
+                        <h3>Album Contents</h3>
+                    </div>
+                    
+                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-text">📎 Drop files here or click to upload</div>
+                        <div class="upload-subtext">Supports images, videos, and audio files</div>
+                        <input type="file" id="fileInput" accept="image/*,video/*,audio/*" multiple />
+                    </div>
+                    
+                    <div class="media-grid">
+                        ${items.map(item => `
+                            <div class="media-item">
+                                <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" class="thumbnail" />
+                                <div class="media-filename">${item.filename}</div>
+                                <button onclick="rotateMedia('${albumId}', '${item.id}')">🔄 Rotate</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                setupDragAndDrop();
+                setupFileInput();
+            } catch (error) {
+                showNotification('Failed to load album', true);
+            }
         }
         
-        async function uploadFile(albumId) {
+        function setupDragAndDrop() {
+            const uploadArea = document.getElementById('uploadArea');
+            if (!uploadArea) return;
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            uploadArea.addEventListener('drop', handleDrop, false);
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            function highlight(e) {
+                uploadArea.classList.add('drag-over');
+            }
+            
+            function unhighlight(e) {
+                uploadArea.classList.remove('drag-over');
+            }
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }
+        }
+        
+        function setupFileInput() {
             const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            if (file) {
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    handleFiles(e.target.files);
+                });
+            }
+        }
+        
+        async function handleFiles(files) {
+            if (!currentAlbumId) return;
+            
+            for (let file of files) {
+                await uploadSingleFile(file);
+            }
+            
+            // Refresh the album view
+            viewAlbum(currentAlbumId);
+        }
+        
+        async function uploadSingleFile(file) {
+            try {
                 const formData = new FormData();
                 formData.append('file', file);
-                await fetch(`/api/albums/${albumId}/media`, {
+                
+                showNotification(`Uploading ${file.name}...`);
+                
+                const response = await fetch(`/api/albums/${currentAlbumId}/media`, {
                     method: 'POST',
                     body: formData
                 });
-                viewAlbum(albumId);
+                
+                if (response.ok) {
+                    showNotification(`${file.name} uploaded successfully!`);
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (error) {
+                showNotification(`Failed to upload ${file.name}`, true);
             }
         }
         
         async function rotateMedia(albumId, mediaId) {
-            await fetch(`/api/albums/${albumId}/media/${mediaId}/rotate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ degrees: 90, author: 'web_user' })
-            });
-            viewAlbum(albumId);
+            try {
+                await fetch(`/api/albums/${albumId}/media/${mediaId}/rotate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ degrees: 90, author: 'web_user' })
+                });
+                showNotification('Media rotated!');
+                viewAlbum(albumId);
+            } catch (error) {
+                showNotification('Failed to rotate media', true);
+            }
         }
         
+        // Load albums on page load
         loadAlbums();
     </script>
 </body>
