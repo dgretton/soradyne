@@ -7,6 +7,34 @@ use serde::{Serialize, Deserialize};
 use crate::storage::block_manager::BlockManager;
 use std::sync::Arc;
 
+// Type aliases
+pub type MediaId = String;
+pub type UserId = String;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum MediaType {
+    Photo,
+    Video,
+    Audio,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum MarkupType {
+    Arrow,
+    Circle,
+    Rectangle,
+    Text,
+    Freehand,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Permission {
+    View,
+    Comment,
+    Edit,
+    Admin,
+}
+
 // === Simple Log CRDT Implementation ===
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -17,6 +45,10 @@ pub struct LogCrdt {
 impl LogCrdt {
     pub fn new() -> Self {
         Self { ops: Vec::new() }
+    }
+    
+    pub fn get_state(&self) -> Result<MediaState, CrdtError> {
+        Ok(self.reduce())
     }
     
     fn sort_ops(&mut self) {
@@ -125,6 +157,57 @@ pub struct MarkupElement {
     pub timestamp: LogicalTime,
 }
 
+// === Operation Payload Types ===
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SetMediaPayload {
+    pub block_id: [u8; 32],
+    pub media_type: MediaType,
+    pub filename: String,
+    pub size: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CommentPayload {
+    pub text: String,
+    pub parent: Option<OpId>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeletePayload {
+    pub target: OpId,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReactionPayload {
+    pub emoji: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CropPayload {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RotatePayload {
+    pub angle: f32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MarkupPayload {
+    pub markup_type: MarkupType,
+    pub data: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SharePayload {
+    pub user_id: UserId,
+    pub permission: Permission,
+}
+
 // === Media Reducer ===
 
 pub struct MediaReducer;
@@ -145,7 +228,37 @@ impl Reducer<EditOp> for MediaReducer {
     
     fn apply_to_state(state: &mut Self::State, op: &EditOp) -> Result<(), Self::Error> {
         match op.op_type.as_str() {
-            "set_media" => {
+            "add_media" | "set_media" => {
+                // Handle both add_media (from web interface) and set_media operations
+                if let Some(block_id_hex) = op.payload.get("block_id").and_then(|v| v.as_str()) {
+                    if let Ok(block_id_bytes) = hex::decode(block_id_hex) {
+                        if block_id_bytes.len() == 32 {
+                            let mut block_id = [0u8; 32];
+                            block_id.copy_from_slice(&block_id_bytes);
+                            
+                            let filename = op.payload.get("filename")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown")
+                                .to_string();
+                            
+                            let size = op.payload.get("size")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0) as usize;
+                            
+                            state.media = Some(MediaInfo {
+                                block_id,
+                                media_type: MediaType::Photo, // Default to photo
+                                filename,
+                                mime_type: "image/jpeg".to_string(),
+                                size,
+                                added_by: op.author(),
+                                added_at: op.timestamp(),
+                            });
+                        }
+                    }
+                }
+                
+                // Also handle the structured payload format
                 if let Ok(payload) = serde_json::from_value::<SetMediaPayload>(op.payload.clone()) {
                     let mime_type = match payload.media_type {
                         MediaType::Photo => "image/jpeg".to_string(),
@@ -166,6 +279,19 @@ impl Reducer<EditOp> for MediaReducer {
             }
             
             "add_comment" => {
+                // Handle simple text payload from web interface
+                if let Some(text) = op.payload.get("text").and_then(|v| v.as_str()) {
+                    state.comments.push(Comment {
+                        id: op.id(),
+                        author: op.author(),
+                        text: text.to_string(),
+                        parent: None,
+                        timestamp: op.timestamp(),
+                        deleted: false,
+                    });
+                }
+                
+                // Also handle structured payload format
                 if let Ok(payload) = serde_json::from_value::<CommentPayload>(op.payload.clone()) {
                     state.comments.push(Comment {
                         id: op.id(),
@@ -211,6 +337,12 @@ impl Reducer<EditOp> for MediaReducer {
             }
             
             "rotate" => {
+                // Handle simple degrees payload from web interface
+                if let Some(degrees) = op.payload.get("degrees").and_then(|v| v.as_f64()) {
+                    state.rotation = degrees as f32; // LWW semantics
+                }
+                
+                // Also handle structured payload format
                 if let Ok(payload) = serde_json::from_value::<RotatePayload>(op.payload.clone()) {
                     state.rotation = payload.angle; // LWW semantics
                 }
