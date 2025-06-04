@@ -375,6 +375,13 @@ impl WebAlbumServer {
             border-radius: 8px;
             margin-bottom: 10px;
             border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
         
         .media-filename {
@@ -500,6 +507,101 @@ impl WebAlbumServer {
         .notification.error {
             background: #f56565;
         }
+        
+        /* Modal/Lightbox styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.5s ease;
+        }
+        
+        .modal-image.loading {
+            opacity: 0.7;
+            filter: blur(2px);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2001;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+        
+        .modal-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 2001;
+        }
+        
+        .resolution-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 2001;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -513,6 +615,16 @@ impl WebAlbumServer {
     </div>
     
     <div id="notification" class="notification"></div>
+    
+    <!-- Modal for full-size image viewing -->
+    <div id="imageModal" class="modal">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" class="modal-image" src="" alt="Full size image" />
+            <div id="modalLoading" class="modal-loading" style="display: none;">Loading higher resolution...</div>
+            <div id="resolutionIndicator" class="resolution-indicator">Thumbnail</div>
+        </div>
+    </div>
     
     <script>
         let currentAlbumId = null;
@@ -582,7 +694,9 @@ impl WebAlbumServer {
                     <div class="media-grid">
                         ${items.map(item => `
                             <div class="media-item">
-                                <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" class="thumbnail" />
+                                <img src="/api/albums/${albumId}/media/${item.id}/thumbnail" 
+                                     class="thumbnail" 
+                                     onclick="openModal('${albumId}', '${item.id}')" />
                             </div>
                         `).join('')}
                     </div>
@@ -689,6 +803,118 @@ impl WebAlbumServer {
                 showNotification('Failed to rotate media', true);
             }
         }
+        
+        // Modal functionality
+        function openModal(albumId, mediaId) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const resolutionIndicator = document.getElementById('resolutionIndicator');
+            const modalLoading = document.getElementById('modalLoading');
+            
+            // Show modal with thumbnail first
+            const thumbnailUrl = `/api/albums/${albumId}/media/${mediaId}/thumbnail`;
+            modalImage.src = thumbnailUrl;
+            modalImage.classList.add('loading');
+            modal.classList.add('show');
+            resolutionIndicator.textContent = 'Thumbnail';
+            
+            // Start loading medium resolution
+            setTimeout(() => {
+                loadMediumResolution(albumId, mediaId);
+            }, 100);
+        }
+        
+        function loadMediumResolution(albumId, mediaId) {
+            const modalImage = document.getElementById('modalImage');
+            const resolutionIndicator = document.getElementById('resolutionIndicator');
+            const modalLoading = document.getElementById('modalLoading');
+            
+            modalLoading.style.display = 'block';
+            resolutionIndicator.textContent = 'Loading medium...';
+            
+            // Create a new image to preload medium resolution
+            const mediumImg = new Image();
+            mediumImg.onload = function() {
+                modalImage.src = mediumImg.src;
+                modalImage.classList.remove('loading');
+                resolutionIndicator.textContent = 'Medium Resolution';
+                modalLoading.style.display = 'none';
+                
+                // Start loading high resolution after a short delay
+                setTimeout(() => {
+                    loadHighResolution(albumId, mediaId);
+                }, 500);
+            };
+            mediumImg.onerror = function() {
+                modalLoading.style.display = 'none';
+                resolutionIndicator.textContent = 'Thumbnail (medium failed)';
+                // Still try to load high resolution
+                setTimeout(() => {
+                    loadHighResolution(albumId, mediaId);
+                }, 500);
+            };
+            
+            // For now, use thumbnail as medium (we'll add real medium resolution endpoints later)
+            mediumImg.src = `/api/albums/${albumId}/media/${mediaId}/thumbnail`;
+        }
+        
+        function loadHighResolution(albumId, mediaId) {
+            const modalImage = document.getElementById('modalImage');
+            const resolutionIndicator = document.getElementById('resolutionIndicator');
+            const modalLoading = document.getElementById('modalLoading');
+            
+            modalLoading.style.display = 'block';
+            modalLoading.textContent = 'Loading high resolution...';
+            resolutionIndicator.textContent = 'Loading high...';
+            
+            // Create a new image to preload high resolution
+            const highImg = new Image();
+            highImg.onload = function() {
+                modalImage.classList.add('loading');
+                setTimeout(() => {
+                    modalImage.src = highImg.src;
+                    modalImage.classList.remove('loading');
+                    resolutionIndicator.textContent = 'High Resolution';
+                    modalLoading.style.display = 'none';
+                }, 200); // Small delay for smooth transition
+            };
+            highImg.onerror = function() {
+                modalLoading.style.display = 'none';
+                resolutionIndicator.textContent = 'Medium Resolution (high failed)';
+            };
+            
+            // For now, use thumbnail as high resolution (we'll add real high-res endpoints later)
+            highImg.src = `/api/albums/${albumId}/media/${mediaId}/thumbnail`;
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalLoading = document.getElementById('modalLoading');
+            
+            modal.classList.remove('show');
+            modalLoading.style.display = 'none';
+            
+            // Clear the image source after animation
+            setTimeout(() => {
+                modalImage.src = '';
+                modalImage.classList.remove('loading');
+            }, 300);
+        }
+        
+        // Close modal when clicking outside the image
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
         
         // Load albums on page load
         loadAlbums();
