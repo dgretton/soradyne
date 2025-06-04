@@ -307,14 +307,17 @@ impl WebAlbumServer {
         let max_attempts = 10;
         
         for attempt in 0..max_attempts {
-            match warp::serve(routes.clone()).try_bind(([127, 0, 0, 1], current_port)) {
-                Ok(server) => {
+            match std::net::TcpListener::bind(([127, 0, 0, 1], current_port)) {
+                Ok(_) => {
                     if current_port != port {
                         println!("🔄 Port {} was busy, using port {} instead", port, current_port);
                         println!("🌐 Starting web album server on http://localhost:{}", current_port);
                         println!("📁 Album interface available at http://localhost:{}", current_port);
                     }
-                    server.await;
+                    
+                    warp::serve(routes)
+                        .run(([127, 0, 0, 1], current_port))
+                        .await;
                     break;
                 }
                 Err(_) => {
