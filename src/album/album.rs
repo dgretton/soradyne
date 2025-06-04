@@ -7,33 +7,6 @@ use serde::{Serialize, Deserialize};
 use crate::storage::block_manager::BlockManager;
 use std::sync::Arc;
 
-// Type aliases
-pub type MediaId = String;
-pub type UserId = String;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum MediaType {
-    Photo,
-    Video,
-    Audio,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum MarkupType {
-    Arrow,
-    Circle,
-    Rectangle,
-    Text,
-    Freehand,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum Permission {
-    View,
-    Comment,
-    Edit,
-    Admin,
-}
 
 // === Simple Log CRDT Implementation ===
 
@@ -157,56 +130,6 @@ pub struct MarkupElement {
     pub timestamp: LogicalTime,
 }
 
-// === Operation Payload Types ===
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SetMediaPayload {
-    pub block_id: [u8; 32],
-    pub media_type: MediaType,
-    pub filename: String,
-    pub size: usize,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct CommentPayload {
-    pub text: String,
-    pub parent: Option<OpId>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DeletePayload {
-    pub target: OpId,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ReactionPayload {
-    pub emoji: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct CropPayload {
-    pub left: f32,
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RotatePayload {
-    pub angle: f32,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MarkupPayload {
-    pub markup_type: MarkupType,
-    pub data: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SharePayload {
-    pub user_id: UserId,
-    pub permission: Permission,
-}
 
 // === Media Reducer ===
 
