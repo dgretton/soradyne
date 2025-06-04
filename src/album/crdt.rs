@@ -10,8 +10,6 @@ use crate::flow::FlowError;
 pub type OpId = Uuid;
 pub type ReplicaId = String;
 pub type LogicalTime = u64;
-pub type MediaId = String;
-pub type UserId = String; // Placeholder for now
 
 // === Operation Trait ===
 
@@ -116,30 +114,3 @@ pub enum CrdtError {
     OperationNotFound(OpId),
 }
 
-// === Permission Types ===
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Permission {
-    View,
-    Comment,
-    Edit,
-    Admin,
-}
-
-impl Permission {
-    pub fn can_view(&self) -> bool {
-        matches!(self, Permission::View | Permission::Comment | Permission::Edit | Permission::Admin)
-    }
-    
-    pub fn can_comment(&self) -> bool {
-        matches!(self, Permission::Comment | Permission::Edit | Permission::Admin)
-    }
-    
-    pub fn can_edit(&self) -> bool {
-        matches!(self, Permission::Edit | Permission::Admin)
-    }
-    
-    pub fn can_admin(&self) -> bool {
-        matches!(self, Permission::Admin)
-    }
-}

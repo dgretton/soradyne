@@ -1,11 +1,16 @@
 //! Album and media item implementations
 
 use super::crdt::*;
-use super::operations::*;
+use super::operations::{self, EditOp, MediaType, MarkupType};
 use std::collections::{HashMap, HashSet};
 use serde::{Serialize, Deserialize};
 use crate::storage::block_manager::BlockManager;
 use std::sync::Arc;
+
+// Use operations module types to avoid ambiguity
+use operations::{MediaId, UserId, Permission};
+use operations::{SetMediaPayload, CommentPayload, DeletePayload, ReactionPayload};
+use operations::{CropPayload, RotatePayload, MarkupPayload, SharePayload};
 
 
 // === Simple Log CRDT Implementation ===
