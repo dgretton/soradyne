@@ -403,6 +403,17 @@ impl WebAlbumServer {
             transition: all 0.3s ease;
         }
         
+        .modal-image {
+            max-width: 90vw;
+            max-height: 90vh;
+            width: 600px;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.5s ease;
+        }
+        
         .thumbnail:hover {
             transform: scale(1.05);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
