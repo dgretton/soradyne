@@ -253,6 +253,30 @@ impl WebAlbumServer {
             .and(with_server(Arc::clone(&server)))
             .and_then(handle_get_thumbnail);
         
+        // Get media medium resolution
+        let get_medium = api
+            .and(warp::path("albums"))
+            .and(warp::path::param::<String>())
+            .and(warp::path("media"))
+            .and(warp::path::param::<String>())
+            .and(warp::path("medium"))
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(with_server(Arc::clone(&server)))
+            .and_then(handle_get_medium);
+        
+        // Get media high resolution
+        let get_high = api
+            .and(warp::path("albums"))
+            .and(warp::path::param::<String>())
+            .and(warp::path("media"))
+            .and(warp::path::param::<String>())
+            .and(warp::path("high"))
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(with_server(Arc::clone(&server)))
+            .and_then(handle_get_high);
+        
         // Add comment to media
         let add_comment = api
             .and(warp::path("albums"))
@@ -854,8 +878,8 @@ impl WebAlbumServer {
                 }, 500);
             };
             
-            // For now, use thumbnail as medium (we'll add real medium resolution endpoints later)
-            mediumImg.src = `/api/albums/${albumId}/media/${mediaId}/thumbnail`;
+            // Use the medium resolution endpoint
+            mediumImg.src = `/api/albums/${albumId}/media/${mediaId}/medium`;
         }
         
         function loadHighResolution(albumId, mediaId) {
@@ -883,8 +907,8 @@ impl WebAlbumServer {
                 resolutionIndicator.textContent = 'Medium Resolution (high failed)';
             };
             
-            // For now, use thumbnail as high resolution (we'll add real high-res endpoints later)
-            highImg.src = `/api/albums/${albumId}/media/${mediaId}/thumbnail`;
+            // Use the high resolution endpoint
+            highImg.src = `/api/albums/${albumId}/media/${mediaId}/high`;
         }
         
         function closeModal() {
@@ -933,6 +957,8 @@ impl WebAlbumServer {
             .or(get_album)
             .or(upload_media)
             .or(get_thumbnail)
+            .or(get_medium)
+            .or(get_high)
             .or(add_comment)
             .or(rotate_media)
             .recover(handle_rejection)
@@ -1186,6 +1212,31 @@ async fn handle_get_thumbnail(
     media_id: String,
     server: Arc<WebAlbumServer>
 ) -> Result<impl Reply, warp::Rejection> {
+    get_media_at_resolution(album_id, media_id, server, 150).await
+}
+
+async fn handle_get_medium(
+    album_id: String,
+    media_id: String,
+    server: Arc<WebAlbumServer>
+) -> Result<impl Reply, warp::Rejection> {
+    get_media_at_resolution(album_id, media_id, server, 600).await
+}
+
+async fn handle_get_high(
+    album_id: String,
+    media_id: String,
+    server: Arc<WebAlbumServer>
+) -> Result<impl Reply, warp::Rejection> {
+    get_media_at_resolution(album_id, media_id, server, 1200).await
+}
+
+async fn get_media_at_resolution(
+    album_id: String,
+    media_id: String,
+    server: Arc<WebAlbumServer>,
+    max_size: u32
+) -> Result<impl Reply, warp::Rejection> {
     let albums = server.albums.read().await;
     
     if let Some(album) = albums.get(&album_id) {
@@ -1199,12 +1250,12 @@ async fn handle_get_thumbnail(
                                 let mut block_id = [0u8; 32];
                                 block_id.copy_from_slice(&block_id_bytes);
                                 
-                                // Try to read the original image data
-                                if let Ok(image_data) = server.block_manager.read_block(&block_id).await {
-                                    // Generate thumbnail from the actual image
-                                    if let Ok(thumbnail) = generate_thumbnail(&image_data) {
+                                // Try to read the original media data
+                                if let Ok(media_data) = server.block_manager.read_block(&block_id).await {
+                                    // Generate resized image from the actual media
+                                    if let Ok(resized_image) = generate_resized_media(&media_data, max_size) {
                                         return Ok(warp::reply::with_header(
-                                            thumbnail,
+                                            resized_image,
                                             "content-type",
                                             "image/jpeg"
                                         ));
@@ -1316,25 +1367,29 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, std:
 }
 
 fn generate_thumbnail(media_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    generate_resized_media(media_data, 150)
+}
+
+fn generate_resized_media(media_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Try to detect the media type by checking the first few bytes
     let is_video = is_video_file(media_data);
     let is_audio = is_audio_file(media_data);
     
-    println!("Generating thumbnail: is_video={}, is_audio={}, data_len={}", is_video, is_audio, media_data.len());
+    println!("Generating resized media: is_video={}, is_audio={}, data_len={}, max_size={}", is_video, is_audio, media_data.len(), max_size);
     
     if media_data.len() >= 12 {
         println!("First 12 bytes: {:?}", &media_data[0..12]);
     }
     
     if is_video {
-        println!("Generating video thumbnail");
-        generate_video_thumbnail(media_data)
+        println!("Generating video at size {}", max_size);
+        generate_video_at_size(media_data, max_size)
     } else if is_audio {
-        println!("Generating audio thumbnail");
-        generate_audio_thumbnail(media_data)
+        println!("Generating audio at size {}", max_size);
+        generate_audio_at_size(media_data, max_size)
     } else {
-        println!("Generating image thumbnail");
-        generate_image_thumbnail(media_data)
+        println!("Generating image at size {}", max_size);
+        generate_image_at_size(media_data, max_size)
     }
 }
 
@@ -1433,28 +1488,43 @@ fn is_audio_file(data: &[u8]) -> bool {
 }
 
 fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    generate_image_at_size(image_data, 150)
+}
+
+fn generate_image_at_size(image_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Load the image from the data
     let img = image::load_from_memory(image_data)?;
     
-    // Resize to thumbnail size (150x150) while maintaining aspect ratio
-    let thumbnail = img.thumbnail(150, 150);
+    // Resize while maintaining aspect ratio
+    let resized = img.thumbnail(max_size, max_size);
+    
+    // Use higher quality for larger sizes
+    let quality = match max_size {
+        0..=200 => 70,
+        201..=800 => 85,
+        _ => 95,
+    };
     
     // Encode as JPEG
     let mut buffer = Vec::new();
-    thumbnail.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(80))?;
+    resized.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(quality))?;
     
     Ok(buffer)
 }
 
 fn generate_video_thumbnail(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    generate_video_at_size(video_data, 150)
+}
+
+fn generate_video_at_size(video_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Try to extract a frame using FFmpeg first
     if let Ok(frame_data) = extract_video_frame(video_data) {
-        // Generate thumbnail from the extracted frame
-        return generate_image_thumbnail(&frame_data);
+        // Generate resized image from the extracted frame
+        return generate_image_at_size(&frame_data, max_size);
     }
     
     // Fall back to placeholder if FFmpeg extraction fails
-    create_video_placeholder_thumbnail()
+    create_video_placeholder_at_size(max_size)
 }
 
 fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -1503,32 +1573,39 @@ fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error:
 }
 
 fn generate_audio_thumbnail(_audio_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // For now, create an audio-specific placeholder thumbnail
+    generate_audio_at_size(_audio_data, 150)
+}
+
+fn generate_audio_at_size(_audio_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // For now, create an audio-specific placeholder at the requested size
     // TODO: In the future, extract audio waveform data and create a waveform visualization
-    create_audio_placeholder_thumbnail()
+    create_audio_placeholder_at_size(max_size)
 }
 
 fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    create_audio_placeholder_at_size(150)
+}
+
+fn create_audio_placeholder_at_size(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use image::{RgbImage, Rgb};
     
-    let mut img = RgbImage::new(150, 150);
+    let mut img = RgbImage::new(size, size);
+    let center_x = size / 2;
+    let center_y = size / 2;
     
     // Create a dark background with audio waveform-like visualization
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let _center_x = 75;
-        let center_y = 75;
-        
         // Create a dark audio-like background
         *pixel = Rgb([20, 25, 35]); // Dark blue-gray background
         
-        // Draw simplified waveform bars
-        let bar_width = 4;
-        let bar_spacing = 6;
-        let num_bars = 150 / bar_spacing;
+        // Draw simplified waveform bars scaled to size
+        let bar_width = (size / 40).max(2);
+        let bar_spacing = (size / 25).max(3);
+        let num_bars = size / bar_spacing;
         
         for i in 0..num_bars {
-            let bar_x = i * bar_spacing + 10;
-            let bar_height = 20 + ((i * 7) % 40); // Varying heights for waveform effect
+            let bar_x = i * bar_spacing + size / 15;
+            let bar_height = (size / 8) + ((i * 7) % (size / 4)); // Varying heights for waveform effect
             let bar_top = center_y - bar_height / 2;
             let bar_bottom = center_y + bar_height / 2;
             
@@ -1540,7 +1617,8 @@ fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
         }
         
         // Add a subtle border
-        if x < 2 || x >= 148 || y < 2 || y >= 148 {
+        let border_width = (size / 75).max(1);
+        if x < border_width || x >= size - border_width || y < border_width || y >= size - border_width {
             *pixel = Rgb([60, 70, 90]); // Lighter border
         }
     }
@@ -1552,20 +1630,23 @@ fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
 }
 
 fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    create_video_placeholder_at_size(150)
+}
+
+fn create_video_placeholder_at_size(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use image::{RgbImage, Rgb};
     
-    let mut img = RgbImage::new(150, 150);
+    let mut img = RgbImage::new(size, size);
+    let center_x = size / 2;
+    let center_y = size / 2;
     
     // Create a dark background with a prominent play button
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let center_x = 75;
-        let center_y = 75;
-        
         // Create a dark video-like background
         *pixel = Rgb([30, 30, 30]);
         
-        // Draw a large white play triangle
-        let triangle_size = 30;
+        // Draw a large white play triangle scaled to size
+        let triangle_size = size / 5;
         
         // Draw a proper right-pointing triangle (play button)
         let triangle_left = center_x - triangle_size / 3;
@@ -1587,7 +1668,8 @@ fn create_video_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::E
         }
         
         // Add a subtle border to make it look more like a video thumbnail
-        if x < 3 || x >= 147 || y < 3 || y >= 147 {
+        let border_width = (size / 50).max(1);
+        if x < border_width || x >= size - border_width || y < border_width || y >= size - border_width {
             *pixel = Rgb([100, 100, 100]); // Gray border
         }
     }
