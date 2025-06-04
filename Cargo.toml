@@ -34,7 +34,6 @@ reqwest = { version = "0.11", features = ["stream", "json"] }
 
 # Image processing
 image = "0.24"
-ffmpeg-next = "6.0"
 
 # Base64 encoding for testing
 base64 = { version = "0.21", optional = true }
