@@ -109,7 +109,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         Text(
                           isDragOver 
                             ? 'Release to upload photos, videos, or audio'
-                            : 'Drag & drop media files here or click to browse',
+                            : 'Supports JPG, PNG, MP4, MOV, MP3, WAV, and more',
                           style: TextStyle(
                             color: isDragOver ? Colors.blue : Colors.grey,
                           ),
