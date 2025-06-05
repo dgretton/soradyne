@@ -8,20 +8,15 @@ cargo build --release
 
 # Copy the library to the Flutter app
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - copy to multiple locations
-    cp target/release/libsoradyne.dylib flutter_app/
-    echo "Copied libsoradyne.dylib to flutter_app/"
-    
-    # Also copy to the macOS app bundle location
+    # macOS - copy to the Runner directory for Xcode to find
     mkdir -p flutter_app/macos/Runner/
     cp target/release/libsoradyne.dylib flutter_app/macos/Runner/
     echo "Copied libsoradyne.dylib to flutter_app/macos/Runner/"
     
-    # Copy to build directory if it exists
-    if [ -d "flutter_app/build/macos/Build/Products/Debug/soradyne_app.app/Contents/MacOS/" ]; then
-        cp target/release/libsoradyne.dylib flutter_app/build/macos/Build/Products/Debug/soradyne_app.app/Contents/MacOS/
-        echo "Copied libsoradyne.dylib to app bundle"
-    fi
+    # Also copy to flutter_app root for development
+    cp target/release/libsoradyne.dylib flutter_app/
+    echo "Copied libsoradyne.dylib to flutter_app/"
+    
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux
     cp target/release/libsoradyne.so flutter_app/

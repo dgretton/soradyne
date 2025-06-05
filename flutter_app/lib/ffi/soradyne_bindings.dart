@@ -37,23 +37,8 @@ class SoradyneBindings {
   SoradyneBindings() {
     // Load the dynamic library
     if (Platform.isMacOS) {
-      // Try multiple paths for macOS
-      try {
-        // First try the app bundle path
-        _lib = DynamicLibrary.open('libsoradyne.dylib');
-      } catch (e) {
-        try {
-          // Try relative path from flutter_app directory
-          _lib = DynamicLibrary.open('./libsoradyne.dylib');
-        } catch (e2) {
-          try {
-            // Try absolute path
-            _lib = DynamicLibrary.open('/Users/danagretton/Dropbox (Personal)/Personal Projects/Rim/soradyne/flutter_app/libsoradyne.dylib');
-          } catch (e3) {
-            throw Exception('Failed to load libsoradyne.dylib: $e, $e2, $e3');
-          }
-        }
-      }
+      // For macOS, the library should be bundled with the app
+      _lib = DynamicLibrary.open('libsoradyne.dylib');
     } else if (Platform.isLinux) {
       _lib = DynamicLibrary.open('libsoradyne.so');
     } else if (Platform.isWindows) {
