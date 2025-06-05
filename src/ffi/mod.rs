@@ -68,6 +68,9 @@ impl AlbumSystem {
         let index_file = self.data_dir.join("albums_index.txt");
         
         println!("Looking for albums index at: {:?}", index_file);
+        println!("Data directory contents: {:?}", std::fs::read_dir(&self.data_dir).map(|entries| 
+            entries.map(|e| e.map(|entry| entry.file_name())).collect::<Result<Vec<_>, _>>()
+        ));
         
         if index_file.exists() {
             println!("Albums index file exists, reading...");
