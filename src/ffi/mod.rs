@@ -18,6 +18,8 @@ pub struct AlbumSystem {
     albums: HashMap<String, MediaAlbum>,
     block_manager: Arc<BlockManager>,
     runtime: Arc<Runtime>,
+    data_dir: PathBuf,
+    albums_index_block_id: Option<[u8; 32]>,
 }
 
 impl AlbumSystem {
@@ -47,11 +49,100 @@ impl AlbumSystem {
         
         let runtime = Arc::new(Runtime::new()?);
         
-        Ok(Self {
+        let mut system = Self {
             albums: HashMap::new(),
             block_manager,
             runtime,
-        })
+            data_dir,
+            albums_index_block_id: None,
+        };
+        
+        // Load existing albums from block storage
+        system.load_albums_from_blocks()?;
+        
+        Ok(system)
+    }
+    
+    fn load_albums_from_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Try to load the albums index from a known location
+        let index_file = self.data_dir.join("albums_index.txt");
+        
+        if index_file.exists() {
+            let index_content = std::fs::read_to_string(&index_file)?;
+            if let Ok(block_id_bytes) = hex::decode(index_content.trim()) {
+                if block_id_bytes.len() == 32 {
+                    let mut block_id = [0u8; 32];
+                    block_id.copy_from_slice(&block_id_bytes);
+                    self.albums_index_block_id = Some(block_id);
+                    
+                    // Load the albums index using the runtime
+                    if let Ok(index_data) = self.runtime.block_on(async {
+                        self.block_manager.read_block(&block_id).await
+                    }) {
+                        if let Ok(index_json) = String::from_utf8(index_data) {
+                            if let Ok(album_index) = serde_json::from_str::<HashMap<String, [u8; 32]>>(&index_json) {
+                                // Load each album from its block
+                                for (album_id, album_block_id) in album_index {
+                                    if let Ok(album_data) = self.runtime.block_on(async {
+                                        self.block_manager.read_block(&album_block_id).await
+                                    }) {
+                                        if let Ok(album_json) = String::from_utf8(album_data) {
+                                            if let Ok(mut album) = serde_json::from_str::<MediaAlbum>(&album_json) {
+                                                // Restore the block manager reference
+                                                album.block_manager = Some(Arc::clone(&self.block_manager));
+                                                self.albums.insert(album_id, album);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                println!("Loaded {} albums from block storage", self.albums.len());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn save_albums_to_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Create an index mapping album IDs to their block IDs
+        let mut album_index = HashMap::new();
+        
+        // Save each album to its own block
+        for (album_id, album) in &self.albums {
+            // Create a serializable version without the block manager
+            let mut serializable_album = album.clone();
+            serializable_album.block_manager = None;
+            
+            let album_json = serde_json::to_string_pretty(&serializable_album)?;
+            let album_data = album_json.as_bytes();
+            
+            // Store the album in a block using the runtime
+            let album_block_id = self.runtime.block_on(async {
+                self.block_manager.write_direct_block(album_data).await
+            })?;
+            album_index.insert(album_id.clone(), album_block_id);
+        }
+        
+        // Save the index to a block
+        let index_json = serde_json::to_string_pretty(&album_index)?;
+        let index_data = index_json.as_bytes();
+        let index_block_id = self.runtime.block_on(async {
+            self.block_manager.write_direct_block(index_data).await
+        })?;
+        
+        // Store the index block ID in a simple file for bootstrapping
+        let index_file = self.data_dir.join("albums_index.txt");
+        std::fs::write(&index_file, hex::encode(index_block_id))?;
+        
+        self.albums_index_block_id = Some(index_block_id);
+        
+        println!("Saved {} albums to block storage", self.albums.len());
+        
+        Ok(())
     }
 }
 
@@ -119,6 +210,11 @@ pub extern "C" fn soradyne_create_album(name_ptr: *const c_char) -> *mut c_char 
                 };
                 
                 system.albums.insert(album_id.clone(), album);
+                
+                // Save albums to persistent storage
+                if let Err(e) = system.save_albums_to_blocks() {
+                    eprintln!("Failed to save albums to blocks: {}", e);
+                }
                 
                 let response = serde_json::json!({
                     "id": album_id,
@@ -219,6 +315,10 @@ pub extern "C" fn soradyne_upload_media(album_id_ptr: *const c_char, file_path_p
                         if let Some(album) = system.albums.get_mut(&album_id) {
                             let crdt = album.get_or_create(&media_id);
                             if crdt.apply_local(op).is_ok() {
+                                // Save albums to persistent storage
+                                if let Err(e) = system.save_albums_to_blocks() {
+                                    eprintln!("Failed to save albums to blocks: {}", e);
+                                }
                                 return 0; // Success
                             }
                         }
