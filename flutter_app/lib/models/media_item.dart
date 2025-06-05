@@ -21,11 +21,16 @@ class MediaItem {
     this.comments = const [],
   });
 
-  // For now, return placeholder URLs since FFI doesn't serve HTTP endpoints
-  // In a full implementation, you'd implement image loading via FFI as well
-  String thumbnailUrl(String albumId) => 'https://via.placeholder.com/150x150.png?text=Media';
-  String mediumResUrl(String albumId) => 'https://via.placeholder.com/600x600.png?text=Media';
-  String highResUrl(String albumId) => 'https://via.placeholder.com/1200x1200.png?text=Media';
+  // Image data will be loaded via FFI instead of URLs
+  List<int>? _imageData;
+  
+  void setImageData(List<int> data) {
+    _imageData = data;
+  }
+  
+  List<int>? get imageData => _imageData;
+  
+  bool get hasImageData => _imageData != null;
 
   factory MediaItem.fromJson(Map<String, dynamic> json, String albumId) {
     MediaType type;

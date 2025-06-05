@@ -21,6 +21,12 @@ typedef SoradyneUploadMedia = int Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef SoradyneFreeStringC = Void Function(Pointer<Utf8>);
 typedef SoradyneFreeString = void Function(Pointer<Utf8>);
 
+typedef SoradyneGetMediaDataC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+typedef SoradyneGetMediaData = int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+
+typedef SoradyneFreeMediaDataC = Void Function(Pointer<Uint8>, Size);
+typedef SoradyneFreeMediaData = void Function(Pointer<Uint8>, int);
+
 typedef SoradyneCleanupC = Void Function();
 typedef SoradyneCleanup = void Function();
 
@@ -31,6 +37,8 @@ class SoradyneBindings {
   late final SoradyneCreateAlbum _createAlbum;
   late final SoradyneGetAlbumItems _getAlbumItems;
   late final SoradyneUploadMedia _uploadMedia;
+  late final SoradyneGetMediaData _getMediaData;
+  late final SoradyneFreeMediaData _freeMediaData;
   late final SoradyneFreeString _freeString;
   late final SoradyneCleanup _cleanup;
 
@@ -57,6 +65,8 @@ class SoradyneBindings {
     _createAlbum = _lib.lookupFunction<SoradyneCreateAlbumC, SoradyneCreateAlbum>('soradyne_create_album');
     _getAlbumItems = _lib.lookupFunction<SoradyneGetAlbumItemsC, SoradyneGetAlbumItems>('soradyne_get_album_items');
     _uploadMedia = _lib.lookupFunction<SoradyneUploadMediaC, SoradyneUploadMedia>('soradyne_upload_media');
+    _getMediaData = _lib.lookupFunction<SoradyneGetMediaDataC, SoradyneGetMediaData>('soradyne_get_media_data');
+    _freeMediaData = _lib.lookupFunction<SoradyneFreeMediaDataC, SoradyneFreeMediaData>('soradyne_free_media_data');
     _freeString = _lib.lookupFunction<SoradyneFreeStringC, SoradyneFreeString>('soradyne_free_string');
     _cleanup = _lib.lookupFunction<SoradyneCleanupC, SoradyneCleanup>('soradyne_cleanup');
   }
@@ -103,6 +113,40 @@ class SoradyneBindings {
     malloc.free(albumIdPtr);
     malloc.free(filePathPtr);
     return result;
+  }
+
+  List<int>? getMediaData(String albumId, String mediaId) {
+    print('FFI getMediaData called with albumId: $albumId, mediaId: $mediaId');
+    
+    final albumIdPtr = albumId.toNativeUtf8();
+    final mediaIdPtr = mediaId.toNativeUtf8();
+    final dataPtrPtr = malloc<Pointer<Uint8>>();
+    final sizePtr = malloc<Size>();
+    
+    try {
+      print('Calling native getMediaData function...');
+      final result = _getMediaData(albumIdPtr, mediaIdPtr, dataPtrPtr, sizePtr);
+      print('Native getMediaData returned: $result');
+      
+      if (result == 0) {
+        final dataPtr = dataPtrPtr.value;
+        final size = sizePtr.value;
+        
+        if (dataPtr != nullptr && size > 0) {
+          print('Retrieved media data: $size bytes');
+          final data = dataPtr.asTypedList(size).toList();
+          _freeMediaData(dataPtr, size);
+          return data;
+        }
+      }
+      
+      return null;
+    } finally {
+      malloc.free(albumIdPtr);
+      malloc.free(mediaIdPtr);
+      malloc.free(dataPtrPtr);
+      malloc.free(sizePtr);
+    }
   }
 
   void cleanup() {

@@ -83,7 +83,21 @@ class AlbumService extends ChangeNotifier {
       final List<dynamic> itemsList = json.decode(itemsJson);
       debugPrint('Parsed items list: $itemsList');
       
-      _albumItems[albumId] = itemsList.map((json) => MediaItem.fromJson(json, albumId)).toList();
+      final items = itemsList.map((json) => MediaItem.fromJson(json, albumId)).toList();
+      
+      // Load image data for each item
+      for (final item in items) {
+        debugPrint('Loading image data for media: ${item.id}');
+        final imageData = _bindings.getMediaData(albumId, item.id);
+        if (imageData != null) {
+          item.setImageData(imageData);
+          debugPrint('Loaded ${imageData.length} bytes for media: ${item.id}');
+        } else {
+          debugPrint('Failed to load image data for media: ${item.id}');
+        }
+      }
+      
+      _albumItems[albumId] = items;
       notifyListeners();
       debugPrint('Loaded ${_albumItems[albumId]?.length ?? 0} items for album $albumId');
     } catch (e) {

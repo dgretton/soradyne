@@ -6,6 +6,7 @@ import 'package:photo_view/photo_view_gallery.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import '../services/album_service.dart';
 import '../models/album.dart';
 import '../models/media_item.dart';
@@ -349,24 +350,29 @@ class _MediaThumbnail extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: item.thumbnailUrl(albumId),
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey.shade200,
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey.shade200,
-                  child: Icon(
-                    _getMediaIcon(item.mediaType),
-                    color: Colors.grey.shade600,
-                    size: 32,
-                  ),
-                ),
-              ),
+              item.hasImageData
+                  ? Image.memory(
+                      Uint8List.fromList(item.imageData!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey.shade200,
+                          child: Icon(
+                            _getMediaIcon(item.mediaType),
+                            color: Colors.grey.shade600,
+                            size: 32,
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey.shade200,
+                      child: Icon(
+                        _getMediaIcon(item.mediaType),
+                        color: Colors.grey.shade600,
+                        size: 32,
+                      ),
+                    ),
               if (item.mediaType == MediaType.video)
                 const Center(
                   child: Icon(
@@ -448,9 +454,9 @@ class _MediaViewerScreenState extends State<MediaViewerScreen> {
         builder: (context, index) {
           final item = widget.items[index];
           return PhotoViewGalleryPageOptions(
-            imageProvider: CachedNetworkImageProvider(
-              item.highResUrl(widget.albumId),
-            ),
+            imageProvider: item.hasImageData
+                ? MemoryImage(Uint8List.fromList(item.imageData!))
+                : const AssetImage('assets/placeholder.png') as ImageProvider,
             minScale: PhotoViewComputedScale.contained,
             maxScale: PhotoViewComputedScale.covered * 2,
             heroAttributes: PhotoViewHeroAttributes(tag: item.id),

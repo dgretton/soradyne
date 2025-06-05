@@ -241,6 +241,66 @@ pub extern "C" fn soradyne_free_string(ptr: *mut c_char) {
     }
 }
 
+// FFI function to get media data (returns raw bytes)
+#[no_mangle]
+pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize) -> i32 {
+    unsafe {
+        if let Some(system) = &ALBUM_SYSTEM {
+            if let Ok(system) = system.lock() {
+                let album_id = CStr::from_ptr(album_id_ptr).to_string_lossy().to_string();
+                let media_id = CStr::from_ptr(media_id_ptr).to_string_lossy().to_string();
+                
+                if let Some(album) = system.albums.get(&album_id) {
+                    if let Some(crdt) = album.items.get(&media_id) {
+                        let state = crdt.reduce();
+                        
+                        // Get the block_id from the first operation's payload
+                        if let Some(op) = crdt.ops.first() {
+                            if let Some(block_id_hex) = op.payload.get("block_id").and_then(|v| v.as_str()) {
+                                if let Ok(block_id_bytes) = hex::decode(block_id_hex) {
+                                    if block_id_bytes.len() == 32 {
+                                        let mut block_id = [0u8; 32];
+                                        block_id.copy_from_slice(&block_id_bytes);
+                                        
+                                        let block_manager = Arc::clone(&system.block_manager);
+                                        let runtime = Arc::clone(&system.runtime);
+                                        
+                                        if let Ok(data) = runtime.block_on(async {
+                                            block_manager.read_block(&block_id).await
+                                        }) {
+                                            // Allocate memory for the data
+                                            let boxed_data = data.into_boxed_slice();
+                                            let len = boxed_data.len();
+                                            let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                            
+                                            *data_ptr = ptr;
+                                            *size_ptr = len;
+                                            
+                                            return 0; // Success
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    -1 // Error
+}
+
+// FFI function to free media data allocated by Rust
+#[no_mangle]
+pub extern "C" fn soradyne_free_media_data(data_ptr: *mut u8, size: usize) {
+    unsafe {
+        if !data_ptr.is_null() {
+            let _ = Box::from_raw(std::slice::from_raw_parts_mut(data_ptr, size));
+        }
+    }
+}
+
 // FFI function to cleanup
 #[no_mangle]
 pub extern "C" fn soradyne_cleanup() {
