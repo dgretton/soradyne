@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import '../services/album_service.dart';
 import '../models/album.dart';
@@ -67,61 +68,104 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
           if (items.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.photo_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No media yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
+              child: DragTarget<List<File>>(
+                onWillAccept: (data) => data != null,
+                onAccept: (files) {
+                  print('Files dropped: ${files.map((f) => f.path).toList()}');
+                  _handleDroppedFiles(files);
+                },
+                builder: (context, candidateData, rejectedData) {
+                  final isDragOver = candidateData.isNotEmpty;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isDragOver ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                      border: Border.all(
+                        color: isDragOver ? Colors.blue : Colors.grey.shade300,
+                        width: 2,
+                        style: BorderStyle.solid,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Add photos, videos, or audio files',
-                    style: TextStyle(
-                      color: Colors.grey,
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isDragOver ? Icons.cloud_upload : Icons.photo_outlined,
+                          size: 64,
+                          color: isDragOver ? Colors.blue : Colors.grey,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          isDragOver ? 'Drop files here!' : 'No media yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: isDragOver ? Colors.blue : Colors.grey,
+                            fontWeight: isDragOver ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isDragOver 
+                            ? 'Release to upload files'
+                            : 'Drag & drop files here or click to browse',
+                          style: TextStyle(
+                            color: isDragOver ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            print('Add Media button pressed');
+                            _pickAndUploadImage();
+                          },
+                          icon: const Icon(Icons.add_a_photo),
+                          label: const Text('Browse Files'),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      print('Add Media button pressed');
-                      _pickAndUploadImage();
-                    },
-                    icon: const Icon(Icons.add_a_photo),
-                    label: const Text('Add Media'),
-                  ),
-                ],
+                  );
+                },
               ),
             );
           }
 
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return _MediaThumbnail(
-                  item: item,
-                  albumId: widget.album.id,
-                  onTap: () => _openMediaViewer(context, items, index),
-                );
-              },
-            ),
+          return DragTarget<List<File>>(
+            onWillAccept: (data) => data != null,
+            onAccept: (files) {
+              print('Files dropped on grid: ${files.map((f) => f.path).toList()}');
+              _handleDroppedFiles(files);
+            },
+            builder: (context, candidateData, rejectedData) {
+              final isDragOver = candidateData.isNotEmpty;
+              return Container(
+                decoration: isDragOver ? BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  border: Border.all(color: Colors.blue, width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                ) : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 4,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return _MediaThumbnail(
+                        item: item,
+                        albumId: widget.album.id,
+                        onTap: () => _openMediaViewer(context, items, index),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -142,38 +186,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       final picker = ImagePicker();
       print('ImagePicker created, attempting to pick image...');
       
-      // Try multiple sources and show a dialog to let user choose
-      final result = await showDialog<ImageSource>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Select Image Source'),
-          content: const Text('Choose where to get your image from:'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, ImageSource.camera),
-              child: const Text('Camera'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, ImageSource.gallery),
-              child: const Text('Gallery'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      );
-      
-      if (result == null) {
-        print('User cancelled image source selection');
-        return;
-      }
-      
-      print('User selected source: $result');
-      
+      // Directly use gallery picker for macOS compatibility
       final pickedFile = await picker.pickImage(
-        source: result,
+        source: ImageSource.gallery,
         imageQuality: 85,
       );
       
@@ -241,6 +256,56 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  void _handleDroppedFiles(List<File> files) async {
+    print('Handling ${files.length} dropped files');
+    
+    for (final file in files) {
+      print('Processing dropped file: ${file.path}');
+      
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+                Expanded(child: Text('Uploading ${file.path.split('/').last}...')),
+              ],
+            ),
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      }
+      
+      final success = await context.read<AlbumService>().uploadMedia(widget.album.id, file);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${file.path.split('/').last} uploaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload ${file.path.split('/').last}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
