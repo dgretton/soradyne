@@ -11,14 +11,12 @@ use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use std::process::Command;
-use std::io::Write;
-
 use soradyne::album::album::*;
 use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
 use soradyne::storage::block_file::BlockFile;
-use soradyne::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, is_video_file, is_audio_file};
+use soradyne::video::{generate_video_at_size, generate_image_at_size, is_video_file, is_audio_file};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -1553,11 +1551,11 @@ fn generate_audio_at_size(audio_data: &[u8], max_size: u32) -> Result<Vec<u8>, B
     }
     
     // Fall back to placeholder if waveform extraction fails
-    create_audio_placeholder_at_size(max_size)
+    create_audio_placeholder_at_size_local(max_size)
 }
 
 fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    create_audio_placeholder_at_size(150)
+    create_audio_placeholder_at_size_local(150)
 }
 
 fn generate_square_waveform(samples: &[f32], size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -1700,11 +1698,11 @@ fn generate_wide_waveform(samples: &[f32], max_size: u32) -> Result<Vec<u8>, Box
     Ok(buffer)
 }
 
-fn create_audio_placeholder_at_size(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn create_audio_placeholder_at_size_local(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use image::{RgbImage, Rgb};
     
     let mut img = RgbImage::new(size, size);
-    let center_x = size / 2;
+    let _center_x = size / 2;
     let center_y = size / 2;
     
     // Create a dark background with audio waveform-like visualization
