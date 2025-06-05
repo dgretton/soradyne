@@ -10,6 +10,8 @@ use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use std::process::Command;
+use std::io::Write;
 
 use soradyne::album::album::*;
 use soradyne::album::operations::*;
@@ -1578,18 +1580,223 @@ fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error:
     }
 }
 
+fn extract_audio_waveform(audio_data: &[u8]) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    // Use FFmpeg to extract raw audio samples
+    let temp_dir = std::env::temp_dir();
+    let input_path = temp_dir.join(format!("audio_input_{}.tmp", uuid::Uuid::new_v4()));
+    let output_path = temp_dir.join(format!("audio_output_{}.raw", uuid::Uuid::new_v4()));
+    
+    // Write audio data to temporary file
+    std::fs::write(&input_path, audio_data)?;
+    
+    // Extract raw audio samples using FFmpeg
+    let output = Command::new("ffmpeg")
+        .args(&[
+            "-i", input_path.to_str().unwrap(),
+            "-f", "f32le",          // 32-bit float little-endian
+            "-ac", "1",             // Convert to mono
+            "-ar", "8000",          // Sample rate 8kHz (sufficient for waveform visualization)
+            "-y",                   // Overwrite output
+            output_path.to_str().unwrap()
+        ])
+        .output();
+    
+    // Clean up input file
+    let _ = std::fs::remove_file(&input_path);
+    
+    match output {
+        Ok(result) if result.status.success() => {
+            // Read the raw audio samples
+            let raw_data = std::fs::read(&output_path)?;
+            let _ = std::fs::remove_file(&output_path);
+            
+            // Convert bytes to f32 samples
+            let mut samples = Vec::new();
+            for chunk in raw_data.chunks_exact(4) {
+                let sample = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                samples.push(sample);
+            }
+            
+            // Downsample for visualization (keep every Nth sample based on length)
+            let target_samples = 2000; // Target number of samples for visualization
+            if samples.len() > target_samples {
+                let step = samples.len() / target_samples;
+                let downsampled: Vec<f32> = samples.iter().step_by(step).cloned().collect();
+                Ok(downsampled)
+            } else {
+                Ok(samples)
+            }
+        }
+        _ => {
+            let _ = std::fs::remove_file(&output_path);
+            Err("FFmpeg audio extraction failed".into())
+        }
+    }
+}
+
 fn generate_audio_thumbnail(_audio_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     generate_audio_at_size(_audio_data, 150)
 }
 
-fn generate_audio_at_size(_audio_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // For now, create an audio-specific placeholder at the requested size
-    // TODO: In the future, extract audio waveform data and create a waveform visualization
+fn generate_audio_at_size(audio_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Try to extract waveform data from the audio
+    if let Ok(waveform_data) = extract_audio_waveform(audio_data) {
+        // Generate waveform visualization based on the requested size
+        if max_size <= 200 {
+            // Square thumbnail for small sizes
+            return generate_square_waveform(&waveform_data, max_size);
+        } else {
+            // Wide rectangular waveform for larger sizes
+            return generate_wide_waveform(&waveform_data, max_size);
+        }
+    }
+    
+    // Fall back to placeholder if waveform extraction fails
     create_audio_placeholder_at_size(max_size)
 }
 
 fn create_audio_placeholder_thumbnail() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     create_audio_placeholder_at_size(150)
+}
+
+fn generate_square_waveform(samples: &[f32], size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbImage, Rgb};
+    
+    let mut img = RgbImage::new(size, size);
+    let center_y = size / 2;
+    
+    // Dark background
+    for pixel in img.pixels_mut() {
+        *pixel = Rgb([15, 20, 30]);
+    }
+    
+    // Calculate how many samples to show in the square
+    let samples_to_show = (size as usize).min(samples.len());
+    let sample_step = if samples.len() > samples_to_show {
+        samples.len() / samples_to_show
+    } else {
+        1
+    };
+    
+    // Draw circular waveform for square thumbnail
+    let radius = (size / 2) as f32 * 0.8;
+    let center_x = size / 2;
+    
+    for i in 0..samples_to_show {
+        let sample_idx = i * sample_step;
+        if sample_idx >= samples.len() { break; }
+        
+        let amplitude = samples[sample_idx].abs().min(1.0);
+        let angle = (i as f32 / samples_to_show as f32) * 2.0 * std::f32::consts::PI;
+        
+        // Inner and outer radius based on amplitude
+        let inner_radius = radius * 0.3;
+        let outer_radius = inner_radius + (radius * 0.4 * amplitude);
+        
+        let cos_angle = angle.cos();
+        let sin_angle = angle.sin();
+        
+        // Draw line from inner to outer radius
+        let steps = ((outer_radius - inner_radius) as u32).max(1);
+        for step in 0..steps {
+            let r = inner_radius + (step as f32 / steps as f32) * (outer_radius - inner_radius);
+            let x = (center_x as f32 + r * cos_angle) as u32;
+            let y = (center_y as f32 + r * sin_angle) as u32;
+            
+            if x < size && y < size {
+                let intensity = (255.0 * (1.0 - step as f32 / steps as f32)) as u8;
+                img.put_pixel(x, y, Rgb([intensity / 4, intensity / 2, intensity]));
+            }
+        }
+    }
+    
+    let mut buffer = Vec::new();
+    let dynamic_img = image::DynamicImage::ImageRgb8(img);
+    dynamic_img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    Ok(buffer)
+}
+
+fn generate_wide_waveform(samples: &[f32], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbImage, Rgb};
+    
+    // Create a wide aspect ratio (3:1 or 4:1 depending on size)
+    let width = max_size;
+    let height = max_size / 3;
+    
+    let mut img = RgbImage::new(width, height);
+    let center_y = height / 2;
+    
+    // Dark background
+    for pixel in img.pixels_mut() {
+        *pixel = Rgb([15, 20, 30]);
+    }
+    
+    // Draw traditional horizontal waveform
+    let samples_per_pixel = (samples.len() as f32 / width as f32).max(1.0);
+    
+    for x in 0..width {
+        let sample_start = (x as f32 * samples_per_pixel) as usize;
+        let sample_end = ((x + 1) as f32 * samples_per_pixel) as usize;
+        
+        // Find min and max amplitude in this pixel's range
+        let mut min_amp = 0.0f32;
+        let mut max_amp = 0.0f32;
+        let mut rms = 0.0f32;
+        let mut count = 0;
+        
+        for i in sample_start..sample_end.min(samples.len()) {
+            let sample = samples[i];
+            min_amp = min_amp.min(sample);
+            max_amp = max_amp.max(sample);
+            rms += sample * sample;
+            count += 1;
+        }
+        
+        if count > 0 {
+            rms = (rms / count as f32).sqrt();
+            
+            // Scale amplitudes to pixel coordinates
+            let max_height = (height / 2) as f32 * 0.9;
+            let min_y = (center_y as f32 - max_amp * max_height) as u32;
+            let max_y = (center_y as f32 - min_amp * max_height) as u32;
+            let rms_y1 = (center_y as f32 - rms * max_height) as u32;
+            let rms_y2 = (center_y as f32 + rms * max_height) as u32;
+            
+            // Draw the waveform line
+            for y in min_y..=max_y.min(height - 1) {
+                if y < height {
+                    // Brighter color for the main waveform
+                    img.put_pixel(x, y, Rgb([100, 150, 255]));
+                }
+            }
+            
+            // Draw RMS envelope with different color
+            if rms_y1 < height {
+                img.put_pixel(x, rms_y1, Rgb([255, 200, 100]));
+            }
+            if rms_y2 < height {
+                img.put_pixel(x, rms_y2, Rgb([255, 200, 100]));
+            }
+        }
+    }
+    
+    // Add subtle grid lines
+    let grid_spacing = width / 10;
+    for i in 1..10 {
+        let grid_x = i * grid_spacing;
+        if grid_x < width {
+            for y in 0..height {
+                if y % 4 == 0 {
+                    img.put_pixel(grid_x, y, Rgb([30, 35, 45]));
+                }
+            }
+        }
+    }
+    
+    let mut buffer = Vec::new();
+    let dynamic_img = image::DynamicImage::ImageRgb8(img);
+    dynamic_img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    Ok(buffer)
 }
 
 fn create_audio_placeholder_at_size(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
