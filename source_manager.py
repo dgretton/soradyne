@@ -88,11 +88,6 @@ class SoradyneManager:
                 elif file.endswith('.yaml') or file.endswith('.yml'):
                     if rel_path not in self.yaml_files:
                         self.yaml_files.append(rel_path)
-                
-                # Collect markdown files
-                elif file.endswith('.md'):
-                    if rel_path not in self.markdown_files:
-                        self.markdown_files.append(rel_path)
         
         for rel_path in included_files:
             if (rel_path not in self.rust_files and rel_path not in self.dart_files and 
