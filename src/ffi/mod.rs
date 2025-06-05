@@ -32,13 +32,13 @@ fn create_video_placeholder() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let size = 20;
     
     // Simple triangle points
-    for y in (center_y - size)..(center_y + size) {
-        for x in (center_x - size/2)..(center_x + size) {
+    for y in (center_y - size as i32)..(center_y + size as i32) {
+        for x in (center_x - size as i32/2)..(center_x + size as i32) {
             if x >= 0 && x < 150 && y >= 0 && y < 150 {
                 // Simple triangle shape
-                let dx = x - center_x;
-                let dy = y - center_y;
-                if dx > -size/2 && dx < size && dy.abs() < size - dx.abs()/2 {
+                let dx: i32 = x - center_x;
+                let dy: i32 = y - center_y;
+                if dx > -(size as i32)/2 && dx < size as i32 && dy.abs() < size as i32 - dx.abs()/2 {
                     img.put_pixel(x as u32, y as u32, white);
                 }
             }
