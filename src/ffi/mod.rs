@@ -8,6 +8,7 @@ use serde_json;
 
 use crate::album::album::*;
 use crate::album::operations::*;
+use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
 
 // Global state for the album system
