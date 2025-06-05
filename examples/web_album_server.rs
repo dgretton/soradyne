@@ -1382,18 +1382,20 @@ fn generate_resized_media(media_data: &[u8], max_size: u32) -> Result<Vec<u8>, B
     // Try to detect the media type by checking the first few bytes
     let is_video = is_video_file(media_data);
     let is_audio = is_audio_file(media_data);
+    let is_image = is_image_file(media_data);
     
-    println!("Generating resized media: is_video={}, is_audio={}, data_len={}, max_size={}", is_video, is_audio, media_data.len(), max_size);
+    println!("Generating resized media: is_video={}, is_audio={}, is_image={}, data_len={}, max_size={}", is_video, is_audio, is_image, media_data.len(), max_size);
     
     if media_data.len() >= 12 {
         println!("First 12 bytes: {:?}", &media_data[0..12]);
+        println!("First 12 bytes as hex: {}", hex::encode(&media_data[0..12]));
     }
     
     if is_video {
         println!("Generating video at size {}", max_size);
         generate_video_at_size(media_data, max_size)
     } else if is_audio {
-        println!("Generating audio at size {}", max_size);
+        println!("Generating audio waveform at size {}", max_size);
         generate_audio_at_size(media_data, max_size)
     } else {
         println!("Generating image at size {}", max_size);
@@ -1446,8 +1448,46 @@ fn is_video_file(data: &[u8]) -> bool {
     false
 }
 
+fn is_image_file(data: &[u8]) -> bool {
+    if data.len() < 4 {
+        return false;
+    }
+    
+    // JPEG
+    if data.len() >= 2 && data[0] == 0xFF && data[1] == 0xD8 {
+        return true;
+    }
+    
+    // PNG
+    if data.len() >= 8 && &data[0..8] == b"\x89PNG\r\n\x1a\n" {
+        return true;
+    }
+    
+    // GIF
+    if data.len() >= 6 && (&data[0..6] == b"GIF87a" || &data[0..6] == b"GIF89a") {
+        return true;
+    }
+    
+    // BMP
+    if data.len() >= 2 && &data[0..2] == b"BM" {
+        return true;
+    }
+    
+    // TIFF
+    if data.len() >= 4 && (&data[0..4] == b"II*\0" || &data[0..4] == b"MM\0*") {
+        return true;
+    }
+    
+    // WebP
+    if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"WEBP" {
+        return true;
+    }
+    
+    false
+}
+
 fn is_audio_file(data: &[u8]) -> bool {
-    if data.len() < 12 {
+    if data.len() < 4 {
         return false;
     }
     
@@ -1478,6 +1518,11 @@ fn is_audio_file(data: &[u8]) -> bool {
         return true;
     }
     
+    // Check for AIFF signature
+    if data.len() >= 12 && &data[0..4] == b"FORM" && &data[8..12] == b"AIFF" {
+        return true;
+    }
+    
     // Check for M4A (AAC in MP4 container)
     if data.len() >= 12 {
         let ftyp_slice = &data[4..8];
@@ -1485,11 +1530,28 @@ fn is_audio_file(data: &[u8]) -> bool {
             let brand = &data[8..12];
             // Common M4A brands
             if brand == b"M4A " || brand == b"mp42" || brand == b"isom" {
-                // Additional check to distinguish from video
-                // This is a simplified check - in practice you'd need more sophisticated detection
                 return true;
             }
         }
+    }
+    
+    // Check for common audio file extensions in filename if we had it
+    // For now, let's also check some other common audio patterns
+    
+    // Check for AAC ADTS header
+    if data.len() >= 2 && data[0] == 0xFF && (data[1] & 0xF0) == 0xF0 {
+        return true;
+    }
+    
+    // Check for AC3 signature
+    if data.len() >= 2 && data[0] == 0x0B && data[1] == 0x77 {
+        return true;
+    }
+    
+    // For debugging: if it's a very small file that's not an image, assume it's audio
+    if data.len() < 1000 && !is_image_file(data) {
+        println!("Small file detected as audio (fallback): {} bytes", data.len());
+        return true;
     }
     
     false
