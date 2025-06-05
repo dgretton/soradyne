@@ -1557,6 +1557,28 @@ fn is_audio_file(data: &[u8]) -> bool {
     false
 }
 
+fn is_valid_mp3_header(header: u32) -> bool {
+    // Check MP3 frame header validity
+    // Bits 31-21: Frame sync (all 1s) - already checked
+    // Bits 20-19: MPEG Audio version ID
+    let version = (header >> 19) & 0x3;
+    if version == 1 { return false; } // Reserved
+    
+    // Bits 18-17: Layer description
+    let layer = (header >> 17) & 0x3;
+    if layer == 0 { return false; } // Reserved
+    
+    // Bits 15-12: Bitrate index
+    let bitrate = (header >> 12) & 0xF;
+    if bitrate == 0 || bitrate == 15 { return false; } // Free or bad bitrate
+    
+    // Bits 11-10: Sampling rate frequency index
+    let sample_rate = (header >> 10) & 0x3;
+    if sample_rate == 3 { return false; } // Reserved
+    
+    true
+}
+
 fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     generate_image_at_size(image_data, 150)
 }
