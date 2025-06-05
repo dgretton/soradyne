@@ -54,9 +54,7 @@ class SoradyneManager:
         self._add_if_exists('flutter_app/pubspec.yaml', self.yaml_files)
         self._add_if_exists('flutter_app/lib/main.dart', self.dart_files)
         self._add_if_exists('build_rust.sh', self.shell_files)
-        self._add_if_exists('flutter_app/copy_dylib.sh', self.shell_files)
         self._add_if_exists('README.md', self.markdown_files)
-        self._add_if_exists('web_static/index.html', self.html_files)
         
         # Find all source files in the source directory
         for root, dirs, files in os.walk(self.source_dir):
@@ -77,11 +75,6 @@ class SoradyneManager:
                     if rel_path not in self.dart_files:
                         self.dart_files.append(rel_path)
                 
-                # Collect HTML files
-                elif file.endswith('.html'):
-                    if rel_path not in self.html_files:
-                        self.html_files.append(rel_path)
-                
                 # Collect Python files
                 elif file.endswith('.py'):
                     if rel_path not in self.python_files:
@@ -97,11 +90,6 @@ class SoradyneManager:
                     if rel_path not in self.yaml_files:
                         self.yaml_files.append(rel_path)
                 
-                # Collect shell scripts
-                elif file.endswith('.sh'):
-                    if rel_path not in self.shell_files:
-                        self.shell_files.append(rel_path)
-                
                 # Collect markdown files
                 elif file.endswith('.md'):
                     if rel_path not in self.markdown_files:
@@ -116,16 +104,12 @@ class SoradyneManager:
                     self._add_if_exists(rel_path, self.rust_files)
                 elif rel_path.endswith('.dart'):
                     self._add_if_exists(rel_path, self.dart_files)
-                elif rel_path.endswith('.html'):
-                    self._add_if_exists(rel_path, self.html_files)
                 elif rel_path.endswith('.py'):
                     self._add_if_exists(rel_path, self.python_files)
                 elif rel_path.endswith('.toml'):
                     self._add_if_exists(rel_path, self.toml_files)
                 elif rel_path.endswith('.yaml') or rel_path.endswith('.yml'):
                     self._add_if_exists(rel_path, self.yaml_files)
-                elif rel_path.endswith('.sh'):
-                    self._add_if_exists(rel_path, self.shell_files)
                 elif rel_path.endswith('.md'):
                     self._add_if_exists(rel_path, self.markdown_files)
                 else:
