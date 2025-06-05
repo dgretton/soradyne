@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import '../services/album_service.dart';
 import '../models/album.dart';
 import '../models/media_item.dart';
+import '../widgets/progressive_image.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
   final Album album;
@@ -350,29 +349,12 @@ class _MediaThumbnail extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              item.hasImageData
-                  ? Image.memory(
-                      Uint8List.fromList(item.imageData!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey.shade200,
-                          child: Icon(
-                            _getMediaIcon(item.mediaType),
-                            color: Colors.grey.shade600,
-                            size: 32,
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: Icon(
-                        _getMediaIcon(item.mediaType),
-                        color: Colors.grey.shade600,
-                        size: 32,
-                      ),
-                    ),
+              // Progressive image loading
+              ProgressiveImage(
+                mediaItem: item,
+                albumId: albumId,
+                fit: BoxFit.cover,
+              ),
               if (item.mediaType == MediaType.video)
                 const Center(
                   child: Icon(
