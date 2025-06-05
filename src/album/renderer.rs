@@ -7,6 +7,8 @@ use super::album::{MediaState, CropData, MarkupElement};
 use super::operations::MarkupType;
 use serde::{Serialize, Deserialize};
 use image::{DynamicImage, Rgba, RgbaImage, imageops::FilterType};
+use std::process::Command;
+use std::path::Path;
 use imageproc::drawing::{draw_filled_circle_mut, draw_hollow_circle_mut, draw_filled_rect_mut, draw_hollow_rect_mut, draw_line_segment_mut};
 use imageproc::rect::Rect;
 
@@ -148,6 +150,38 @@ impl MediaRenderer {
     /// Convenience method for full resolution
     pub fn render_full(&self, media_state: &MediaState) -> Result<Vec<u8>, RenderError> {
         self.render(media_state, RenderResolution::Full)
+    }
+    
+    /// Generate a thumbnail from video file using ffmpeg
+    pub fn generate_video_thumbnail(video_path: &Path, timestamp_seconds: f64) -> Result<Vec<u8>, RenderError> {
+        let output_path = std::env::temp_dir().join(format!("thumb_{}.jpg", uuid::Uuid::new_v4()));
+        
+        let output = Command::new("ffmpeg")
+            .args(&[
+                "-i", video_path.to_str().unwrap(),
+                "-ss", &timestamp_seconds.to_string(),
+                "-vframes", "1",
+                "-q:v", "2",
+                "-y",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .map_err(|e| RenderError::RenderFailed(format!("Failed to run ffmpeg: {}", e)))?;
+        
+        if !output.status.success() {
+            return Err(RenderError::RenderFailed(format!(
+                "ffmpeg failed: {}", 
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+        
+        let thumbnail_data = std::fs::read(&output_path)
+            .map_err(|e| RenderError::RenderFailed(format!("Failed to read thumbnail: {}", e)))?;
+        
+        // Clean up temp file
+        let _ = std::fs::remove_file(&output_path);
+        
+        Ok(thumbnail_data)
     }
     
     fn calculate_dimensions(&self, resolution: RenderResolution) -> (u32, u32) {

@@ -23,14 +23,36 @@ class MediaItem {
 
   // Image data will be loaded via FFI instead of URLs
   List<int>? _imageData;
+  List<int>? _thumbnailData;
   
   void setImageData(List<int> data) {
     _imageData = data;
   }
   
+  void setThumbnailData(List<int> data) {
+    _thumbnailData = data;
+  }
+  
   List<int>? get imageData => _imageData;
+  List<int>? get thumbnailData => _thumbnailData;
   
   bool get hasImageData => _imageData != null;
+  bool get hasThumbnailData => _thumbnailData != null;
+  
+  // For videos, we should use thumbnail data for display
+  List<int>? get displayData {
+    if (mediaType == MediaType.video) {
+      return _thumbnailData ?? _imageData;
+    }
+    return _imageData;
+  }
+  
+  bool get hasDisplayData {
+    if (mediaType == MediaType.video) {
+      return _thumbnailData != null || _imageData != null;
+    }
+    return _imageData != null;
+  }
 
   factory MediaItem.fromJson(Map<String, dynamic> json, String albumId) {
     MediaType type;

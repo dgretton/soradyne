@@ -57,10 +57,10 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
     // Load the actual image data after a short delay
     await Future.delayed(const Duration(milliseconds: 300));
     
-    if (mounted && widget.mediaItem.hasImageData) {
+    if (mounted && widget.mediaItem.hasDisplayData) {
       setState(() {
-        _currentImageData = Uint8List.fromList(widget.mediaItem.imageData!);
-        _currentResolution = 'full';
+        _currentImageData = Uint8List.fromList(widget.mediaItem.displayData!);
+        _currentResolution = widget.mediaItem.mediaType == MediaType.video ? 'thumbnail' : 'full';
         _isLoading = false;
       });
     } else if (mounted) {
@@ -143,17 +143,40 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
       case 'thumbnail':
         return _buildThumbnailPlaceholder();
       case 'full':
+      case 'thumbnail':
         if (_currentImageData != null) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              _currentImageData!,
-              width: widget.width,
-              height: widget.height,
-              fit: widget.fit,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildErrorWidget();
-              },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(
+                  _currentImageData!,
+                  width: widget.width,
+                  height: widget.height,
+                  fit: widget.fit,
+                  errorBuilder: (context, error, stackTrace) {
+                    print('Error loading image data: $error');
+                    return _buildErrorWidget();
+                  },
+                ),
+                // Add video play icon overlay for videos
+                if (widget.mediaItem.mediaType == MediaType.video)
+                  const Center(
+                    child: Icon(
+                      Icons.play_circle_outline,
+                      color: Colors.white,
+                      size: 32,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(1, 1),
+                          blurRadius: 3,
+                          color: Colors.black54,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           );
         } else {
