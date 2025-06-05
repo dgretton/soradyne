@@ -91,9 +91,15 @@ class SoradyneBindings {
   }
 
   int uploadMedia(String albumId, String filePath) {
+    print('FFI uploadMedia called with albumId: $albumId, filePath: $filePath');
+    
     final albumIdPtr = albumId.toNativeUtf8();
     final filePathPtr = filePath.toNativeUtf8();
+    
+    print('Calling native uploadMedia function...');
     final result = _uploadMedia(albumIdPtr, filePathPtr);
+    print('Native uploadMedia returned: $result');
+    
     malloc.free(albumIdPtr);
     malloc.free(filePathPtr);
     return result;

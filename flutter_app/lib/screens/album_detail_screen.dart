@@ -46,6 +46,21 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       body: Consumer<AlbumService>(
         builder: (context, albumService, child) {
           final items = albumService.getAlbumItems(widget.album.id);
+          
+          print('Album ${widget.album.id} has ${items.length} items');
+
+          if (albumService.isLoading) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading album contents...'),
+                ],
+              ),
+            );
+          }
 
           if (items.isEmpty) {
             return Center(
@@ -112,20 +127,67 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   void _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      final success = await context.read<AlbumService>().uploadMedia(widget.album.id, file);
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
       
-      if (success && mounted) {
+      if (pickedFile != null && mounted) {
+        // Show loading indicator
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Media uploaded successfully!')),
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 16),
+                Text('Uploading media...'),
+              ],
+            ),
+            duration: Duration(seconds: 10),
+          ),
         );
-      } else if (mounted) {
+        
+        final file = File(pickedFile.path);
+        print('Attempting to upload file: ${file.path}');
+        print('File exists: ${await file.exists()}');
+        print('File size: ${await file.length()} bytes');
+        
+        final success = await context.read<AlbumService>().uploadMedia(widget.album.id, file);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Media uploaded successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload media'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error in _pickAndUploadImage: $e');
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to upload media')),
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

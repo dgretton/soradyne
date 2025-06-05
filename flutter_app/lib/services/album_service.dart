@@ -70,16 +70,25 @@ class AlbumService extends ChangeNotifier {
   }
 
   Future<void> loadAlbumItems(String albumId) async {
-    if (!_initialized) return;
+    if (!_initialized) {
+      debugPrint('Cannot load album items: FFI not initialized');
+      return;
+    }
 
     try {
+      debugPrint('Loading items for album: $albumId');
       final itemsJson = _bindings.getAlbumItems(albumId);
+      debugPrint('Raw items JSON: $itemsJson');
+      
       final List<dynamic> itemsList = json.decode(itemsJson);
+      debugPrint('Parsed items list: $itemsList');
+      
       _albumItems[albumId] = itemsList.map((json) => MediaItem.fromJson(json, albumId)).toList();
       notifyListeners();
       debugPrint('Loaded ${_albumItems[albumId]?.length ?? 0} items for album $albumId');
     } catch (e) {
       debugPrint('Error loading album items: $e');
+      debugPrint('Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -105,21 +114,35 @@ class AlbumService extends ChangeNotifier {
   }
 
   Future<bool> uploadMedia(String albumId, File file) async {
-    if (!_initialized) return false;
+    if (!_initialized) {
+      debugPrint('Cannot upload media: FFI not initialized');
+      return false;
+    }
 
     try {
+      // Verify file exists and is readable
+      if (!await file.exists()) {
+        debugPrint('File does not exist: ${file.path}');
+        return false;
+      }
+      
+      final fileSize = await file.length();
+      debugPrint('Uploading file: ${file.path} (${fileSize} bytes) to album: $albumId');
+      
       final result = _bindings.uploadMedia(albumId, file.path);
+      debugPrint('FFI upload result: $result');
       
       if (result == 0) {
+        debugPrint('Upload successful, refreshing album items...');
         await loadAlbumItems(albumId); // Refresh the album items
-        debugPrint('Uploaded media: ${file.path}');
+        debugPrint('Album items refreshed');
         return true;
       } else {
-        debugPrint('Failed to upload media: $result');
+        debugPrint('FFI upload failed with code: $result');
         return false;
       }
     } catch (e) {
-      debugPrint('Error uploading media: $e');
+      debugPrint('Exception during media upload: $e');
       return false;
     }
   }
