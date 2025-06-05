@@ -21,10 +21,6 @@ class MediaItem {
     this.comments = const [],
   });
 
-  String get thumbnailUrl => 'http://localhost:3031/api/albums/album_id/media/$id/thumbnail';
-  String get mediumResUrl => 'http://localhost:3031/api/albums/album_id/media/$id/medium';
-  String get highResUrl => 'http://localhost:3031/api/albums/album_id/media/$id/high';
-
   String thumbnailUrl(String albumId) => 'http://localhost:3030/api/albums/$albumId/media/$id/thumbnail';
   String mediumResUrl(String albumId) => 'http://localhost:3030/api/albums/$albumId/media/$id/medium';
   String highResUrl(String albumId) => 'http://localhost:3030/api/albums/$albumId/media/$id/high';
