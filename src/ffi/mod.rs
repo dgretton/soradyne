@@ -559,39 +559,50 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                         let block_manager = Arc::clone(&system.block_manager);
                                         let runtime = Arc::clone(&system.runtime);
                                         
-                                        // Get media type from operation payload
-                                        let media_type = op.payload.get("media_type")
-                                            .and_then(|v| v.as_str())
-                                            .unwrap_or("image");
-                                        
                                         // Read the media data from block storage
                                         if let Ok(media_data) = runtime.block_on(async {
                                             block_manager.read_block(&block_id).await
                                         }) {
                                             println!("Successfully read {} bytes from block storage for media {}", media_data.len(), media_id);
                                             
-                                            // Use shared video processing logic for consistent results
-                                            if let Ok(resized_data) = generate_resized_media(&media_data, max_size, media_type) {
-                                                let boxed_data = resized_data.into_boxed_slice();
-                                                let len = boxed_data.len();
-                                                let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                            // Use shared video processing logic - detect media type from actual data
+                                            let resized_data = if is_video_file(&media_data) {
+                                                println!("Detected video file, generating video thumbnail at size {}", max_size);
+                                                generate_video_at_size(&media_data, max_size)
+                                            } else if is_audio_file(&media_data) {
+                                                println!("Detected audio file, generating audio placeholder at size {}", max_size);
+                                                create_audio_placeholder_at_size(max_size)
+                                            } else {
+                                                println!("Detected image file, generating resized image at size {}", max_size);
+                                                generate_image_at_size(&media_data, max_size)
+                                            };
                                             
-                                                *data_ptr = ptr;
-                                                *size_ptr = len;
-                                            
-                                                return 0; // Success
-                                            }
-                                            
-                                            // Fall back to original data if resizing fails (for images)
-                                            if media_type != "video" && media_type != "audio" {
-                                                let boxed_data = media_data.into_boxed_slice();
-                                                let len = boxed_data.len();
-                                                let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                            
-                                                *data_ptr = ptr;
-                                                *size_ptr = len;
-                                            
-                                                return 0; // Success
+                                            match resized_data {
+                                                Ok(data) => {
+                                                    let boxed_data = data.into_boxed_slice();
+                                                    let len = boxed_data.len();
+                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                
+                                                    *data_ptr = ptr;
+                                                    *size_ptr = len;
+                                                
+                                                    return 0; // Success
+                                                }
+                                                Err(e) => {
+                                                    println!("Failed to generate resized media: {}", e);
+                                                    
+                                                    // Fall back to original data for images only
+                                                    if !is_video_file(&media_data) && !is_audio_file(&media_data) {
+                                                        let boxed_data = media_data.into_boxed_slice();
+                                                        let len = boxed_data.len();
+                                                        let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                    
+                                                        *data_ptr = ptr;
+                                                        *size_ptr = len;
+                                                    
+                                                        return 0; // Success with original data
+                                                    }
+                                                }
                                             }
                                         }
                                     }
