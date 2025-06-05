@@ -10,6 +10,7 @@ use crate::album::album::*;
 use crate::album::operations::*;
 use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
+use crate::album::renderer::MediaRenderer;
 
 // Global state for the album system
 static mut ALBUM_SYSTEM: Option<Arc<Mutex<AlbumSystem>>> = None;
@@ -450,7 +451,7 @@ pub extern "C" fn soradyne_free_string(ptr: *mut c_char) {
     }
 }
 
-// FFI function to get media data (returns raw bytes)
+// FFI function to get media data (returns raw bytes for images, thumbnails for videos)
 #[no_mangle]
 pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize) -> i32 {
     unsafe {
@@ -461,9 +462,9 @@ pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_
                 
                 if let Some(album) = system.albums.get(&album_id) {
                     if let Some(crdt) = album.items.get(&media_id) {
-                        let state = crdt.reduce();
+                        let _state = crdt.reduce();
                         
-                        // Get the block_id from the first operation's payload
+                        // Get the block_id and media_type from the first operation's payload
                         if let Some(op) = crdt.ops().first() {
                             if let Some(block_id_hex) = op.payload.get("block_id").and_then(|v| v.as_str()) {
                                 if let Ok(block_id_bytes) = hex::decode(block_id_hex) {
@@ -474,18 +475,59 @@ pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_
                                         let block_manager = Arc::clone(&system.block_manager);
                                         let runtime = Arc::clone(&system.runtime);
                                         
-                                        if let Ok(data) = runtime.block_on(async {
-                                            block_manager.read_block(&block_id).await
-                                        }) {
-                                            // Allocate memory for the data
-                                            let boxed_data = data.into_boxed_slice();
-                                            let len = boxed_data.len();
-                                            let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                            
-                                            *data_ptr = ptr;
-                                            *size_ptr = len;
-                                            
-                                            return 0; // Success
+                                        // Check if this is a video file
+                                        let media_type = op.payload.get("media_type")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("image");
+                                        
+                                        if media_type == "video" {
+                                            // For videos, generate a thumbnail
+                                            if let Ok(video_data) = runtime.block_on(async {
+                                                block_manager.read_block(&block_id).await
+                                            }) {
+                                                // Write video data to a temporary file
+                                                let temp_dir = std::env::temp_dir();
+                                                let temp_video_path = temp_dir.join(format!("video_{}.mov", media_id));
+                                                
+                                                if std::fs::write(&temp_video_path, &video_data).is_ok() {
+                                                    // Generate thumbnail using ffmpeg
+                                                    if let Ok(thumbnail_data) = MediaRenderer::generate_video_thumbnail(&temp_video_path, 1.0) {
+                                                        // Clean up temp file
+                                                        let _ = std::fs::remove_file(&temp_video_path);
+                                                        
+                                                        // Allocate memory for the thumbnail data
+                                                        let boxed_data = thumbnail_data.into_boxed_slice();
+                                                        let len = boxed_data.len();
+                                                        let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                        
+                                                        *data_ptr = ptr;
+                                                        *size_ptr = len;
+                                                        
+                                                        return 0; // Success
+                                                    } else {
+                                                        // Clean up temp file on error
+                                                        let _ = std::fs::remove_file(&temp_video_path);
+                                                        println!("Failed to generate video thumbnail for {}", media_id);
+                                                    }
+                                                } else {
+                                                    println!("Failed to write temporary video file for {}", media_id);
+                                                }
+                                            }
+                                        } else {
+                                            // For images and other media, return raw data
+                                            if let Ok(data) = runtime.block_on(async {
+                                                block_manager.read_block(&block_id).await
+                                            }) {
+                                                // Allocate memory for the data
+                                                let boxed_data = data.into_boxed_slice();
+                                                let len = boxed_data.len();
+                                                let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                
+                                                *data_ptr = ptr;
+                                                *size_ptr = len;
+                                                
+                                                return 0; // Success
+                                            }
                                         }
                                     }
                                 }
