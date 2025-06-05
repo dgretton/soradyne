@@ -198,43 +198,6 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
     );
   }
 
-  Widget _buildThumbnailPlaceholder() {
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        children: [
-          // Simulated low-res blur effect
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.grey[400]!,
-                  Colors.grey[300]!,
-                  Colors.grey[400]!,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const Center(
-            child: Icon(
-              Icons.image,
-              color: Colors.white70,
-              size: 24,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import '../models/media_item.dart';
@@ -434,7 +397,6 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
       ),
     );
   }
-}
 =======
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
