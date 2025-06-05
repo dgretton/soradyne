@@ -1,5 +1,9 @@
 use std::process::Command;
 use image::{RgbaImage, Rgba};
+use uuid::Uuid;
+
+#[cfg(feature = "video-thumbnails")]
+use ffmpeg_next as ffmpeg;
 
 /// Extract a video frame using FFmpeg
 pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
