@@ -20,11 +20,15 @@ class SoradyneManager:
         self.source_dir = source_dir
         self.output_file = output_file
         self.rust_files = []
+        self.dart_files = []
         self.html_files = []
         self.python_files = []
         self.toml_files = []
+        self.yaml_files = []
+        self.shell_files = []
+        self.markdown_files = []
         self.other_files = []
-        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__']
+        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__', 'build', '.dart_tool', 'ios', 'android', 'web', 'windows', 'linux']
         
     def collect_files(self):
         """Collect all Rust and TypeScript source files in the source directory"""
@@ -33,9 +37,13 @@ class SoradyneManager:
 
         # Clear existing lists
         self.rust_files = []
+        self.dart_files = []
         self.html_files = []
         self.python_files = []
         self.toml_files = []
+        self.yaml_files = []
+        self.shell_files = []
+        self.markdown_files = []
         self.other_files = []
         
         # Start with key files
@@ -43,6 +51,11 @@ class SoradyneManager:
         self._add_if_exists('src/lib.rs', self.rust_files)
         self._add_if_exists('src/core/mod.rs', self.rust_files)
         self._add_if_exists('Cargo.toml', self.toml_files)
+        self._add_if_exists('flutter_app/pubspec.yaml', self.yaml_files)
+        self._add_if_exists('flutter_app/lib/main.dart', self.dart_files)
+        self._add_if_exists('build_rust.sh', self.shell_files)
+        self._add_if_exists('flutter_app/copy_dylib.sh', self.shell_files)
+        self._add_if_exists('README.md', self.markdown_files)
         self._add_if_exists('web_static/index.html', self.html_files)
         
         # Find all source files in the source directory
@@ -59,6 +72,11 @@ class SoradyneManager:
                     if rel_path not in self.rust_files:
                         self.rust_files.append(rel_path)
                 
+                # Collect Dart files
+                elif file.endswith('.dart'):
+                    if rel_path not in self.dart_files:
+                        self.dart_files.append(rel_path)
+                
                 # Collect HTML files
                 elif file.endswith('.html'):
                     if rel_path not in self.html_files:
@@ -73,23 +91,48 @@ class SoradyneManager:
                 elif file.endswith('.toml'):
                     if rel_path not in self.toml_files:
                         self.toml_files.append(rel_path)
+                
+                # Collect YAML files
+                elif file.endswith('.yaml') or file.endswith('.yml'):
+                    if rel_path not in self.yaml_files:
+                        self.yaml_files.append(rel_path)
+                
+                # Collect shell scripts
+                elif file.endswith('.sh'):
+                    if rel_path not in self.shell_files:
+                        self.shell_files.append(rel_path)
+                
+                # Collect markdown files
+                elif file.endswith('.md'):
+                    if rel_path not in self.markdown_files:
+                        self.markdown_files.append(rel_path)
         
         for rel_path in included_files:
-            if (rel_path not in self.rust_files and rel_path not in self.html_files and 
-                rel_path not in self.python_files and rel_path not in self.toml_files):
+            if (rel_path not in self.rust_files and rel_path not in self.dart_files and 
+                rel_path not in self.html_files and rel_path not in self.python_files and 
+                rel_path not in self.toml_files and rel_path not in self.yaml_files and
+                rel_path not in self.shell_files and rel_path not in self.markdown_files):
                 if rel_path.endswith('.rs'):
                     self._add_if_exists(rel_path, self.rust_files)
+                elif rel_path.endswith('.dart'):
+                    self._add_if_exists(rel_path, self.dart_files)
                 elif rel_path.endswith('.html'):
                     self._add_if_exists(rel_path, self.html_files)
                 elif rel_path.endswith('.py'):
                     self._add_if_exists(rel_path, self.python_files)
                 elif rel_path.endswith('.toml'):
                     self._add_if_exists(rel_path, self.toml_files)
+                elif rel_path.endswith('.yaml') or rel_path.endswith('.yml'):
+                    self._add_if_exists(rel_path, self.yaml_files)
+                elif rel_path.endswith('.sh'):
+                    self._add_if_exists(rel_path, self.shell_files)
+                elif rel_path.endswith('.md'):
+                    self._add_if_exists(rel_path, self.markdown_files)
                 else:
                     self._add_if_exists(rel_path, self.other_files)
         
-        total_files = len(self.rust_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.other_files)
-        print(f"Found {len(self.rust_files)} Rust files, {len(self.html_files)} HTML files, {len(self.python_files)} Python files, {len(self.toml_files)} TOML files, and {len(self.other_files)} other files.")
+        total_files = len(self.rust_files) + len(self.dart_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.yaml_files) + len(self.shell_files) + len(self.markdown_files) + len(self.other_files)
+        print(f"Found {len(self.rust_files)} Rust files, {len(self.dart_files)} Dart files, {len(self.html_files)} HTML files, {len(self.python_files)} Python files, {len(self.toml_files)} TOML files, {len(self.yaml_files)} YAML files, {len(self.shell_files)} shell files, {len(self.markdown_files)} markdown files, and {len(self.other_files)} other files.")
         return self.rust_files, self.html_files, self.python_files, self.toml_files, self.other_files
         
     def _add_if_exists(self, file_path, file_list):
@@ -118,6 +161,24 @@ class SoradyneManager:
             output.write("=====================================================================\n\n")
             
             for file_path in self.rust_files:
+                full_path = os.path.join(self.source_dir, file_path)
+                
+                output.write("\n\n// =====================================================================\n")
+                output.write(f"// FILE: {file_path}\n")
+                output.write("// =====================================================================\n\n")
+                
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as input_file:
+                        output.write(input_file.read())
+                except UnicodeDecodeError:
+                    output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
+            
+            # Add Dart files
+            output.write("\n\n\n=====================================================================\n")
+            output.write("= DART/FLUTTER SOURCE CODE                                        =\n")
+            output.write("=====================================================================\n\n")
+            
+            for file_path in self.dart_files:
                 full_path = os.path.join(self.source_dir, file_path)
                 
                 output.write("\n\n// =====================================================================\n")
@@ -183,6 +244,60 @@ class SoradyneManager:
                         output.write(input_file.read())
                 except UnicodeDecodeError:
                     output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
+            
+            # Add YAML files
+            output.write("\n\n\n=====================================================================\n")
+            output.write("= YAML FILES                                                      =\n")
+            output.write("=====================================================================\n\n")
+            
+            for file_path in self.yaml_files:
+                full_path = os.path.join(self.source_dir, file_path)
+                
+                output.write("\n\n# =====================================================================\n")
+                output.write(f"# FILE: {file_path}\n")
+                output.write("# =====================================================================\n\n")
+                
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as input_file:
+                        output.write(input_file.read())
+                except UnicodeDecodeError:
+                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
+            
+            # Add shell files
+            output.write("\n\n\n=====================================================================\n")
+            output.write("= SHELL SCRIPTS                                                   =\n")
+            output.write("=====================================================================\n\n")
+            
+            for file_path in self.shell_files:
+                full_path = os.path.join(self.source_dir, file_path)
+                
+                output.write("\n\n# =====================================================================\n")
+                output.write(f"# FILE: {file_path}\n")
+                output.write("# =====================================================================\n\n")
+                
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as input_file:
+                        output.write(input_file.read())
+                except UnicodeDecodeError:
+                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
+            
+            # Add markdown files
+            output.write("\n\n\n=====================================================================\n")
+            output.write("= MARKDOWN FILES                                                  =\n")
+            output.write("=====================================================================\n\n")
+            
+            for file_path in self.markdown_files:
+                full_path = os.path.join(self.source_dir, file_path)
+                
+                output.write("\n\n<!-- =====================================================================\n")
+                output.write(f"FILE: {file_path}\n")
+                output.write("===================================================================== -->\n\n")
+                
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as input_file:
+                        output.write(input_file.read())
+                except UnicodeDecodeError:
+                    output.write(f"<!-- [Error reading file: {file_path} - possible binary content] -->\n")
             
                 # Add other files
                 if self.other_files:
@@ -263,13 +378,21 @@ class SoradyneManager:
         print(f"Files included in {self.output_file}:")
         
         rust_files = [f for f in included_files if f.endswith('.rs')]
+        dart_files = [f for f in included_files if f.endswith('.dart')]
         html_files = [f for f in included_files if f.endswith('.html')]
         python_files = [f for f in included_files if f.endswith('.py')]
         toml_files = [f for f in included_files if f.endswith('.toml')]
-        other_files = [f for f in included_files if not (f.endswith('.rs') or f.endswith('.html') or f.endswith('.py') or f.endswith('.toml'))]
+        yaml_files = [f for f in included_files if f.endswith('.yaml') or f.endswith('.yml')]
+        shell_files = [f for f in included_files if f.endswith('.sh')]
+        markdown_files = [f for f in included_files if f.endswith('.md')]
+        other_files = [f for f in included_files if not (f.endswith('.rs') or f.endswith('.dart') or f.endswith('.html') or f.endswith('.py') or f.endswith('.toml') or f.endswith('.yaml') or f.endswith('.yml') or f.endswith('.sh') or f.endswith('.md'))]
         
         print("\nRust files:")
         for i, file_path in enumerate(rust_files):
+            print(f"{i+1}. {file_path}")
+        
+        print("\nDart files:")
+        for i, file_path in enumerate(dart_files):
             print(f"{i+1}. {file_path}")
         
         print("\nHTML files:")
@@ -283,13 +406,25 @@ class SoradyneManager:
         print("\nTOML files:")
         for i, file_path in enumerate(toml_files):
             print(f"{i+1}. {file_path}")
+        
+        print("\nYAML files:")
+        for i, file_path in enumerate(yaml_files):
+            print(f"{i+1}. {file_path}")
+        
+        print("\nShell files:")
+        for i, file_path in enumerate(shell_files):
+            print(f"{i+1}. {file_path}")
+        
+        print("\nMarkdown files:")
+        for i, file_path in enumerate(markdown_files):
+            print(f"{i+1}. {file_path}")
 
         if other_files:
             print("\nOther files:")
             for i, file_path in enumerate(other_files):
                 print(f"{i+1}. {file_path}")
         
-        print(f"\nTotal: {len(included_files)} files ({len(rust_files)} Rust, {len(html_files)} HTML, {len(python_files)} Python, {len(toml_files)} TOML)")
+        print(f"\nTotal: {len(included_files)} files ({len(rust_files)} Rust, {len(dart_files)} Dart, {len(html_files)} HTML, {len(python_files)} Python, {len(toml_files)} TOML, {len(yaml_files)} YAML, {len(shell_files)} Shell, {len(markdown_files)} Markdown)")
 
 def main():
     parser = argparse.ArgumentParser(description='Manage Soradyne source code concatenation')
