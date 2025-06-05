@@ -108,8 +108,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         const SizedBox(height: 8),
                         Text(
                           isDragOver 
-                            ? 'Release to upload files'
-                            : 'Drag & drop files here or click to browse',
+                            ? 'Release to upload photos, videos, or audio'
+                            : 'Drag & drop media files here or click to browse',
                           style: TextStyle(
                             color: isDragOver ? Colors.blue : Colors.grey,
                           ),
@@ -181,78 +181,130 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   void _pickAndUploadImage() async {
     print('_pickAndUploadImage called');
+    _pickMedia(MediaType.image, ImageSource.gallery);
+  }
+
+  void _pickMedia(MediaType mediaType, ImageSource source) async {
+    print('_pickMedia called with type: $mediaType, source: $source');
     
     try {
       final picker = ImagePicker();
-      print('ImagePicker created, attempting to pick image...');
+      XFile? pickedFile;
       
-      // Directly use gallery picker for macOS compatibility
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
+      switch (mediaType) {
+        case MediaType.image:
+          print('Picking image...');
+          pickedFile = await picker.pickImage(
+            source: source,
+            imageQuality: 85,
+          );
+          break;
+        case MediaType.video:
+          print('Picking video...');
+          pickedFile = await picker.pickVideo(
+            source: source,
+            maxDuration: const Duration(minutes: 10), // Reasonable limit
+          );
+          break;
+        case MediaType.audio:
+          // Audio picking will be handled separately
+          return;
+      }
       
-      print('Image picker returned: ${pickedFile?.path ?? 'null'}');
+      print('Media picker returned: ${pickedFile?.path ?? 'null'}');
       
       if (pickedFile != null && mounted) {
-        print('Image picked successfully: ${pickedFile.path}');
-        
-        // Show loading indicator
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 16),
-                Text('Uploading media...'),
-              ],
-            ),
-            duration: Duration(seconds: 10),
-          ),
-        );
-        
-        final file = File(pickedFile.path);
-        print('Attempting to upload file: ${file.path}');
-        print('File exists: ${await file.exists()}');
-        print('File size: ${await file.length()} bytes');
-        
-        final success = await context.read<AlbumService>().uploadMedia(widget.album.id, file);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Media uploaded successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to upload media'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
+        print('Media picked successfully: ${pickedFile.path}');
+        await _uploadPickedFile(pickedFile);
       } else {
-        print('No image was picked or widget not mounted');
+        print('No media was picked or widget not mounted');
       }
     } catch (e) {
-      print('Error in _pickAndUploadImage: $e');
+      print('Error in _pickMedia: $e');
       print('Error type: ${e.runtimeType}');
       print('Stack trace: ${StackTrace.current}');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking image: $e'),
+            content: Text('Error picking media: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _pickAudioFile() async {
+    print('_pickAudioFile called');
+    
+    try {
+      // For audio files, we'll need to use file_picker package
+      // For now, show a message that audio support is coming
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio file support coming soon! For now, you can drag and drop audio files.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error in _pickAudioFile: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking audio: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadPickedFile(XFile pickedFile) async {
+    // Show loading indicator
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 16),
+              Text('Uploading media...'),
+            ],
+          ),
+          duration: Duration(seconds: 10),
+        ),
+      );
+    }
+    
+    final file = File(pickedFile.path);
+    print('Attempting to upload file: ${file.path}');
+    print('File exists: ${await file.exists()}');
+    print('File size: ${await file.length()} bytes');
+    
+    final success = await context.read<AlbumService>().uploadMedia(widget.album.id, file);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Media uploaded successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to upload media'),
             backgroundColor: Colors.red,
           ),
         );
