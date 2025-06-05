@@ -156,6 +156,27 @@ impl MediaRenderer {
     pub fn generate_video_thumbnail(video_path: &Path, timestamp_seconds: f64) -> Result<Vec<u8>, RenderError> {
         let output_path = std::env::temp_dir().join(format!("thumb_{}.jpg", uuid::Uuid::new_v4()));
         
+        println!("Running ffmpeg to generate thumbnail...");
+        println!("Input: {:?}", video_path);
+        println!("Output: {:?}", output_path);
+        
+        // Check if ffmpeg is available
+        let ffmpeg_check = Command::new("ffmpeg")
+            .arg("-version")
+            .output();
+            
+        match ffmpeg_check {
+            Ok(output) if output.status.success() => {
+                println!("ffmpeg is available");
+            }
+            Ok(output) => {
+                println!("ffmpeg version check failed: {}", String::from_utf8_lossy(&output.stderr));
+            }
+            Err(e) => {
+                return Err(RenderError::RenderFailed(format!("ffmpeg not found: {}", e)));
+            }
+        }
+        
         let output = Command::new("ffmpeg")
             .args(&[
                 "-i", video_path.to_str().unwrap(),
@@ -168,15 +189,28 @@ impl MediaRenderer {
             .output()
             .map_err(|e| RenderError::RenderFailed(format!("Failed to run ffmpeg: {}", e)))?;
         
+        println!("ffmpeg exit code: {:?}", output.status.code());
+        println!("ffmpeg stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("ffmpeg stderr: {}", String::from_utf8_lossy(&output.stderr));
+        
         if !output.status.success() {
             return Err(RenderError::RenderFailed(format!(
-                "ffmpeg failed: {}", 
+                "ffmpeg failed with exit code {:?}: {}", 
+                output.status.code(),
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
         
+        if !output_path.exists() {
+            return Err(RenderError::RenderFailed(
+                "ffmpeg completed but output file was not created".to_string()
+            ));
+        }
+        
         let thumbnail_data = std::fs::read(&output_path)
             .map_err(|e| RenderError::RenderFailed(format!("Failed to read thumbnail: {}", e)))?;
+        
+        println!("Successfully read thumbnail: {} bytes", thumbnail_data.len());
         
         // Clean up temp file
         let _ = std::fs::remove_file(&output_path);

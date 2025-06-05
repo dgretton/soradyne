@@ -541,9 +541,9 @@ class _MediaViewerScreenState extends State<MediaViewerScreen> {
         builder: (context, index) {
           final item = widget.items[index];
           return PhotoViewGalleryPageOptions(
-            imageProvider: item.hasImageData
-                ? MemoryImage(Uint8List.fromList(item.imageData!))
-                : const AssetImage('assets/placeholder.png') as ImageProvider,
+            imageProvider: item.hasDisplayData
+                ? MemoryImage(Uint8List.fromList(item.displayData!))
+                : MemoryImage(Uint8List.fromList([0])), // Empty placeholder
             minScale: PhotoViewComputedScale.contained,
             maxScale: PhotoViewComputedScale.covered * 2,
             heroAttributes: PhotoViewHeroAttributes(tag: item.id),

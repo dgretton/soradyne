@@ -12,6 +12,46 @@ use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
 use crate::album::renderer::MediaRenderer;
 
+// Create a simple placeholder image for videos when thumbnail generation fails
+fn create_video_placeholder() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbaImage, Rgba};
+    
+    // Create a 150x150 gray image with a play icon
+    let mut img = RgbaImage::new(150, 150);
+    let gray = Rgba([128, 128, 128, 255]);
+    let white = Rgba([255, 255, 255, 255]);
+    
+    // Fill with gray
+    for pixel in img.pixels_mut() {
+        *pixel = gray;
+    }
+    
+    // Draw a simple play triangle in the center
+    let center_x = 75;
+    let center_y = 75;
+    let size = 20;
+    
+    // Simple triangle points
+    for y in (center_y - size)..(center_y + size) {
+        for x in (center_x - size/2)..(center_x + size) {
+            if x >= 0 && x < 150 && y >= 0 && y < 150 {
+                // Simple triangle shape
+                let dx = x - center_x;
+                let dy = y - center_y;
+                if dx > -size/2 && dx < size && dy.abs() < size - dx.abs()/2 {
+                    img.put_pixel(x as u32, y as u32, white);
+                }
+            }
+        }
+    }
+    
+    // Encode as PNG
+    let mut buffer = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    
+    Ok(buffer)
+}
+
 // Global state for the album system
 static mut ALBUM_SYSTEM: Option<Arc<Mutex<AlbumSystem>>> = None;
 
@@ -481,7 +521,7 @@ pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_
                                             .unwrap_or("image");
                                         
                                         if media_type == "video" {
-                                            // For videos, generate a thumbnail
+                                            // For videos, try to generate a thumbnail, but fall back to a placeholder
                                             if let Ok(video_data) = runtime.block_on(async {
                                                 block_manager.read_block(&block_id).await
                                             }) {
@@ -489,28 +529,49 @@ pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_
                                                 let temp_dir = std::env::temp_dir();
                                                 let temp_video_path = temp_dir.join(format!("video_{}.mov", media_id));
                                                 
-                                                if std::fs::write(&temp_video_path, &video_data).is_ok() {
-                                                    // Generate thumbnail using ffmpeg
-                                                    if let Ok(thumbnail_data) = MediaRenderer::generate_video_thumbnail(&temp_video_path, 1.0) {
-                                                        // Clean up temp file
-                                                        let _ = std::fs::remove_file(&temp_video_path);
-                                                        
-                                                        // Allocate memory for the thumbnail data
-                                                        let boxed_data = thumbnail_data.into_boxed_slice();
-                                                        let len = boxed_data.len();
-                                                        let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                        
-                                                        *data_ptr = ptr;
-                                                        *size_ptr = len;
-                                                        
-                                                        return 0; // Success
-                                                    } else {
-                                                        // Clean up temp file on error
-                                                        let _ = std::fs::remove_file(&temp_video_path);
-                                                        println!("Failed to generate video thumbnail for {}", media_id);
-                                                    }
+                                                println!("Attempting to write video file to: {:?}", temp_video_path);
+                                                
+                                                if let Err(e) = std::fs::write(&temp_video_path, &video_data) {
+                                                    println!("Failed to write temporary video file: {}", e);
                                                 } else {
-                                                    println!("Failed to write temporary video file for {}", media_id);
+                                                    println!("Successfully wrote {} bytes to temp file", video_data.len());
+                                                    
+                                                    // Generate thumbnail using ffmpeg
+                                                    match MediaRenderer::generate_video_thumbnail(&temp_video_path, 1.0) {
+                                                        Ok(thumbnail_data) => {
+                                                            println!("Successfully generated thumbnail: {} bytes", thumbnail_data.len());
+                                                            // Clean up temp file
+                                                            let _ = std::fs::remove_file(&temp_video_path);
+                                                            
+                                                            // Allocate memory for the thumbnail data
+                                                            let boxed_data = thumbnail_data.into_boxed_slice();
+                                                            let len = boxed_data.len();
+                                                            let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                            
+                                                            *data_ptr = ptr;
+                                                            *size_ptr = len;
+                                                            
+                                                            return 0; // Success
+                                                        }
+                                                        Err(e) => {
+                                                            println!("Failed to generate video thumbnail: {}", e);
+                                                            // Clean up temp file on error
+                                                            let _ = std::fs::remove_file(&temp_video_path);
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // If thumbnail generation failed, create a simple placeholder image
+                                                println!("Creating placeholder image for video {}", media_id);
+                                                if let Ok(placeholder_data) = create_video_placeholder() {
+                                                    let boxed_data = placeholder_data.into_boxed_slice();
+                                                    let len = boxed_data.len();
+                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                    
+                                                    *data_ptr = ptr;
+                                                    *size_ptr = len;
+                                                    
+                                                    return 0; // Success with placeholder
                                                 }
                                             }
                                         } else {
