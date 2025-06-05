@@ -1258,15 +1258,42 @@ async fn get_media_at_resolution(
                                 let mut block_id = [0u8; 32];
                                 block_id.copy_from_slice(&block_id_bytes);
                                 
-                                // Try to read the original media data
-                                if let Ok(media_data) = server.block_manager.read_block(&block_id).await {
-                                    // Generate resized image from the actual media
-                                    if let Ok(resized_image) = generate_resized_media(&media_data, max_size) {
-                                        return Ok(warp::reply::with_header(
-                                            resized_image,
-                                            "content-type",
-                                            "image/jpeg"
-                                        ));
+                                // Use BlockFile to read large files properly
+                                let block_file = BlockFile::from_existing(
+                                    Arc::clone(&server.block_manager),
+                                    block_id,
+                                    op.payload.get("size").and_then(|v| v.as_u64()).unwrap_or(0) as usize
+                                );
+                                
+                                // Try to read the original media data using BlockFile
+                                match block_file.read().await {
+                                    Ok(media_data) => {
+                                        println!("Successfully read {} bytes from block storage for media {}", media_data.len(), media_id);
+                                        
+                                        // Generate resized image from the actual media
+                                        if let Ok(resized_image) = generate_resized_media(&media_data, max_size) {
+                                            return Ok(warp::reply::with_header(
+                                                resized_image,
+                                                "content-type",
+                                                "image/jpeg"
+                                            ));
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("Failed to read media data from BlockFile: {}", e);
+                                        
+                                        // Fall back to direct block read for smaller files
+                                        if let Ok(media_data) = server.block_manager.read_block(&block_id).await {
+                                            println!("Fallback: read {} bytes directly from block manager", media_data.len());
+                                            
+                                            if let Ok(resized_image) = generate_resized_media(&media_data, max_size) {
+                                                return Ok(warp::reply::with_header(
+                                                    resized_image,
+                                                    "content-type",
+                                                    "image/jpeg"
+                                                ));
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1277,6 +1304,7 @@ async fn get_media_at_resolution(
         }
     }
     
+    println!("No media data found for album {} media {}, returning placeholder", album_id, media_id);
     Ok(warp::reply::with_header(
         create_placeholder_thumbnail(),
         "content-type",
