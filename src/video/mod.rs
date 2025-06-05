@@ -50,16 +50,13 @@ fn extract_video_frame_native(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std:
         .index();
     
     let video_stream = input_context.stream(video_stream_index).unwrap();
-    let mut decoder = ffmpeg::codec::decoder::find(video_stream.parameters().id())
-        .ok_or("Unsupported codec")?
-        .video()?;
-    decoder.set_parameters(video_stream.parameters())?;
-    decoder.open(None)?;
+    let context_decoder = video_stream.codec().decoder().video()?;
+    let mut decoder = context_decoder;
     
     // Seek to 1 second
     let time_base = video_stream.time_base();
     let seek_timestamp = (1.0 / f64::from(time_base.denominator()) * f64::from(time_base.numerator())) as i64;
-    input_context.seek(seek_timestamp, ..)?;
+    input_context.seek(seek_timestamp, seek_timestamp..)?;
     
     // Decode frames until we get one
     let mut frame = ffmpeg::frame::Video::empty();
