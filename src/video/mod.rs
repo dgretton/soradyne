@@ -3,15 +3,37 @@ use image::{RgbaImage, Rgba};
 
 /// Extract a video frame using FFmpeg
 pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    println!("🎬 extract_video_frame called with {} bytes", video_data.len());
+    
+    // Check if ffmpeg is available
+    let ffmpeg_check = Command::new("ffmpeg").arg("-version").output();
+    match ffmpeg_check {
+        Ok(output) if output.status.success() => {
+            println!("✅ ffmpeg is available");
+        }
+        Ok(output) => {
+            println!("❌ ffmpeg version check failed: {}", String::from_utf8_lossy(&output.stderr));
+            return Err("ffmpeg version check failed".into());
+        }
+        Err(e) => {
+            println!("❌ ffmpeg not found: {}", e);
+            return Err(format!("ffmpeg not found: {}", e).into());
+        }
+    }
+    
     // Create temporary files
     let temp_dir = std::env::temp_dir();
+    println!("📁 Using temp dir: {:?}", temp_dir);
     let input_path = temp_dir.join(format!("video_input_{}.mp4", uuid::Uuid::new_v4()));
     let output_path = temp_dir.join(format!("frame_output_{}.jpg", uuid::Uuid::new_v4()));
     
     // Write video data to temporary file
+    println!("📝 Writing {} bytes to temp file: {:?}", video_data.len(), input_path);
     std::fs::write(&input_path, video_data)?;
+    println!("✅ Successfully wrote video data to temp file");
     
     // Extract frame at 1 second using FFmpeg
+    println!("🎬 Running ffmpeg to extract frame...");
     let output = Command::new("ffmpeg")
         .args(&[
             "-i", input_path.to_str().unwrap(),
@@ -28,16 +50,27 @@ pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
     
     match output {
         Ok(result) if result.status.success() => {
+            println!("✅ ffmpeg succeeded, reading extracted frame");
             // Read the extracted frame
             let frame_data = std::fs::read(&output_path)?;
+            println!("📸 Successfully read {} bytes from extracted frame", frame_data.len());
             // Clean up output file
             let _ = std::fs::remove_file(&output_path);
             Ok(frame_data)
         }
-        _ => {
+        Ok(result) => {
+            println!("❌ ffmpeg failed with exit code: {:?}", result.status.code());
+            println!("❌ ffmpeg stderr: {}", String::from_utf8_lossy(&result.stderr));
+            println!("❌ ffmpeg stdout: {}", String::from_utf8_lossy(&result.stdout));
             // Clean up output file if it exists
             let _ = std::fs::remove_file(&output_path);
             Err("FFmpeg frame extraction failed".into())
+        }
+        Err(e) => {
+            println!("❌ Failed to execute ffmpeg: {}", e);
+            // Clean up output file if it exists
+            let _ = std::fs::remove_file(&output_path);
+            Err(format!("Failed to execute ffmpeg: {}", e).into())
         }
     }
 }
