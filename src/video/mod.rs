@@ -50,8 +50,8 @@ fn extract_video_frame_native(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std:
         .index();
     
     let video_stream = input_context.stream(video_stream_index).unwrap();
-    let context_decoder = video_stream.codec().decoder().video()?;
-    let mut decoder = context_decoder;
+    let codec_context = ffmpeg::codec::Context::from_parameters(video_stream.parameters())?;
+    let mut decoder = codec_context.decoder().video()?;
     
     // Seek to 1 second
     let time_base = video_stream.time_base();
