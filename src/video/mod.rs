@@ -1,6 +1,5 @@
 use std::process::Command;
 use image::{RgbaImage, Rgba};
-use uuid::Uuid;
 
 #[cfg(feature = "video-thumbnails")]
 use ffmpeg_next as ffmpeg;
@@ -34,9 +33,14 @@ fn extract_video_frame_native(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std:
     // Initialize FFmpeg
     ffmpeg::init()?;
     
-    // Create a custom IO context from the video data
-    let mut input_data = video_data.to_vec();
-    let mut input_context = ffmpeg::format::input_with_buffer(&mut input_data)?;
+    // Write video data to a temporary file for now
+    // TODO: Implement proper memory-based input when the API supports it
+    let temp_dir = std::env::temp_dir();
+    let input_path = temp_dir.join(format!("video_input_{}.mp4", std::process::id()));
+    std::fs::write(&input_path, video_data)?;
+    
+    // Open input file
+    let mut input_context = ffmpeg::format::input(&input_path)?;
     
     // Find the best video stream
     let video_stream_index = input_context
@@ -46,16 +50,17 @@ fn extract_video_frame_native(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std:
         .index();
     
     let video_stream = input_context.stream(video_stream_index).unwrap();
-    let mut decoder = video_stream.codec().decoder().video()?;
+    let mut decoder = ffmpeg::codec::decoder::video(video_stream.codec().id())?;
+    decoder.set_parameters(video_stream.codec().parameters())?;
+    decoder.open(None)?;
     
-    // Seek to 1 second (convert to stream timebase)
+    // Seek to 1 second
     let time_base = video_stream.time_base();
-    let seek_timestamp = (1.0 / time_base.0 as f64 * time_base.1 as f64) as i64;
+    let seek_timestamp = (1.0 / f64::from(time_base.denominator()) * f64::from(time_base.numerator())) as i64;
     input_context.seek(seek_timestamp, ..seek_timestamp)?;
     
     // Decode frames until we get one
     let mut frame = ffmpeg::frame::Video::empty();
-    let mut packet = ffmpeg::packet::Packet::empty();
     
     for (stream, packet) in input_context.packets() {
         if stream.index() == video_stream_index {
@@ -79,10 +84,17 @@ fn extract_video_frame_native(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std:
                 // Convert RGB frame to JPEG bytes
                 let jpeg_data = rgb_frame_to_jpeg(&rgb_frame)?;
                 println!("📸 Native FFmpeg extracted {} bytes", jpeg_data.len());
+                
+                // Clean up temp file
+                let _ = std::fs::remove_file(&input_path);
+                
                 return Ok(jpeg_data);
             }
         }
     }
+    
+    // Clean up temp file
+    let _ = std::fs::remove_file(&input_path);
     
     Err("No frame could be extracted".into())
 }
@@ -129,8 +141,8 @@ fn extract_video_frame_system(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std:
     // Create temporary files
     let temp_dir = std::env::temp_dir();
     println!("📁 Using temp dir: {:?}", temp_dir);
-    let input_path = temp_dir.join(format!("video_input_{}.mp4", uuid::Uuid::new_v4()));
-    let output_path = temp_dir.join(format!("frame_output_{}.jpg", uuid::Uuid::new_v4()));
+    let input_path = temp_dir.join(format!("video_input_{}.mp4", std::process::id()));
+    let output_path = temp_dir.join(format!("frame_output_{}.jpg", std::process::id()));
     
     // Write video data to temporary file
     println!("📝 Writing {} bytes to temp file: {:?}", video_data.len(), input_path);
