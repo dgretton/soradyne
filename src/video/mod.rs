@@ -1,5 +1,4 @@
 use std::process::Command;
-use std::io::Write;
 use image::{RgbaImage, Rgba};
 
 /// Extract a video frame using FFmpeg

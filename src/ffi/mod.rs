@@ -10,7 +10,7 @@ use crate::album::album::*;
 use crate::album::operations::*;
 use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
-use crate::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, is_video_file, is_audio_file};
+use crate::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, create_video_placeholder_at_size};
 
 // Generate resized media based on type and resolution
 fn generate_resized_media(media_data: &[u8], max_size: u32, media_type: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
