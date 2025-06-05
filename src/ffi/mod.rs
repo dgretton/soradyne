@@ -282,15 +282,39 @@ pub extern "C" fn soradyne_get_album_items(album_id_ptr: *const c_char) -> *mut 
                 
                 if let Some(album) = system.albums.get(&album_id) {
                     let items: Vec<serde_json::Value> = album.items.iter().map(|(media_id, crdt)| {
-                        let state = crdt.reduce();
+                        let _state = crdt.reduce();
+                        
+                        // Extract metadata from operations
+                        let mut filename = format!("media_{}", media_id);
+                        let mut media_type = "image/jpeg";
+                        let mut size = 0u64;
+                        
+                        for op in crdt.ops() {
+                            if op.op_type == "add_media" {
+                                if let Some(f) = op.payload.get("filename").and_then(|v| v.as_str()) {
+                                    filename = f.to_string();
+                                }
+                                if let Some(t) = op.payload.get("media_type").and_then(|v| v.as_str()) {
+                                    media_type = match t {
+                                        "video" => "video/mp4",
+                                        "audio" => "audio/mpeg",
+                                        _ => "image/jpeg"
+                                    };
+                                }
+                                if let Some(s) = op.payload.get("size").and_then(|v| v.as_u64()) {
+                                    size = s;
+                                }
+                            }
+                        }
+                        
                         serde_json::json!({
                             "id": media_id,
-                            "filename": format!("media_{}", media_id),
-                            "media_type": "image/jpeg",
-                            "size": 0,
-                            "rotation": state.rotation,
-                            "has_crop": state.crop.is_some(),
-                            "markup_count": state.markup.len(),
+                            "filename": filename,
+                            "media_type": media_type,
+                            "size": size,
+                            "rotation": _state.rotation,
+                            "has_crop": _state.crop.is_some(),
+                            "markup_count": _state.markup.len(),
                             "comments": []
                         })
                     }).collect();
@@ -320,6 +344,8 @@ pub extern "C" fn soradyne_upload_media(album_id_ptr: *const c_char, file_path_p
                 
                 // Read file data
                 if let Ok(file_data) = std::fs::read(&file_path) {
+                    println!("Read file data: {} bytes", file_data.len());
+                    
                     let media_id = uuid::Uuid::new_v4().to_string();
                     let filename = PathBuf::from(&file_path)
                         .file_name()
@@ -331,35 +357,81 @@ pub extern "C" fn soradyne_upload_media(album_id_ptr: *const c_char, file_path_p
                     let block_manager = Arc::clone(&system.block_manager);
                     let runtime = Arc::clone(&system.runtime);
                     
-                    if let Ok(block_id) = runtime.block_on(async {
-                        block_manager.write_direct_block(&file_data).await
-                    }) {
-                        // Create operation
-                        let op = EditOp {
-                            op_id: uuid::Uuid::new_v4(),
-                            timestamp: chrono::Utc::now().timestamp() as u64,
-                            author: "flutter_user".to_string(),
-                            op_type: "add_media".to_string(),
-                            payload: serde_json::json!({
-                                "filename": filename,
-                                "block_id": hex::encode(block_id),
-                                "size": file_data.len(),
-                                "media_type": "image"
-                            }),
-                        };
-                        
-                        // Add to album
-                        if let Some(album) = system.albums.get_mut(&album_id) {
-                            let crdt = album.get_or_create(&media_id);
-                            if crdt.apply_local(op).is_ok() {
-                                // Save albums to persistent storage
-                                if let Err(e) = system.save_albums_to_blocks() {
-                                    eprintln!("Failed to save albums to blocks: {}", e);
+                    println!("Attempting to write {} bytes to block storage", file_data.len());
+                    
+                    // Check if file is too large for direct block storage
+                    const MAX_DIRECT_BLOCK_SIZE: usize = 1024 * 1024; // 1MB limit
+                    
+                    let result = if file_data.len() > MAX_DIRECT_BLOCK_SIZE {
+                        println!("File too large for direct block, using indirect storage");
+                        // For now, we'll use the block file system for large files
+                        runtime.block_on(async {
+                            use crate::storage::block_file::BlockFile;
+                            let block_file = BlockFile::new(Arc::clone(&block_manager));
+                            block_file.append(&file_data).await?;
+                            block_file.root_block().await.ok_or_else(|| 
+                                crate::flow::error::FlowError::PersistenceError("No root block".to_string())
+                            )
+                        })
+                    } else {
+                        runtime.block_on(async {
+                            block_manager.write_direct_block(&file_data).await
+                        })
+                    };
+                    
+                    match result {
+                        Ok(block_id) => {
+                            println!("Successfully wrote block: {}", hex::encode(block_id));
+                            // Detect media type from file extension
+                            let media_type = if filename.to_lowercase().ends_with(".mov") || 
+                                               filename.to_lowercase().ends_with(".mp4") ||
+                                               filename.to_lowercase().ends_with(".avi") {
+                                "video"
+                            } else if filename.to_lowercase().ends_with(".mp3") ||
+                                     filename.to_lowercase().ends_with(".wav") ||
+                                     filename.to_lowercase().ends_with(".flac") {
+                                "audio"
+                            } else {
+                                "image"
+                            };
+                            
+                            // Create operation
+                            let op = EditOp {
+                                op_id: uuid::Uuid::new_v4(),
+                                timestamp: chrono::Utc::now().timestamp() as u64,
+                                author: "flutter_user".to_string(),
+                                op_type: "add_media".to_string(),
+                                payload: serde_json::json!({
+                                    "filename": filename,
+                                    "block_id": hex::encode(block_id),
+                                    "size": file_data.len(),
+                                    "media_type": media_type
+                                }),
+                            };
+                            
+                            // Add to album
+                            if let Some(album) = system.albums.get_mut(&album_id) {
+                                let crdt = album.get_or_create(&media_id);
+                                if crdt.apply_local(op).is_ok() {
+                                    // Save albums to persistent storage
+                                    if let Err(e) = system.save_albums_to_blocks() {
+                                        eprintln!("Failed to save albums to blocks: {}", e);
+                                    }
+                                    println!("Successfully uploaded media: {}", media_id);
+                                    return 0; // Success
+                                } else {
+                                    println!("Failed to apply CRDT operation");
                                 }
-                                return 0; // Success
+                            } else {
+                                println!("Album not found: {}", album_id);
                             }
                         }
+                        Err(e) => {
+                            println!("Failed to write block: {}", e);
+                        }
                     }
+                } else {
+                    println!("Failed to read file: {}", file_path);
                 }
             }
         }
