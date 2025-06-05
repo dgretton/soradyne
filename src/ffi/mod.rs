@@ -67,22 +67,37 @@ impl AlbumSystem {
         // Try to load the albums index from a known location
         let index_file = self.data_dir.join("albums_index.txt");
         
+        println!("Looking for albums index at: {:?}", index_file);
+        
         if index_file.exists() {
+            println!("Albums index file exists, reading...");
             let index_content = std::fs::read_to_string(&index_file)?;
+            println!("Index content: {}", index_content.trim());
+            
             if let Ok(block_id_bytes) = hex::decode(index_content.trim()) {
                 if block_id_bytes.len() == 32 {
                     let mut block_id = [0u8; 32];
                     block_id.copy_from_slice(&block_id_bytes);
                     self.albums_index_block_id = Some(block_id);
                     
+                    println!("Loading albums index from block: {}", hex::encode(block_id));
+                    
                     // Load the albums index using the runtime
                     if let Ok(index_data) = self.runtime.block_on(async {
                         self.block_manager.read_block(&block_id).await
                     }) {
+                        println!("Successfully read index data: {} bytes", index_data.len());
+                        
                         if let Ok(index_json) = String::from_utf8(index_data) {
+                            println!("Index JSON: {}", index_json);
+                            
                             if let Ok(album_index) = serde_json::from_str::<HashMap<String, [u8; 32]>>(&index_json) {
+                                println!("Found {} albums in index", album_index.len());
+                                
                                 // Load each album from its block
                                 for (album_id, album_block_id) in album_index {
+                                    println!("Loading album {} from block {}", album_id, hex::encode(album_block_id));
+                                    
                                     if let Ok(album_data) = self.runtime.block_on(async {
                                         self.block_manager.read_block(&album_block_id).await
                                     }) {
@@ -90,18 +105,37 @@ impl AlbumSystem {
                                             if let Ok(mut album) = serde_json::from_str::<MediaAlbum>(&album_json) {
                                                 // Restore the block manager reference
                                                 album.block_manager = Some(Arc::clone(&self.block_manager));
-                                                self.albums.insert(album_id, album);
+                                                self.albums.insert(album_id.clone(), album);
+                                                println!("Successfully loaded album: {}", album_id);
+                                            } else {
+                                                println!("Failed to parse album JSON for {}", album_id);
                                             }
+                                        } else {
+                                            println!("Failed to decode album data as UTF-8 for {}", album_id);
                                         }
+                                    } else {
+                                        println!("Failed to read album block for {}", album_id);
                                     }
                                 }
                                 
                                 println!("Loaded {} albums from block storage", self.albums.len());
+                            } else {
+                                println!("Failed to parse albums index JSON");
                             }
+                        } else {
+                            println!("Failed to decode index data as UTF-8");
                         }
+                    } else {
+                        println!("Failed to read albums index block");
                     }
+                } else {
+                    println!("Invalid block ID length: {}", block_id_bytes.len());
                 }
+            } else {
+                println!("Failed to decode hex block ID");
             }
+        } else {
+            println!("Albums index file does not exist");
         }
         
         Ok(())
