@@ -35,7 +35,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_a_photo),
-            onPressed: _pickAndUploadImage,
+            onPressed: () {
+              print('Add photo button pressed');
+              _pickAndUploadImage();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -89,7 +92,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: _pickAndUploadImage,
+                    onPressed: () {
+                      print('Add Media button pressed');
+                      _pickAndUploadImage();
+                    },
                     icon: const Icon(Icons.add_a_photo),
                     label: const Text('Add Media'),
                   ),
@@ -120,21 +126,62 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _pickAndUploadImage,
+        onPressed: () {
+          print('Floating action button pressed');
+          _pickAndUploadImage();
+        },
         child: const Icon(Icons.add),
       ),
     );
   }
 
   void _pickAndUploadImage() async {
+    print('_pickAndUploadImage called');
+    
     try {
       final picker = ImagePicker();
+      print('ImagePicker created, attempting to pick image...');
+      
+      // Try multiple sources and show a dialog to let user choose
+      final result = await showDialog<ImageSource>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Select Image Source'),
+          content: const Text('Choose where to get your image from:'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, ImageSource.camera),
+              child: const Text('Camera'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, ImageSource.gallery),
+              child: const Text('Gallery'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+      
+      if (result == null) {
+        print('User cancelled image source selection');
+        return;
+      }
+      
+      print('User selected source: $result');
+      
       final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
+        source: result,
         imageQuality: 85,
       );
       
+      print('Image picker returned: ${pickedFile?.path ?? 'null'}');
+      
       if (pickedFile != null && mounted) {
+        print('Image picked successfully: ${pickedFile.path}');
+        
         // Show loading indicator
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -179,9 +226,14 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             );
           }
         }
+      } else {
+        print('No image was picked or widget not mounted');
       }
     } catch (e) {
       print('Error in _pickAndUploadImage: $e');
+      print('Error type: ${e.runtimeType}');
+      print('Stack trace: ${StackTrace.current}');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
