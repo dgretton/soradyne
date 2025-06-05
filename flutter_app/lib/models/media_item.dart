@@ -25,7 +25,11 @@ class MediaItem {
   String get mediumResUrl => 'http://localhost:3031/api/albums/album_id/media/$id/medium';
   String get highResUrl => 'http://localhost:3031/api/albums/album_id/media/$id/high';
 
-  factory MediaItem.fromJson(Map<String, dynamic> json) {
+  String thumbnailUrl(String albumId) => 'http://localhost:3030/api/albums/$albumId/media/$id/thumbnail';
+  String mediumResUrl(String albumId) => 'http://localhost:3030/api/albums/$albumId/media/$id/medium';
+  String highResUrl(String albumId) => 'http://localhost:3030/api/albums/$albumId/media/$id/high';
+
+  factory MediaItem.fromJson(Map<String, dynamic> json, String albumId) {
     MediaType type;
     switch (json['media_type']) {
       case 'video':
