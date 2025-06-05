@@ -1491,35 +1491,56 @@ fn is_audio_file(data: &[u8]) -> bool {
         return false;
     }
     
-    // Check for MP3 signature
+    // Skip very small files that are likely just metadata/headers
+    if data.len() < 1000 {
+        println!("Skipping very small file ({} bytes) - likely not real audio", data.len());
+        return false;
+    }
+    
+    // Check for MP3 signature - improved detection
     if data.len() >= 3 {
         // MP3 with ID3v2 tag
         if &data[0..3] == b"ID3" {
+            println!("Detected MP3 with ID3v2 tag");
             return true;
         }
-        // MP3 frame sync
-        if data.len() >= 2 && data[0] == 0xFF && (data[1] & 0xE0) == 0xE0 {
-            return true;
+    }
+    
+    // Check for MP3 frame sync pattern - scan first few KB for frame headers
+    for i in 0..(data.len().min(4096) - 1) {
+        if data[i] == 0xFF && (data[i + 1] & 0xE0) == 0xE0 {
+            // Additional validation: check if this looks like a valid MP3 frame header
+            if i + 4 < data.len() {
+                let header = u32::from_be_bytes([data[i], data[i+1], data[i+2], data[i+3]]);
+                if is_valid_mp3_header(header) {
+                    println!("Detected MP3 frame sync at offset {}", i);
+                    return true;
+                }
+            }
         }
     }
     
     // Check for FLAC signature
     if data.len() >= 4 && &data[0..4] == b"fLaC" {
+        println!("Detected FLAC file");
         return true;
     }
     
     // Check for OGG signature (Vorbis/Opus)
     if data.len() >= 4 && &data[0..4] == b"OggS" {
+        println!("Detected OGG file");
         return true;
     }
     
-    // Check for WAV signature
+    // Check for WAV signature - ensure it's a reasonable size
     if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"WAVE" {
+        println!("Detected WAV file");
         return true;
     }
     
     // Check for AIFF signature
     if data.len() >= 12 && &data[0..4] == b"FORM" && &data[8..12] == b"AIFF" {
+        println!("Detected AIFF file");
         return true;
     }
     
@@ -1530,27 +1551,21 @@ fn is_audio_file(data: &[u8]) -> bool {
             let brand = &data[8..12];
             // Common M4A brands
             if brand == b"M4A " || brand == b"mp42" || brand == b"isom" {
+                println!("Detected M4A file");
                 return true;
             }
         }
     }
     
-    // Check for common audio file extensions in filename if we had it
-    // For now, let's also check some other common audio patterns
-    
     // Check for AAC ADTS header
     if data.len() >= 2 && data[0] == 0xFF && (data[1] & 0xF0) == 0xF0 {
+        println!("Detected AAC ADTS file");
         return true;
     }
     
     // Check for AC3 signature
     if data.len() >= 2 && data[0] == 0x0B && data[1] == 0x77 {
-        return true;
-    }
-    
-    // For debugging: if it's a very small file that's not an image, assume it's audio
-    if data.len() < 1000 && !is_image_file(data) {
-        println!("Small file detected as audio (fallback): {} bytes", data.len());
+        println!("Detected AC3 file");
         return true;
     }
     
