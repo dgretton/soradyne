@@ -10,22 +10,7 @@ use crate::album::album::*;
 use crate::album::operations::*;
 use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
-use crate::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, create_video_placeholder_at_size};
-
-// Generate resized media based on type and resolution
-fn generate_resized_media(media_data: &[u8], max_size: u32, media_type: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    match media_type {
-        "video" => generate_video_at_size(media_data, max_size),
-        "audio" => generate_audio_at_size(media_data, max_size),
-        _ => generate_image_at_size(media_data, max_size),
-    }
-}
-
-
-fn generate_audio_at_size(_audio_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // For now, just create a placeholder - could implement waveform generation later
-    create_audio_placeholder_at_size(max_size)
-}
+use crate::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, create_video_placeholder_at_size, is_video_file, is_audio_file};
 
 // Create a simple placeholder image for videos when thumbnail generation fails
 fn create_video_placeholder() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
