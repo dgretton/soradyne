@@ -54,7 +54,6 @@ class SoradyneManager:
         self._add_if_exists('flutter_app/pubspec.yaml', self.yaml_files)
         self._add_if_exists('flutter_app/lib/main.dart', self.dart_files)
         self._add_if_exists('build_rust.sh', self.shell_files)
-        self._add_if_exists('README.md', self.markdown_files)
         
         # Find all source files in the source directory
         for root, dirs, files in os.walk(self.source_dir):
@@ -110,8 +109,6 @@ class SoradyneManager:
                     self._add_if_exists(rel_path, self.toml_files)
                 elif rel_path.endswith('.yaml') or rel_path.endswith('.yml'):
                     self._add_if_exists(rel_path, self.yaml_files)
-                elif rel_path.endswith('.md'):
-                    self._add_if_exists(rel_path, self.markdown_files)
                 else:
                     self._add_if_exists(rel_path, self.other_files)
         
