@@ -58,16 +58,16 @@ class MediaItem {
   // For videos, we should use thumbnail data for display
   List<int>? get displayData {
     if (mediaType == MediaType.video) {
-      return _thumbnailData ?? _imageData;
+      return _thumbnailData ?? imageData;
     }
-    return _imageData;
+    return imageData;
   }
   
   bool get hasDisplayData {
     if (mediaType == MediaType.video) {
-      return _thumbnailData != null || _imageData != null;
+      return _thumbnailData != null || imageData != null;
     }
-    return _imageData != null;
+    return imageData != null;
   }
 
   factory MediaItem.fromJson(Map<String, dynamic> json, String albumId) {
