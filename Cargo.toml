@@ -54,7 +54,7 @@ tempfile = "3.8"
 criterion = "0.5"
 
 [features]
-default = []
+default = ["video-thumbnails"]
 image-processing = ["base64"]
 video-thumbnails = ["ffmpeg-next"]
 

@@ -5,19 +5,120 @@ use image::{RgbaImage, Rgba};
 pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     println!("🎬 extract_video_frame called with {} bytes", video_data.len());
     
+    #[cfg(feature = "video-thumbnails")]
+    {
+        // Try native FFmpeg first
+        match extract_video_frame_native(video_data) {
+            Ok(frame_data) => {
+                println!("✅ Native FFmpeg extraction succeeded: {} bytes", frame_data.len());
+                return Ok(frame_data);
+            }
+            Err(e) => {
+                println!("⚠️ Native FFmpeg failed: {}, falling back to system call", e);
+            }
+        }
+    }
+    
+    // Fallback to system call
+    extract_video_frame_system(video_data)
+}
+
+#[cfg(feature = "video-thumbnails")]
+fn extract_video_frame_native(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    println!("🔧 Using native FFmpeg extraction");
+    
+    // Initialize FFmpeg
+    ffmpeg::init()?;
+    
+    // Create a custom IO context from the video data
+    let mut input_data = video_data.to_vec();
+    let mut input_context = ffmpeg::format::input_with_buffer(&mut input_data)?;
+    
+    // Find the best video stream
+    let video_stream_index = input_context
+        .streams()
+        .best(ffmpeg::media::Type::Video)
+        .ok_or("No video stream found")?
+        .index();
+    
+    let video_stream = input_context.stream(video_stream_index).unwrap();
+    let mut decoder = video_stream.codec().decoder().video()?;
+    
+    // Seek to 1 second (convert to stream timebase)
+    let time_base = video_stream.time_base();
+    let seek_timestamp = (1.0 / time_base.0 as f64 * time_base.1 as f64) as i64;
+    input_context.seek(seek_timestamp, ..seek_timestamp)?;
+    
+    // Decode frames until we get one
+    let mut frame = ffmpeg::frame::Video::empty();
+    let mut packet = ffmpeg::packet::Packet::empty();
+    
+    for (stream, packet) in input_context.packets() {
+        if stream.index() == video_stream_index {
+            decoder.send_packet(&packet)?;
+            
+            while decoder.receive_frame(&mut frame).is_ok() {
+                // Convert frame to RGB
+                let mut rgb_frame = ffmpeg::frame::Video::empty();
+                let mut converter = ffmpeg::software::scaling::context::Context::get(
+                    frame.format(),
+                    frame.width(),
+                    frame.height(),
+                    ffmpeg::format::Pixel::RGB24,
+                    frame.width(),
+                    frame.height(),
+                    ffmpeg::software::scaling::flag::Flags::BILINEAR,
+                )?;
+                
+                converter.run(&frame, &mut rgb_frame)?;
+                
+                // Convert RGB frame to JPEG bytes
+                let jpeg_data = rgb_frame_to_jpeg(&rgb_frame)?;
+                println!("📸 Native FFmpeg extracted {} bytes", jpeg_data.len());
+                return Ok(jpeg_data);
+            }
+        }
+    }
+    
+    Err("No frame could be extracted".into())
+}
+
+#[cfg(feature = "video-thumbnails")]
+fn rgb_frame_to_jpeg(frame: &ffmpeg::frame::Video) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{ImageBuffer, Rgb};
+    
+    let width = frame.width();
+    let height = frame.height();
+    let data = frame.data(0);
+    
+    // Create image buffer from RGB data
+    let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, data.to_vec())
+        .ok_or("Failed to create image buffer from frame data")?;
+    
+    // Encode as JPEG
+    let mut buffer = Vec::new();
+    let dynamic_img = image::DynamicImage::ImageRgb8(img);
+    dynamic_img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(85))?;
+    
+    Ok(buffer)
+}
+
+fn extract_video_frame_system(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    println!("🔧 Using system FFmpeg extraction");
+    
     // Check if ffmpeg is available
     let ffmpeg_check = Command::new("ffmpeg").arg("-version").output();
     match ffmpeg_check {
         Ok(output) if output.status.success() => {
-            println!("✅ ffmpeg is available");
+            println!("✅ System ffmpeg is available");
         }
         Ok(output) => {
-            println!("❌ ffmpeg version check failed: {}", String::from_utf8_lossy(&output.stderr));
-            return Err("ffmpeg version check failed".into());
+            println!("❌ System ffmpeg version check failed: {}", String::from_utf8_lossy(&output.stderr));
+            return Err("System ffmpeg version check failed".into());
         }
         Err(e) => {
-            println!("❌ ffmpeg not found: {}", e);
-            return Err(format!("ffmpeg not found: {}", e).into());
+            println!("❌ System ffmpeg not found: {}", e);
+            return Err(format!("System ffmpeg not found: {}", e).into());
         }
     }
     
@@ -33,7 +134,7 @@ pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
     println!("✅ Successfully wrote video data to temp file");
     
     // Extract frame at 1 second using FFmpeg
-    println!("🎬 Running ffmpeg to extract frame...");
+    println!("🎬 Running system ffmpeg to extract frame...");
     let output = Command::new("ffmpeg")
         .args(&[
             "-i", input_path.to_str().unwrap(),
@@ -50,7 +151,7 @@ pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
     
     match output {
         Ok(result) if result.status.success() => {
-            println!("✅ ffmpeg succeeded, reading extracted frame");
+            println!("✅ System ffmpeg succeeded, reading extracted frame");
             // Read the extracted frame
             let frame_data = std::fs::read(&output_path)?;
             println!("📸 Successfully read {} bytes from extracted frame", frame_data.len());
@@ -59,18 +160,18 @@ pub fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
             Ok(frame_data)
         }
         Ok(result) => {
-            println!("❌ ffmpeg failed with exit code: {:?}", result.status.code());
-            println!("❌ ffmpeg stderr: {}", String::from_utf8_lossy(&result.stderr));
-            println!("❌ ffmpeg stdout: {}", String::from_utf8_lossy(&result.stdout));
+            println!("❌ System ffmpeg failed with exit code: {:?}", result.status.code());
+            println!("❌ System ffmpeg stderr: {}", String::from_utf8_lossy(&result.stderr));
+            println!("❌ System ffmpeg stdout: {}", String::from_utf8_lossy(&result.stdout));
             // Clean up output file if it exists
             let _ = std::fs::remove_file(&output_path);
-            Err("FFmpeg frame extraction failed".into())
+            Err("System FFmpeg frame extraction failed".into())
         }
         Err(e) => {
-            println!("❌ Failed to execute ffmpeg: {}", e);
+            println!("❌ Failed to execute system ffmpeg: {}", e);
             // Clean up output file if it exists
             let _ = std::fs::remove_file(&output_path);
-            Err(format!("Failed to execute ffmpeg: {}", e).into())
+            Err(format!("Failed to execute system ffmpeg: {}", e).into())
         }
     }
 }
