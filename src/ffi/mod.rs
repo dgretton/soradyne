@@ -255,7 +255,7 @@ pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_
                         let state = crdt.reduce();
                         
                         // Get the block_id from the first operation's payload
-                        if let Some(op) = crdt.ops.first() {
+                        if let Some(op) = crdt.ops().first() {
                             if let Some(block_id_hex) = op.payload.get("block_id").and_then(|v| v.as_str()) {
                                 if let Ok(block_id_bytes) = hex::decode(block_id_hex) {
                                     if block_id_bytes.len() == 32 {
