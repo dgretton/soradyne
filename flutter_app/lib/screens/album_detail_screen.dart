@@ -121,7 +121,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                             _pickAndUploadImage();
                           },
                           icon: const Icon(Icons.add_a_photo),
-                          label: const Text('Browse Files'),
+                          label: const Text('Add Media'),
                         ),
                       ],
                     ),
@@ -181,7 +181,60 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   void _pickAndUploadImage() async {
     print('_pickAndUploadImage called');
-    _pickMedia(MediaType.image, ImageSource.gallery);
+    _showMediaPickerDialog();
+  }
+
+  void _showMediaPickerDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickMedia(MediaType.image, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose Photos'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickMedia(MediaType.image, ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam),
+              title: const Text('Record Video'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickMedia(MediaType.video, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library),
+              title: const Text('Choose Videos'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickMedia(MediaType.video, ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.audiotrack),
+              title: const Text('Choose Audio'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAudioFile();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _pickMedia(MediaType mediaType, ImageSource source) async {
