@@ -6,3 +6,4 @@ pub mod network;
 pub mod types;
 pub mod storage;
 pub mod album;
+pub mod ffi;
