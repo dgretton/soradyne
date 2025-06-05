@@ -79,9 +79,14 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
     );
     
     if (mounted && data != null) {
-      setState(() {
-        _currentImageData = Uint8List.fromList(data);
-        _currentResolution = resolution;
+      // Use post-frame callback to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _currentImageData = Uint8List.fromList(data);
+            _currentResolution = resolution;
+          });
+        }
       });
     }
   }

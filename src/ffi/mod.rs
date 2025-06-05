@@ -10,7 +10,7 @@ use crate::album::album::*;
 use crate::album::operations::*;
 use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
-use crate::album::renderer::MediaRenderer;
+use crate::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, is_video_file, is_audio_file};
 
 // Generate resized media based on type and resolution
 fn generate_resized_media(media_data: &[u8], max_size: u32, media_type: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -708,60 +708,32 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                         let block_manager = Arc::clone(&system.block_manager);
                                         let runtime = Arc::clone(&system.runtime);
                                         
-                                        // Check if this is a video file
+                                        // Get media type from operation payload
                                         let media_type = op.payload.get("media_type")
                                             .and_then(|v| v.as_str())
                                             .unwrap_or("image");
                                         
-                                        if media_type == "video" {
-                                            // For videos, try to generate a thumbnail, but fall back to a placeholder
-                                            if let Ok(video_data) = runtime.block_on(async {
-                                                block_manager.read_block(&block_id).await
-                                            }) {
-                                                // Generate resized video thumbnail/frame
-                                                if let Ok(resized_data) = generate_resized_media(&video_data, max_size, media_type) {
-                                                    let boxed_data = resized_data.into_boxed_slice();
-                                                    let len = boxed_data.len();
-                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                
-                                                    *data_ptr = ptr;
-                                                    *size_ptr = len;
-                                                
-                                                    return 0; // Success
-                                                }
+                                        // Read the media data from block storage
+                                        if let Ok(media_data) = runtime.block_on(async {
+                                            block_manager.read_block(&block_id).await
+                                        }) {
+                                            println!("Successfully read {} bytes from block storage for media {}", media_data.len(), media_id);
                                             
-                                                // If generation failed, create a simple placeholder image
-                                                println!("Creating placeholder image for video {} at size {}", media_id, max_size);
-                                                if let Ok(placeholder_data) = create_video_placeholder_at_size(max_size) {
-                                                    let boxed_data = placeholder_data.into_boxed_slice();
-                                                    let len = boxed_data.len();
-                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                
-                                                    *data_ptr = ptr;
-                                                    *size_ptr = len;
-                                                
-                                                    return 0; // Success with placeholder
-                                                }
+                                            // Use shared video processing logic for consistent results
+                                            if let Ok(resized_data) = generate_resized_media(&media_data, max_size, media_type) {
+                                                let boxed_data = resized_data.into_boxed_slice();
+                                                let len = boxed_data.len();
+                                                let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                            
+                                                *data_ptr = ptr;
+                                                *size_ptr = len;
+                                            
+                                                return 0; // Success
                                             }
-                                        } else {
-                                            // For images and other media, return resized data
-                                            if let Ok(data) = runtime.block_on(async {
-                                                block_manager.read_block(&block_id).await
-                                            }) {
-                                                // Generate resized image
-                                                if let Ok(resized_data) = generate_resized_media(&data, max_size, media_type) {
-                                                    let boxed_data = resized_data.into_boxed_slice();
-                                                    let len = boxed_data.len();
-                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                
-                                                    *data_ptr = ptr;
-                                                    *size_ptr = len;
-                                                
-                                                    return 0; // Success
-                                                }
                                             
-                                                // Fall back to original data if resizing fails
-                                                let boxed_data = data.into_boxed_slice();
+                                            // Fall back to original data if resizing fails (for images)
+                                            if media_type != "video" && media_type != "audio" {
+                                                let boxed_data = media_data.into_boxed_slice();
                                                 let len = boxed_data.len();
                                                 let ptr = Box::into_raw(boxed_data) as *mut u8;
                                             

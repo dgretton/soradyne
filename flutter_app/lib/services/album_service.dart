@@ -213,7 +213,8 @@ class AlbumService extends ChangeNotifier {
               item.setHighData(data);
               break;
           }
-          notifyListeners();
+          // Don't notify listeners here to avoid setState during build
+          // The UI will update when the individual widget receives the data
         }
         
         return data;

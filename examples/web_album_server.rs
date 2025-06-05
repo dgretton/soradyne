@@ -18,6 +18,7 @@ use soradyne::album::operations::*;
 use soradyne::album::crdt::*;
 use soradyne::storage::block_manager::BlockManager;
 use soradyne::storage::block_file::BlockFile;
+use soradyne::video::{generate_video_at_size, generate_image_at_size, create_audio_placeholder_at_size, is_video_file, is_audio_file};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CreateAlbumRequest {
@@ -1431,50 +1432,6 @@ fn generate_resized_media(media_data: &[u8], max_size: u32) -> Result<Vec<u8>, B
     }
 }
 
-fn is_video_file(data: &[u8]) -> bool {
-    if data.len() < 12 {
-        return false;
-    }
-    
-    // Check for common video file signatures
-    // MP4/MOV files start with specific patterns
-    if data.len() >= 8 {
-        // Check for MP4 ftyp box
-        if &data[4..8] == b"ftyp" {
-            return true;
-        }
-    }
-    
-    // Check for WebM signature
-    if data.len() >= 4 && &data[0..4] == b"\x1A\x45\xDF\xA3" {
-        return true;
-    }
-    
-    // Check for AVI signature
-    if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"AVI " {
-        return true;
-    }
-    
-    // Check for QuickTime/MOV signature
-    if data.len() >= 8 && &data[4..8] == b"moov" {
-        return true;
-    }
-    
-    // Check for additional MP4 variants
-    if data.len() >= 12 {
-        let ftyp_slice = &data[4..8];
-        if ftyp_slice == b"ftyp" {
-            let brand = &data[8..12];
-            // Common MP4 brands
-            if brand == b"isom" || brand == b"mp41" || brand == b"mp42" || 
-               brand == b"avc1" || brand == b"dash" || brand == b"iso2" {
-                return true;
-            }
-        }
-    }
-    
-    false
-}
 
 fn is_image_file(data: &[u8]) -> bool {
     if data.len() < 4 {
@@ -1514,198 +1471,15 @@ fn is_image_file(data: &[u8]) -> bool {
     false
 }
 
-fn is_audio_file(data: &[u8]) -> bool {
-    if data.len() < 4 {
-        return false;
-    }
-    
-    // Skip very small files that are likely just metadata/headers
-    if data.len() < 1000 {
-        println!("Skipping very small file ({} bytes) - likely not real audio", data.len());
-        return false;
-    }
-    
-    // Check for MP3 signature - improved detection
-    if data.len() >= 3 {
-        // MP3 with ID3v2 tag
-        if &data[0..3] == b"ID3" {
-            println!("Detected MP3 with ID3v2 tag");
-            return true;
-        }
-    }
-    
-    // Check for MP3 frame sync pattern - scan first few KB for frame headers
-    for i in 0..(data.len().min(4096) - 1) {
-        if data[i] == 0xFF && (data[i + 1] & 0xE0) == 0xE0 {
-            // Additional validation: check if this looks like a valid MP3 frame header
-            if i + 4 < data.len() {
-                let header = u32::from_be_bytes([data[i], data[i+1], data[i+2], data[i+3]]);
-                if is_valid_mp3_header(header) {
-                    println!("Detected MP3 frame sync at offset {}", i);
-                    return true;
-                }
-            }
-        }
-    }
-    
-    // Check for FLAC signature
-    if data.len() >= 4 && &data[0..4] == b"fLaC" {
-        println!("Detected FLAC file");
-        return true;
-    }
-    
-    // Check for OGG signature (Vorbis/Opus)
-    if data.len() >= 4 && &data[0..4] == b"OggS" {
-        println!("Detected OGG file");
-        return true;
-    }
-    
-    // Check for WAV signature - ensure it's a reasonable size
-    if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"WAVE" {
-        println!("Detected WAV file");
-        return true;
-    }
-    
-    // Check for AIFF signature
-    if data.len() >= 12 && &data[0..4] == b"FORM" && &data[8..12] == b"AIFF" {
-        println!("Detected AIFF file");
-        return true;
-    }
-    
-    // Check for M4A (AAC in MP4 container)
-    if data.len() >= 12 {
-        let ftyp_slice = &data[4..8];
-        if ftyp_slice == b"ftyp" {
-            let brand = &data[8..12];
-            // Common M4A brands
-            if brand == b"M4A " || brand == b"mp42" || brand == b"isom" {
-                println!("Detected M4A file");
-                return true;
-            }
-        }
-    }
-    
-    // Check for AAC ADTS header
-    if data.len() >= 2 && data[0] == 0xFF && (data[1] & 0xF0) == 0xF0 {
-        println!("Detected AAC ADTS file");
-        return true;
-    }
-    
-    // Check for AC3 signature
-    if data.len() >= 2 && data[0] == 0x0B && data[1] == 0x77 {
-        println!("Detected AC3 file");
-        return true;
-    }
-    
-    false
-}
-
-fn is_valid_mp3_header(header: u32) -> bool {
-    // Check MP3 frame header validity
-    // Bits 31-21: Frame sync (all 1s) - already checked
-    // Bits 20-19: MPEG Audio version ID
-    let version = (header >> 19) & 0x3;
-    if version == 1 { return false; } // Reserved
-    
-    // Bits 18-17: Layer description
-    let layer = (header >> 17) & 0x3;
-    if layer == 0 { return false; } // Reserved
-    
-    // Bits 15-12: Bitrate index
-    let bitrate = (header >> 12) & 0xF;
-    if bitrate == 0 || bitrate == 15 { return false; } // Free or bad bitrate
-    
-    // Bits 11-10: Sampling rate frequency index
-    let sample_rate = (header >> 10) & 0x3;
-    if sample_rate == 3 { return false; } // Reserved
-    
-    true
-}
 
 fn generate_image_thumbnail(image_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     generate_image_at_size(image_data, 150)
-}
-
-fn generate_image_at_size(image_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Load the image from the data
-    let img = image::load_from_memory(image_data)?;
-    
-    // Resize while maintaining aspect ratio
-    let resized = img.thumbnail(max_size, max_size);
-    
-    // Use higher quality for larger sizes
-    let quality = match max_size {
-        0..=200 => 70,
-        201..=800 => 85,
-        _ => 95,
-    };
-    
-    // Encode as JPEG
-    let mut buffer = Vec::new();
-    resized.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(quality))?;
-    
-    Ok(buffer)
 }
 
 fn generate_video_thumbnail(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     generate_video_at_size(video_data, 150)
 }
 
-fn generate_video_at_size(video_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Try to extract a frame using FFmpeg first
-    if let Ok(frame_data) = extract_video_frame(video_data) {
-        // Generate resized image from the extracted frame
-        return generate_image_at_size(&frame_data, max_size);
-    }
-    
-    // Fall back to placeholder if FFmpeg extraction fails
-    create_video_placeholder_at_size(max_size)
-}
-
-fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Try using FFmpeg command line tool to extract a frame
-    // This is a simpler approach than using the FFmpeg Rust bindings
-    
-    use std::process::Command;
-    
-    // Create temporary files
-    let temp_dir = std::env::temp_dir();
-    let input_path = temp_dir.join(format!("video_input_{}.mp4", uuid::Uuid::new_v4()));
-    let output_path = temp_dir.join(format!("frame_output_{}.jpg", uuid::Uuid::new_v4()));
-    
-    // Write video data to temporary file
-    std::fs::write(&input_path, video_data)?;
-    
-    // Extract frame at 1 second using FFmpeg
-    let output = Command::new("ffmpeg")
-        .args(&[
-            "-i", input_path.to_str().unwrap(),
-            "-ss", "00:00:01.000",  // Seek to 1 second
-            "-vframes", "1",        // Extract 1 frame
-            "-q:v", "2",           // High quality
-            "-y",                  // Overwrite output
-            output_path.to_str().unwrap()
-        ])
-        .output();
-    
-    // Clean up input file
-    let _ = std::fs::remove_file(&input_path);
-    
-    match output {
-        Ok(result) if result.status.success() => {
-            // Read the extracted frame
-            let frame_data = std::fs::read(&output_path)?;
-            // Clean up output file
-            let _ = std::fs::remove_file(&output_path);
-            Ok(frame_data)
-        }
-        _ => {
-            // Clean up output file if it exists
-            let _ = std::fs::remove_file(&output_path);
-            Err("FFmpeg frame extraction failed".into())
-        }
-    }
-}
 
 fn extract_audio_waveform(audio_data: &[u8]) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     // Use FFmpeg to extract raw audio samples
