@@ -12,8 +12,177 @@ use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;
 use crate::album::renderer::MediaRenderer;
 
+// Generate resized media based on type and resolution
+fn generate_resized_media(media_data: &[u8], max_size: u32, media_type: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    match media_type {
+        "video" => generate_video_at_size(media_data, max_size),
+        "audio" => generate_audio_at_size(media_data, max_size),
+        _ => generate_image_at_size(media_data, max_size),
+    }
+}
+
+fn generate_image_at_size(image_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Load the image from the data
+    let img = image::load_from_memory(image_data)?;
+    
+    // Resize while maintaining aspect ratio
+    let resized = img.thumbnail(max_size, max_size);
+    
+    // Use higher quality for larger sizes
+    let quality = match max_size {
+        0..=200 => 70,
+        201..=800 => 85,
+        _ => 95,
+    };
+    
+    // Encode as JPEG
+    let mut buffer = Vec::new();
+    resized.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Jpeg(quality))?;
+    
+    Ok(buffer)
+}
+
+fn generate_video_at_size(video_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Try to extract a frame using FFmpeg first
+    if let Ok(frame_data) = extract_video_frame(video_data) {
+        // Generate resized image from the extracted frame
+        return generate_image_at_size(&frame_data, max_size);
+    }
+    
+    // Fall back to placeholder if FFmpeg extraction fails
+    create_video_placeholder_at_size(max_size)
+}
+
+fn extract_video_frame(video_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Create temporary files
+    let temp_dir = std::env::temp_dir();
+    let input_path = temp_dir.join(format!("video_input_{}.mp4", uuid::Uuid::new_v4()));
+    let output_path = temp_dir.join(format!("frame_output_{}.jpg", uuid::Uuid::new_v4()));
+    
+    // Write video data to temporary file
+    std::fs::write(&input_path, video_data)?;
+    
+    // Extract frame at 1 second using FFmpeg
+    let output = std::process::Command::new("ffmpeg")
+        .args(&[
+            "-i", input_path.to_str().unwrap(),
+            "-ss", "00:00:01.000",  // Seek to 1 second
+            "-vframes", "1",        // Extract 1 frame
+            "-q:v", "2",           // High quality
+            "-y",                  // Overwrite output
+            output_path.to_str().unwrap()
+        ])
+        .output();
+    
+    // Clean up input file
+    let _ = std::fs::remove_file(&input_path);
+    
+    match output {
+        Ok(result) if result.status.success() => {
+            // Read the extracted frame
+            let frame_data = std::fs::read(&output_path)?;
+            // Clean up output file
+            let _ = std::fs::remove_file(&output_path);
+            Ok(frame_data)
+        }
+        _ => {
+            // Clean up output file if it exists
+            let _ = std::fs::remove_file(&output_path);
+            Err("FFmpeg frame extraction failed".into())
+        }
+    }
+}
+
+fn generate_audio_at_size(audio_data: &[u8], max_size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // For now, just create a placeholder - could implement waveform generation later
+    create_audio_placeholder_at_size(max_size)
+}
+
+fn create_video_placeholder_at_size(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbaImage, Rgba};
+    
+    // Create a size x size gray image with a play icon
+    let mut img = RgbaImage::new(size, size);
+    let gray = Rgba([128, 128, 128, 255]);
+    let white = Rgba([255, 255, 255, 255]);
+    
+    // Fill with gray
+    for pixel in img.pixels_mut() {
+        *pixel = gray;
+    }
+    
+    // Draw a simple play triangle in the center
+    let center_x = size / 2;
+    let center_y = size / 2;
+    let triangle_size = size / 5;
+    
+    // Simple triangle points
+    for y in (center_y.saturating_sub(triangle_size))..(center_y + triangle_size) {
+        for x in (center_x.saturating_sub(triangle_size/2))..(center_x + triangle_size) {
+            if x < size && y < size {
+                // Simple triangle shape
+                let dx = x as i32 - center_x as i32;
+                let dy = y as i32 - center_y as i32;
+                if dx > -(triangle_size as i32)/2 && dx < triangle_size as i32 && dy.abs() < triangle_size as i32 - dx.abs()/2 {
+                    img.put_pixel(x, y, white);
+                }
+            }
+        }
+    }
+    
+    // Encode as PNG
+    let mut buffer = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    
+    Ok(buffer)
+}
+
+fn create_audio_placeholder_at_size(size: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use image::{RgbaImage, Rgba};
+    
+    // Create a size x size image with audio waveform visualization
+    let mut img = RgbaImage::new(size, size);
+    let dark_bg = Rgba([20, 25, 35, 255]);
+    let waveform_color = Rgba([100, 150, 255, 255]);
+    
+    // Fill with dark background
+    for pixel in img.pixels_mut() {
+        *pixel = dark_bg;
+    }
+    
+    // Draw simplified waveform bars
+    let bar_width = (size / 40).max(2);
+    let bar_spacing = (size / 25).max(3);
+    let num_bars = size / bar_spacing;
+    let center_y = size / 2;
+    
+    for i in 0..num_bars {
+        let bar_x = i * bar_spacing + size / 15;
+        let bar_height = (size / 8) + ((i * 7) % (size / 4)); // Varying heights
+        let bar_top = center_y.saturating_sub(bar_height / 2);
+        let bar_bottom = center_y + bar_height / 2;
+        
+        for y in bar_top..bar_bottom.min(size) {
+            for x in bar_x..(bar_x + bar_width).min(size) {
+                img.put_pixel(x, y, waveform_color);
+            }
+        }
+    }
+    
+    // Encode as PNG
+    let mut buffer = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    
+    Ok(buffer)
+}
+
 // Create a simple placeholder image for videos when thumbnail generation fails
 fn create_video_placeholder() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    create_video_placeholder_at_size(150)
+}
+
+// Legacy function - kept for compatibility
+fn _create_video_placeholder_legacy() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use image::{RgbaImage, Rgba};
     
     // Create a 150x150 gray image with a play icon
@@ -491,9 +660,33 @@ pub extern "C" fn soradyne_free_string(ptr: *mut c_char) {
     }
 }
 
-// FFI function to get media data (returns raw bytes for images, thumbnails for videos)
+// FFI function to get media thumbnail (150px)
+#[no_mangle]
+pub extern "C" fn soradyne_get_media_thumbnail(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize) -> i32 {
+    get_media_at_resolution(album_id_ptr, media_id_ptr, data_ptr, size_ptr, 150)
+}
+
+// FFI function to get media medium resolution (600px)
+#[no_mangle]
+pub extern "C" fn soradyne_get_media_medium(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize) -> i32 {
+    get_media_at_resolution(album_id_ptr, media_id_ptr, data_ptr, size_ptr, 600)
+}
+
+// FFI function to get media high resolution (1200px)
+#[no_mangle]
+pub extern "C" fn soradyne_get_media_high(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize) -> i32 {
+    get_media_at_resolution(album_id_ptr, media_id_ptr, data_ptr, size_ptr, 1200)
+}
+
+// FFI function to get media data (returns raw bytes for images, thumbnails for videos) - kept for compatibility
 #[no_mangle]
 pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize) -> i32 {
+    // Default to medium resolution for backward compatibility
+    get_media_at_resolution(album_id_ptr, media_id_ptr, data_ptr, size_ptr, 600)
+}
+
+// Internal function to get media at specific resolution
+fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_char, data_ptr: *mut *mut u8, size_ptr: *mut usize, max_size: u32) -> i32 {
     unsafe {
         if let Some(system) = &ALBUM_SYSTEM {
             if let Ok(system) = system.lock() {
@@ -525,68 +718,56 @@ pub extern "C" fn soradyne_get_media_data(album_id_ptr: *const c_char, media_id_
                                             if let Ok(video_data) = runtime.block_on(async {
                                                 block_manager.read_block(&block_id).await
                                             }) {
-                                                // Write video data to a temporary file
-                                                let temp_dir = std::env::temp_dir();
-                                                let temp_video_path = temp_dir.join(format!("video_{}.mov", media_id));
+                                                // Generate resized video thumbnail/frame
+                                                if let Ok(resized_data) = generate_resized_media(&video_data, max_size, media_type) {
+                                                    let boxed_data = resized_data.into_boxed_slice();
+                                                    let len = boxed_data.len();
+                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
                                                 
-                                                println!("Attempting to write video file to: {:?}", temp_video_path);
+                                                    *data_ptr = ptr;
+                                                    *size_ptr = len;
                                                 
-                                                if let Err(e) = std::fs::write(&temp_video_path, &video_data) {
-                                                    println!("Failed to write temporary video file: {}", e);
-                                                } else {
-                                                    println!("Successfully wrote {} bytes to temp file", video_data.len());
-                                                    
-                                                    // Generate thumbnail using ffmpeg
-                                                    match MediaRenderer::generate_video_thumbnail(&temp_video_path, 1.0) {
-                                                        Ok(thumbnail_data) => {
-                                                            println!("Successfully generated thumbnail: {} bytes", thumbnail_data.len());
-                                                            // Clean up temp file
-                                                            let _ = std::fs::remove_file(&temp_video_path);
-                                                            
-                                                            // Allocate memory for the thumbnail data
-                                                            let boxed_data = thumbnail_data.into_boxed_slice();
-                                                            let len = boxed_data.len();
-                                                            let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                            
-                                                            *data_ptr = ptr;
-                                                            *size_ptr = len;
-                                                            
-                                                            return 0; // Success
-                                                        }
-                                                        Err(e) => {
-                                                            println!("Failed to generate video thumbnail: {}", e);
-                                                            // Clean up temp file on error
-                                                            let _ = std::fs::remove_file(&temp_video_path);
-                                                        }
-                                                    }
+                                                    return 0; // Success
                                                 }
-                                                
-                                                // If thumbnail generation failed, create a simple placeholder image
-                                                println!("Creating placeholder image for video {}", media_id);
-                                                if let Ok(placeholder_data) = create_video_placeholder() {
+                                            
+                                                // If generation failed, create a simple placeholder image
+                                                println!("Creating placeholder image for video {} at size {}", media_id, max_size);
+                                                if let Ok(placeholder_data) = create_video_placeholder_at_size(max_size) {
                                                     let boxed_data = placeholder_data.into_boxed_slice();
                                                     let len = boxed_data.len();
                                                     let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                    
+                                                
                                                     *data_ptr = ptr;
                                                     *size_ptr = len;
-                                                    
+                                                
                                                     return 0; // Success with placeholder
                                                 }
                                             }
                                         } else {
-                                            // For images and other media, return raw data
+                                            // For images and other media, return resized data
                                             if let Ok(data) = runtime.block_on(async {
                                                 block_manager.read_block(&block_id).await
                                             }) {
-                                                // Allocate memory for the data
+                                                // Generate resized image
+                                                if let Ok(resized_data) = generate_resized_media(&data, max_size, media_type) {
+                                                    let boxed_data = resized_data.into_boxed_slice();
+                                                    let len = boxed_data.len();
+                                                    let ptr = Box::into_raw(boxed_data) as *mut u8;
+                                                
+                                                    *data_ptr = ptr;
+                                                    *size_ptr = len;
+                                                
+                                                    return 0; // Success
+                                                }
+                                            
+                                                // Fall back to original data if resizing fails
                                                 let boxed_data = data.into_boxed_slice();
                                                 let len = boxed_data.len();
                                                 let ptr = Box::into_raw(boxed_data) as *mut u8;
-                                                
+                                            
                                                 *data_ptr = ptr;
                                                 *size_ptr = len;
-                                                
+                                            
                                                 return 0; // Success
                                             }
                                         }

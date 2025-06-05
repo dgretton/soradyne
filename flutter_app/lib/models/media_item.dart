@@ -21,23 +21,39 @@ class MediaItem {
     this.comments = const [],
   });
 
-  // Image data will be loaded via FFI instead of URLs
-  List<int>? _imageData;
+  // Progressive image data will be loaded via FFI at different resolutions
   List<int>? _thumbnailData;
-  
-  void setImageData(List<int> data) {
-    _imageData = data;
-  }
+  List<int>? _mediumData;
+  List<int>? _highData;
   
   void setThumbnailData(List<int> data) {
     _thumbnailData = data;
   }
   
-  List<int>? get imageData => _imageData;
-  List<int>? get thumbnailData => _thumbnailData;
+  void setMediumData(List<int> data) {
+    _mediumData = data;
+  }
   
-  bool get hasImageData => _imageData != null;
+  void setHighData(List<int> data) {
+    _highData = data;
+  }
+  
+  List<int>? get thumbnailData => _thumbnailData;
+  List<int>? get mediumData => _mediumData;
+  List<int>? get highData => _highData;
+  
   bool get hasThumbnailData => _thumbnailData != null;
+  bool get hasMediumData => _mediumData != null;
+  bool get hasHighData => _highData != null;
+  
+  // Legacy compatibility
+  List<int>? get imageData => _highData ?? _mediumData ?? _thumbnailData;
+  bool get hasImageData => hasHighData || hasMediumData || hasThumbnailData;
+  
+  void setImageData(List<int> data) {
+    // For backward compatibility, set as high resolution
+    setHighData(data);
+  }
   
   // For videos, we should use thumbnail data for display
   List<int>? get displayData {

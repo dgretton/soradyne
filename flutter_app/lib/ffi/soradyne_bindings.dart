@@ -24,6 +24,15 @@ typedef SoradyneFreeString = void Function(Pointer<Utf8>);
 typedef SoradyneGetMediaDataC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
 typedef SoradyneGetMediaData = int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
 
+typedef SoradyneGetMediaThumbnailC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+typedef SoradyneGetMediaThumbnail = int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+
+typedef SoradyneGetMediaMediumC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+typedef SoradyneGetMediaMedium = int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+
+typedef SoradyneGetMediaHighC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+typedef SoradyneGetMediaHigh = int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Pointer<Uint8>>, Pointer<Size>);
+
 typedef SoradyneFreeMediaDataC = Void Function(Pointer<Uint8>, Size);
 typedef SoradyneFreeMediaData = void Function(Pointer<Uint8>, int);
 
@@ -38,6 +47,9 @@ class SoradyneBindings {
   late final SoradyneGetAlbumItems _getAlbumItems;
   late final SoradyneUploadMedia _uploadMedia;
   late final SoradyneGetMediaData _getMediaData;
+  late final SoradyneGetMediaThumbnail _getMediaThumbnail;
+  late final SoradyneGetMediaMedium _getMediaMedium;
+  late final SoradyneGetMediaHigh _getMediaHigh;
   late final SoradyneFreeMediaData _freeMediaData;
   late final SoradyneFreeString _freeString;
   late final SoradyneCleanup _cleanup;
@@ -66,6 +78,9 @@ class SoradyneBindings {
     _getAlbumItems = _lib.lookupFunction<SoradyneGetAlbumItemsC, SoradyneGetAlbumItems>('soradyne_get_album_items');
     _uploadMedia = _lib.lookupFunction<SoradyneUploadMediaC, SoradyneUploadMedia>('soradyne_upload_media');
     _getMediaData = _lib.lookupFunction<SoradyneGetMediaDataC, SoradyneGetMediaData>('soradyne_get_media_data');
+    _getMediaThumbnail = _lib.lookupFunction<SoradyneGetMediaThumbnailC, SoradyneGetMediaThumbnail>('soradyne_get_media_thumbnail');
+    _getMediaMedium = _lib.lookupFunction<SoradyneGetMediaMediumC, SoradyneGetMediaMedium>('soradyne_get_media_medium');
+    _getMediaHigh = _lib.lookupFunction<SoradyneGetMediaHighC, SoradyneGetMediaHigh>('soradyne_get_media_high');
     _freeMediaData = _lib.lookupFunction<SoradyneFreeMediaDataC, SoradyneFreeMediaData>('soradyne_free_media_data');
     _freeString = _lib.lookupFunction<SoradyneFreeStringC, SoradyneFreeString>('soradyne_free_string');
     _cleanup = _lib.lookupFunction<SoradyneCleanupC, SoradyneCleanup>('soradyne_cleanup');
@@ -116,7 +131,23 @@ class SoradyneBindings {
   }
 
   List<int>? getMediaData(String albumId, String mediaId) {
-    print('FFI getMediaData called with albumId: $albumId, mediaId: $mediaId');
+    return _getMediaAtResolution(albumId, mediaId, _getMediaData, 'getMediaData');
+  }
+
+  List<int>? getMediaThumbnail(String albumId, String mediaId) {
+    return _getMediaAtResolution(albumId, mediaId, _getMediaThumbnail, 'getMediaThumbnail');
+  }
+
+  List<int>? getMediaMedium(String albumId, String mediaId) {
+    return _getMediaAtResolution(albumId, mediaId, _getMediaMedium, 'getMediaMedium');
+  }
+
+  List<int>? getMediaHigh(String albumId, String mediaId) {
+    return _getMediaAtResolution(albumId, mediaId, _getMediaHigh, 'getMediaHigh');
+  }
+
+  List<int>? _getMediaAtResolution(String albumId, String mediaId, Function nativeFunction, String functionName) {
+    print('FFI $functionName called with albumId: $albumId, mediaId: $mediaId');
     
     final albumIdPtr = albumId.toNativeUtf8();
     final mediaIdPtr = mediaId.toNativeUtf8();
@@ -124,9 +155,9 @@ class SoradyneBindings {
     final sizePtr = malloc<Size>();
     
     try {
-      print('Calling native getMediaData function...');
-      final result = _getMediaData(albumIdPtr, mediaIdPtr, dataPtrPtr, sizePtr);
-      print('Native getMediaData returned: $result');
+      print('Calling native $functionName function...');
+      final result = nativeFunction(albumIdPtr, mediaIdPtr, dataPtrPtr, sizePtr);
+      print('Native $functionName returned: $result');
       
       if (result == 0) {
         final dataPtr = dataPtrPtr.value;

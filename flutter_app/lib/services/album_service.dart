@@ -85,15 +85,15 @@ class AlbumService extends ChangeNotifier {
       
       final items = itemsList.map((json) => MediaItem.fromJson(json, albumId)).toList();
       
-      // Load image data for each item
+      // Load thumbnail data for each item (for immediate display)
       for (final item in items) {
-        debugPrint('Loading image data for media: ${item.id}');
-        final imageData = _bindings.getMediaData(albumId, item.id);
-        if (imageData != null) {
-          item.setImageData(imageData);
-          debugPrint('Loaded ${imageData.length} bytes for media: ${item.id}');
+        debugPrint('Loading thumbnail data for media: ${item.id}');
+        final thumbnailData = _bindings.getMediaThumbnail(albumId, item.id);
+        if (thumbnailData != null) {
+          item.setThumbnailData(thumbnailData);
+          debugPrint('Loaded ${thumbnailData.length} bytes thumbnail for media: ${item.id}');
         } else {
-          debugPrint('Failed to load image data for media: ${item.id}');
+          debugPrint('Failed to load thumbnail data for media: ${item.id}');
         }
       }
       
@@ -169,6 +169,62 @@ class AlbumService extends ChangeNotifier {
   Future<void> addComment(String albumId, String mediaId, String text) async {
     // TODO: Implement comments via FFI
     debugPrint('Comments not yet implemented via FFI');
+  }
+
+  Future<List<int>?> loadMediaAtResolution(String albumId, String mediaId, String resolution) async {
+    if (!_initialized) {
+      debugPrint('Cannot load media: FFI not initialized');
+      return null;
+    }
+
+    try {
+      debugPrint('Loading $resolution resolution for media: $mediaId');
+      
+      List<int>? data;
+      switch (resolution) {
+        case 'thumbnail':
+          data = _bindings.getMediaThumbnail(albumId, mediaId);
+          break;
+        case 'medium':
+          data = _bindings.getMediaMedium(albumId, mediaId);
+          break;
+        case 'high':
+          data = _bindings.getMediaHigh(albumId, mediaId);
+          break;
+        default:
+          data = _bindings.getMediaData(albumId, mediaId);
+      }
+      
+      if (data != null) {
+        debugPrint('Loaded ${data.length} bytes at $resolution resolution for media: $mediaId');
+        
+        // Update the media item in the album items cache
+        final items = _albumItems[albumId];
+        if (items != null) {
+          final item = items.firstWhere((item) => item.id == mediaId, orElse: () => items.first);
+          switch (resolution) {
+            case 'thumbnail':
+              item.setThumbnailData(data);
+              break;
+            case 'medium':
+              item.setMediumData(data);
+              break;
+            case 'high':
+              item.setHighData(data);
+              break;
+          }
+          notifyListeners();
+        }
+        
+        return data;
+      } else {
+        debugPrint('Failed to load $resolution resolution for media: $mediaId');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error loading $resolution resolution for media $mediaId: $e');
+      return null;
+    }
   }
 
   @override

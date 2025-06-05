@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:typed_data';
 import '../models/media_item.dart';
+import '../services/album_service.dart';
 
 class ProgressiveImage extends StatefulWidget {
   final MediaItem mediaItem;
@@ -34,7 +36,7 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
   }
 
   void _loadImage() {
-    // Simulate progressive loading: placeholder → thumbnail → full
+    // Real progressive loading: placeholder → thumbnail → medium → high
     _loadProgressively();
   }
 
@@ -45,28 +47,41 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
       _isLoading = true;
     });
 
-    // Simulate loading delay for thumbnail
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    if (mounted) {
+    // Check if we already have thumbnail data
+    if (widget.mediaItem.hasThumbnailData) {
       setState(() {
+        _currentImageData = Uint8List.fromList(widget.mediaItem.thumbnailData!);
         _currentResolution = 'thumbnail';
       });
     }
 
-    // Load the actual image data after a short delay
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Load medium resolution
+    await _loadResolution('medium');
     
-    if (mounted && widget.mediaItem.hasDisplayData) {
+    // Load high resolution for images (not for videos to save bandwidth)
+    if (widget.mediaItem.mediaType != MediaType.video) {
+      await _loadResolution('high');
+    }
+    
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _loadResolution(String resolution) async {
+    if (!mounted) return;
+    
+    final albumService = context.read<AlbumService>();
+    final data = await albumService.loadMediaAtResolution(
+      widget.albumId, 
+      widget.mediaItem.id, 
+      resolution
+    );
+    
+    if (mounted && data != null) {
       setState(() {
-        _currentImageData = Uint8List.fromList(widget.mediaItem.displayData!);
-        _currentResolution = widget.mediaItem.mediaType == MediaType.video ? 'thumbnail' : 'full';
-        _isLoading = false;
-      });
-    } else if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _currentResolution = 'error';
+        _currentImageData = Uint8List.fromList(data);
+        _currentResolution = resolution;
       });
     }
   }
@@ -142,8 +157,9 @@ class _ProgressiveImageState extends State<ProgressiveImage> {
         return _buildPlaceholder();
       case 'thumbnail':
         return _buildThumbnailPlaceholder();
-      case 'full':
       case 'thumbnail':
+      case 'medium':
+      case 'high':
         if (_currentImageData != null) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
