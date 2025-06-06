@@ -36,7 +36,7 @@ reqwest = { version = "0.11", features = ["stream", "json"] }
 image = "0.24"
 
 # Video frame extraction
-ffmpeg-next = { version = "7.0", optional = true }
+ffmpeg-next = { version = "7.0", features = ["static", "build"], optional = true }
 
 # Base64 encoding for testing
 base64 = { version = "0.21", optional = true }
@@ -47,6 +47,9 @@ tempfile = "3.8"
 # Rendering dependencies
 imageproc = "0.23"
 ab_glyph = "0.2"
+
+[build-dependencies]
+ffmpeg-next = { version = "7.0", features = ["build"] }
 
 [dev-dependencies]
 # Testing utilities
