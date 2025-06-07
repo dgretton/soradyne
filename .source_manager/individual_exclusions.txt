@@ -1,0 +1,14 @@
+# Individual file exclusions for source_manager.py
+# One file path per line, relative to project root
+# Lines starting with # are comments and will be ignored
+
+src/storage/block_manager.rs
+src/storage/block_file.rs
+src/storage/block.rs
+src/storage/erasure.rs
+examples/block_storage_example.rs
+examples/visual_block_test.rs
+examples/large_video_test.rs
+examples/album_sync_test.rs
+examples/renderer_test.rs
+examples/web_album_server.rs

@@ -30,6 +30,12 @@ class SoradyneManager:
         self.other_files = []
         self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__', 'build', '.dart_tool', 'ios', 'android', 'web', 'windows', 'linux']
         
+        # Setup exclusion system
+        self.exclusions_dir = os.path.join(self.source_dir, '.source_manager')
+        self.exclusions_file = os.path.join(self.exclusions_dir, 'individual_exclusions.txt')
+        self._ensure_exclusions_setup()
+        self.individual_exclusions = self._load_exclusions()
+        
     def collect_files(self):
         """Collect all Rust and TypeScript source files in the source directory"""
         # Find all the files currently included in the concatenated file, including those added manually
@@ -64,6 +70,10 @@ class SoradyneManager:
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, self.source_dir)
                 
+                # Skip excluded files
+                if rel_path in self.individual_exclusions:
+                    continue
+                
                 # Collect Rust files
                 if file.endswith('.rs'):
                     if rel_path not in self.rust_files:
@@ -90,6 +100,10 @@ class SoradyneManager:
                         self.yaml_files.append(rel_path)
         
         for rel_path in included_files:
+            # Skip excluded files
+            if rel_path in self.individual_exclusions:
+                continue
+                
             if (rel_path not in self.rust_files and rel_path not in self.dart_files and 
                 rel_path not in self.html_files and rel_path not in self.python_files and 
                 rel_path not in self.toml_files and rel_path not in self.yaml_files and
@@ -109,10 +123,81 @@ class SoradyneManager:
         
         total_files = len(self.rust_files) + len(self.dart_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.yaml_files) + len(self.shell_files) + len(self.markdown_files) + len(self.other_files)
         print(f"Found {len(self.rust_files)} Rust files, {len(self.dart_files)} Dart files, {len(self.html_files)} HTML files, {len(self.python_files)} Python files, {len(self.toml_files)} TOML files, {len(self.yaml_files)} YAML files, {len(self.shell_files)} shell files, {len(self.markdown_files)} markdown files, and {len(self.other_files)} other files.")
+        print(f"Excluded {len(self.individual_exclusions)} individual files.")
         return self.rust_files, self.html_files, self.python_files, self.toml_files, self.other_files
         
+    def _ensure_exclusions_setup(self):
+        """Ensure the .source_manager directory and exclusions file exist"""
+        if not os.path.exists(self.exclusions_dir):
+            os.makedirs(self.exclusions_dir)
+        
+        if not os.path.exists(self.exclusions_file):
+            # Create default exclusions file
+            with open(self.exclusions_file, 'w') as f:
+                f.write("# Individual file exclusions for source_manager.py\n")
+                f.write("# One file path per line, relative to project root\n")
+                f.write("# Lines starting with # are comments and will be ignored\n\n")
+    
+    def _load_exclusions(self):
+        """Load the list of excluded files"""
+        if not os.path.exists(self.exclusions_file):
+            return []
+        
+        with open(self.exclusions_file, 'r') as f:
+            exclusions = []
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    exclusions.append(line)
+            return exclusions
+    
+    def _save_exclusions(self):
+        """Save the current exclusions list to file"""
+        with open(self.exclusions_file, 'w') as f:
+            f.write("# Individual file exclusions for source_manager.py\n")
+            f.write("# One file path per line, relative to project root\n")
+            f.write("# Lines starting with # are comments and will be ignored\n\n")
+            for exclusion in sorted(self.individual_exclusions):
+                f.write(f"{exclusion}\n")
+    
+    def add_exclusion(self, file_path):
+        """Add a file to the exclusions list"""
+        if file_path not in self.individual_exclusions:
+            self.individual_exclusions.append(file_path)
+            self._save_exclusions()
+            print(f"Added '{file_path}' to exclusions list")
+            return True
+        else:
+            print(f"'{file_path}' is already in exclusions list")
+            return False
+    
+    def remove_exclusion(self, file_path):
+        """Remove a file from the exclusions list"""
+        if file_path in self.individual_exclusions:
+            self.individual_exclusions.remove(file_path)
+            self._save_exclusions()
+            print(f"Removed '{file_path}' from exclusions list")
+            return True
+        else:
+            print(f"'{file_path}' is not in exclusions list")
+            return False
+    
+    def list_exclusions(self):
+        """List all currently excluded files"""
+        if not self.individual_exclusions:
+            print("No files are currently excluded.")
+            return
+        
+        print("Currently excluded files:")
+        for i, exclusion in enumerate(sorted(self.individual_exclusions), 1):
+            print(f"{i}. {exclusion}")
+        print(f"\nTotal: {len(self.individual_exclusions)} excluded files")
+    
     def _add_if_exists(self, file_path, file_list):
-        """Add a file to the list if it exists"""
+        """Add a file to the list if it exists and is not excluded"""
+        if file_path in self.individual_exclusions:
+            return False
+        
         full_path = os.path.join(self.source_dir, file_path)
         if os.path.exists(full_path):
             file_list.append(file_path)
@@ -416,6 +501,15 @@ def main():
     
     list_parser = subparsers.add_parser('list', help='List all files included in the concatenation')
     
+    # Exclusion management commands
+    exclude_parser = subparsers.add_parser('exclude', help='Add a file to the exclusions list')
+    exclude_parser.add_argument('file', help='Path to the file to exclude')
+    
+    include_parser = subparsers.add_parser('include', help='Remove a file from the exclusions list')
+    include_parser.add_argument('file', help='Path to the file to include')
+    
+    list_exclusions_parser = subparsers.add_parser('list-exclusions', help='List all excluded files')
+    
     interactive_parser = subparsers.add_parser('interactive', help='Run in interactive mode')
     
     args = parser.parse_args()
@@ -428,6 +522,12 @@ def main():
         manager.add_file(args.file)
     elif args.command == 'list':
         manager.list_files()
+    elif args.command == 'exclude':
+        manager.add_exclusion(args.file)
+    elif args.command == 'include':
+        manager.remove_exclusion(args.file)
+    elif args.command == 'list-exclusions':
+        manager.list_exclusions()
     elif args.command == 'interactive':
         run_interactive_mode(manager)
     else:
@@ -445,10 +545,13 @@ def run_interactive_mode(manager):
             break
         elif cmd == 'help':
             print("Available commands:")
-            print("  generate    - Generate a new concatenated file")
-            print("  add <file>  - Add a new file to the concatenated file")
-            print("  list        - List all files in the concatenation")
-            print("  exit/quit   - Exit the program")
+            print("  generate           - Generate a new concatenated file")
+            print("  add <file>         - Add a new file to the concatenated file")
+            print("  list               - List all files in the concatenation")
+            print("  exclude <file>     - Add a file to the exclusions list")
+            print("  include <file>     - Remove a file from the exclusions list")
+            print("  list-exclusions    - List all excluded files")
+            print("  exit/quit          - Exit the program")
         elif cmd == 'generate':
             manager.generate_concatenated_file()
         elif cmd.startswith('add '):
@@ -459,6 +562,20 @@ def run_interactive_mode(manager):
                 print("Error: Please specify a file path")
         elif cmd == 'list':
             manager.list_files()
+        elif cmd.startswith('exclude '):
+            file_path = cmd[8:].strip()
+            if file_path:
+                manager.add_exclusion(file_path)
+            else:
+                print("Error: Please specify a file path")
+        elif cmd.startswith('include '):
+            file_path = cmd[8:].strip()
+            if file_path:
+                manager.remove_exclusion(file_path)
+            else:
+                print("Error: Please specify a file path")
+        elif cmd == 'list-exclusions':
+            manager.list_exclusions()
         elif cmd:
             print(f"Unknown command: '{cmd}'. Type 'help' for a list of commands.")
 
