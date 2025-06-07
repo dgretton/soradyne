@@ -2,11 +2,41 @@
 # One file path per line, relative to project root
 # Lines starting with # are comments and will be ignored
 
+# High Priority Exclusions - Generated/Build Files
+flutter_app/test/widget_test.dart
+flutter_app/analysis_options.yaml
+
+# High Priority Exclusions - Example Files
 examples/album_sync_test.rs
 examples/block_storage_example.rs
 examples/large_video_test.rs
 examples/renderer_test.rs
 examples/visual_block_test.rs
+examples/web_album_server.rs
+examples/robot_joints.rs
+examples/heartrate_demo.rs
+examples/block_storage_real_images.rs
+src/flow/examples/robot_joints.rs
+
+# High Priority Exclusions - Specialized Demos/Binaries
+src/bin/colmi_heartrate_bridge.rs
+src/bindings/mod.rs
+src/bindings/identity.rs
+src/bindings/storage.rs
+src/bindings/sdo.rs
+
+# Medium Priority Exclusions - Video Processing
+src/video/mod.rs
+
+# Medium Priority Exclusions - Network Layer
+src/network/discovery.rs
+src/network/mod.rs
+
+# Medium Priority Exclusions - Advanced Album Features
+src/album/renderer.rs
+src/album/sync.rs
+
+# Storage system exclusions
 src/storage/block.rs
 src/storage/block_file.rs
 src/storage/block_manager.rs
