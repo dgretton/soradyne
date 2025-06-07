@@ -203,18 +203,118 @@ class SoradyneManager:
             file_list.append(file_path)
             return True
         return False
+    
+    def _generate_directory_tree(self):
+        """Generate a directory tree of included files"""
+        all_files = (self.rust_files + self.dart_files + self.html_files + 
+                    self.python_files + self.toml_files + self.yaml_files + 
+                    self.shell_files + self.markdown_files + self.other_files)
+        
+        # Build directory structure
+        tree = {}
+        for file_path in sorted(all_files):
+            parts = file_path.split('/')
+            current = tree
+            for part in parts[:-1]:  # All but the last part (filename)
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            # Add the file
+            current[parts[-1]] = None
+        
+        # Convert to string representation
+        def format_tree(node, prefix="", is_last=True):
+            lines = []
+            items = list(node.items())
+            for i, (name, subtree) in enumerate(items):
+                is_last_item = i == len(items) - 1
+                current_prefix = "└── " if is_last_item else "├── "
+                lines.append(f"{prefix}{current_prefix}{name}")
+                
+                if subtree is not None:  # It's a directory
+                    extension = "    " if is_last_item else "│   "
+                    lines.extend(format_tree(subtree, prefix + extension, is_last_item))
+            return lines
+        
+        tree_lines = ["PROJECT DIRECTORY STRUCTURE (included files only):"]
+        tree_lines.append(".")
+        tree_lines.extend(format_tree(tree))
+        return "\n".join(tree_lines)
+    
+    def _generate_exclusions_summary(self):
+        """Generate a summary of excluded files"""
+        if not self.individual_exclusions:
+            return "No files are currently excluded."
+        
+        lines = [f"EXCLUDED FILES ({len(self.individual_exclusions)} total):"]
+        lines.append("")
+        
+        # Group by category based on path patterns
+        categories = {
+            "Examples": [],
+            "Flutter/Dart": [],
+            "Binaries": [],
+            "Bindings": [],
+            "Storage": [],
+            "Network": [],
+            "Video": [],
+            "Album": [],
+            "Flow": [],
+            "Other": []
+        }
+        
+        for exclusion in sorted(self.individual_exclusions):
+            if exclusion.startswith("examples/"):
+                categories["Examples"].append(exclusion)
+            elif exclusion.startswith("flutter_app/"):
+                categories["Flutter/Dart"].append(exclusion)
+            elif exclusion.startswith("src/bin/"):
+                categories["Binaries"].append(exclusion)
+            elif exclusion.startswith("src/bindings/"):
+                categories["Bindings"].append(exclusion)
+            elif exclusion.startswith("src/storage/"):
+                categories["Storage"].append(exclusion)
+            elif exclusion.startswith("src/network/"):
+                categories["Network"].append(exclusion)
+            elif exclusion.startswith("src/video/"):
+                categories["Video"].append(exclusion)
+            elif exclusion.startswith("src/album/"):
+                categories["Album"].append(exclusion)
+            elif exclusion.startswith("src/flow/"):
+                categories["Flow"].append(exclusion)
+            else:
+                categories["Other"].append(exclusion)
+        
+        for category, files in categories.items():
+            if files:
+                lines.append(f"{category}:")
+                for file in files:
+                    lines.append(f"  - {file}")
+                lines.append("")
+        
+        return "\n".join(lines)
         
     def generate_concatenated_file(self):
         """Generate a new concatenated file from all source files"""
         self.collect_files()
         
         with open(self.output_file, 'w') as output:
+            total_files = len(self.rust_files) + len(self.dart_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.yaml_files) + len(self.shell_files) + len(self.markdown_files) + len(self.other_files)
+            
             output.write("=====================================================================\n")
             output.write("= SORADYNE PROTOCOL - COMPLETE SOURCE CODE                         =\n")
             output.write(f"= Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}                           =\n")
-            total_files = len(self.rust_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.other_files)
             output.write(f"= Total files: {total_files}                                               =\n")
             output.write("=====================================================================\n\n")
+            
+            # Add directory tree
+            output.write(self._generate_directory_tree())
+            output.write("\n\n")
+            
+            # Add exclusions summary
+            output.write("=====================================================================\n")
+            output.write(self._generate_exclusions_summary())
+            output.write("\n=====================================================================\n\n")
             
             # Add Rust files
             output.write("=====================================================================\n")
