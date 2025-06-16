@@ -1,6 +1,9 @@
 name: soradyne_demo
 description: Demo app showcasing Soradyne capabilities
 
+environment:
+  sdk: '^3.8.0'
+
 dependencies:
   flutter:
     sdk: flutter
