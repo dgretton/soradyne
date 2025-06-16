@@ -11,6 +11,4 @@ dependencies:
     path: ../../packages/soradyne_flutter
   ai_chat_flutter:
     path: ../../packages/ai_chat_flutter
-  shared_types:
-    path: ../../packages/shared_types
 
