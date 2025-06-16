@@ -1,3 +1,23 @@
+# Build artifacts
+*.dylib
+*.so
+*.dll
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+
+# Flutter
+.dart_tool/
+.metadata
+
+# Test outputs
+**/rimsd_*/
+**/results/
+**/metadata.json
+
+
 /target
 /heartrate_data
 .aider*
