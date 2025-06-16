@@ -1,0 +1,34 @@
+name: soradyne_workspace
+repository: https://github.com/yourusername/soradyne
+
+packages:
+  - packages/*
+  - apps/*
+
+command:
+  bootstrap:
+    runPubGetInParallel: false
+    
+scripts:
+  build:rust:
+    run: cargo build --release
+    exec:
+      cwd: packages/soradyne_core
+      
+  test:flutter:
+    run: flutter test
+    exec:
+      packageFilters:
+        scope: ['soradyne_flutter', 'ai_chat_flutter']
+        
+  analyze:
+    run: flutter analyze
+    exec:
+      packageFilters:
+        scope: ['*']
+        
+  build:apps:
+    run: flutter build
+    exec:
+      packageFilters:
+        scope: ['soradyne_demo', 'giantt']

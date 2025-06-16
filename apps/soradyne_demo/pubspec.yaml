@@ -1,0 +1,13 @@
+name: soradyne_demo
+description: Demo app showcasing Soradyne capabilities
+
+dependencies:
+  flutter:
+    sdk: flutter
+  soradyne_flutter:
+    path: ../../packages/soradyne_flutter
+  ai_chat_flutter:
+    path: ../../packages/ai_chat_flutter
+  shared_types:
+    path: ../../packages/shared_types
+

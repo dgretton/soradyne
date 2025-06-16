@@ -19,6 +19,7 @@ pubspec.lock
 
 
 /target
+packages/soradyne_core/target
 /heartrate_data
 .aider*
 *.DS_Store

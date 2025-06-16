@@ -1,0 +1,10 @@
+name: soradyne_workspace
+description: Workspace root for the Soradyne monorepo.
+publish_to: "none"
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dev_dependencies:
+  melos: ^4.0.0
+

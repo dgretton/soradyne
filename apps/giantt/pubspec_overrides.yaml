@@ -1,0 +1,6 @@
+# melos_managed_dependency_overrides: ai_chat_flutter,soradyne_flutter
+dependency_overrides:
+  ai_chat_flutter:
+    path: ../../packages/ai_chat_flutter
+  soradyne_flutter:
+    path: ../../packages/soradyne_flutter
