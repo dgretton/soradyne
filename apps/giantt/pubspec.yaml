@@ -1,6 +1,9 @@
 name: giantt
 description: Gantt chart app powered by Soradyne
 
+environment:
+  sdk: '^3.8.0'
+
 dependencies:
   flutter:
     sdk: flutter
