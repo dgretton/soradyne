@@ -127,49 +127,207 @@ class GianttGraph {
 
   /// Validate that the graph has no cycles in strict dependencies
   void _validateNoCycles() {
-    final visited = <String>{};
-    final recursionStack = <String>{};
+    try {
+      _safeTopologicalSort();
+    } catch (e) {
+      // Re-throw cycle exceptions, convert others to GraphException
+      if (e is CycleDetectedException) rethrow;
+      throw GraphException('Graph validation failed: $e');
+    }
+  }
 
-    bool hasCycleDfs(String itemId, List<String> path) {
-      if (recursionStack.contains(itemId)) {
-        // Found a cycle, create the cycle path
-        final cycleStart = path.indexOf(itemId);
-        final cyclePath = path.sublist(cycleStart)..add(itemId);
-        throw CycleDetectedException(cyclePath);
-      }
-      if (visited.contains(itemId)) {
-        return false;
-      }
+  /// Performs a safe topological sort that detects cycles and provides detailed error information
+  List<GianttItem> _safeTopologicalSort() {
+    // Build adjacency list for strict relations
+    final adjList = <String, Set<String>>{};
+    for (final item in _items.values) {
+      adjList[item.id] = <String>{};
+    }
 
-      visited.add(itemId);
-      recursionStack.add(itemId);
-      path.add(itemId);
-
-      final item = _items[itemId];
-      if (item != null) {
-        // Only check strict dependencies (REQUIRES and ANYOF)
-        for (final relationType in ['REQUIRES', 'ANYOF']) {
-          final targets = item.relations[relationType] ?? [];
-          for (final target in targets) {
-            if (_items.containsKey(target)) {
-              if (hasCycleDfs(target, List.from(path))) {
-                return true;
-              }
-            }
+    for (final item in _items.values) {
+      for (final relType in ['REQUIRES', 'ANYOF']) {
+        final targets = item.relations[relType] ?? [];
+        for (final target in targets) {
+          if (_items.containsKey(target)) {
+            adjList[item.id]!.add(target);
           }
         }
       }
+    }
 
-      recursionStack.remove(itemId);
-      path.removeLast();
+    // Calculate in-degrees
+    final inDegree = <String, int>{};
+    for (final node in adjList.keys) {
+      inDegree[node] = 0;
+    }
+    for (final node in adjList.keys) {
+      for (final neighbor in adjList[node]!) {
+        inDegree[neighbor] = (inDegree[neighbor] ?? 0) + 1;
+      }
+    }
+
+    // Find nodes with no dependencies
+    final queue = <String>[];
+    for (final entry in inDegree.entries) {
+      if (entry.value == 0) {
+        queue.add(entry.key);
+      }
+    }
+
+    final sortedItems = <GianttItem>[];
+    final visited = <String>{};
+
+    while (queue.isNotEmpty) {
+      final node = queue.removeAt(0);
+      final item = _items[node];
+      if (item != null) {
+        sortedItems.add(item);
+        visited.add(node);
+      }
+
+      for (final neighbor in adjList[node]!) {
+        inDegree[neighbor] = inDegree[neighbor]! - 1;
+        if (inDegree[neighbor] == 0) {
+          queue.add(neighbor);
+        }
+      }
+    }
+
+    // If we haven't visited all nodes, there must be a cycle
+    if (sortedItems.length != _items.length) {
+      final cycle = _findCycle(adjList, visited);
+      throw CycleDetectedException(cycle);
+    }
+
+    return sortedItems;
+  }
+
+  /// Find a cycle in the graph for detailed error reporting
+  List<String> _findCycle(Map<String, Set<String>> adjList, Set<String> visited) {
+    final unvisited = _items.keys.toSet().difference(visited);
+    final stack = <String>[];
+    final path = <String>[];
+
+    bool dfs(String current) {
+      if (stack.contains(current)) {
+        final cycleStart = stack.indexOf(current);
+        final cycle = stack.sublist(cycleStart);
+        cycle.add(current); // Add one more occurrence to show complete cycle
+        return true;
+      }
+      if (visited.contains(current)) {
+        return false;
+      }
+
+      stack.add(current);
+      for (final neighbor in adjList[current] ?? <String>{}) {
+        if (dfs(neighbor)) {
+          return true;
+        }
+      }
+      stack.remove(current);
       return false;
     }
 
-    for (final itemId in _items.keys) {
-      if (!visited.contains(itemId)) {
-        hasCycleDfs(itemId, []);
-      }
+    // Start DFS from any unvisited node
+    if (unvisited.isNotEmpty) {
+      final startNode = unvisited.first;
+      dfs(startNode);
     }
+
+    return stack.isNotEmpty ? stack : ['unknown_cycle'];
+  }
+
+  /// Performs a deterministic topological sort of the graph
+  List<GianttItem> topologicalSort() {
+    // First get basic topological sort
+    final sortedItems = _safeTopologicalSort();
+
+    // Sort within each "level" by deterministic criteria
+    sortedItems.sort((a, b) {
+      // Primary sort by dependency depth
+      final depthA = _getDependencyDepth(a);
+      final depthB = _getDependencyDepth(b);
+      final depthComparison = depthA.compareTo(depthB);
+      if (depthComparison != 0) return depthComparison;
+
+      // Secondary sort by ID (deterministic tie-breaker)
+      return a.id.compareTo(b.id);
+    });
+
+    return sortedItems;
+  }
+
+  /// Get the maximum dependency depth of an item
+  int _getDependencyDepth(GianttItem item) {
+    final visited = <String>{};
+    
+    int calculateDepth(String itemId) {
+      if (visited.contains(itemId)) {
+        return 0; // Avoid infinite recursion
+      }
+      visited.add(itemId);
+      
+      final currentItem = _items[itemId];
+      if (currentItem == null) return 0;
+      
+      final requires = currentItem.relations['REQUIRES'] ?? [];
+      if (requires.isEmpty) return 0;
+      
+      int maxDepth = 0;
+      for (final depId in requires) {
+        if (_items.containsKey(depId)) {
+          final depDepth = calculateDepth(depId);
+          maxDepth = maxDepth > depDepth ? maxDepth : depDepth;
+        }
+      }
+      return maxDepth + 1;
+    }
+    
+    return calculateDepth(item.id);
+  }
+
+  /// Insert a new item between two existing items in the dependency chain
+  void insertBetween(GianttItem newItem, String beforeId, String afterId) {
+    if (!_items.containsKey(beforeId) || !_items.containsKey(afterId)) {
+      throw ArgumentError('Both before and after items must exist');
+    }
+
+    final beforeItem = _items[beforeId]!;
+    final afterItem = _items[afterId]!;
+
+    // Create new item with appropriate relations
+    final updatedNewItem = newItem.copyWith(
+      relations: {
+        'REQUIRES': [beforeId],
+        'BLOCKS': [afterId],
+      },
+    );
+
+    // Update existing items' relations
+    final updatedBeforeRelations = Map<String, List<String>>.from(beforeItem.relations);
+    if (updatedBeforeRelations.containsKey('BLOCKS')) {
+      updatedBeforeRelations['BLOCKS']!.remove(afterId);
+      updatedBeforeRelations['BLOCKS']!.add(newItem.id);
+    } else {
+      updatedBeforeRelations['BLOCKS'] = [newItem.id];
+    }
+
+    final updatedAfterRelations = Map<String, List<String>>.from(afterItem.relations);
+    if (updatedAfterRelations.containsKey('REQUIRES')) {
+      updatedAfterRelations['REQUIRES']!.remove(beforeId);
+      updatedAfterRelations['REQUIRES']!.add(newItem.id);
+    } else {
+      updatedAfterRelations['REQUIRES'] = [newItem.id];
+    }
+
+    // Update items in graph
+    _items[beforeId] = beforeItem.copyWith(relations: updatedBeforeRelations);
+    _items[afterId] = afterItem.copyWith(relations: updatedAfterRelations);
+    _items[newItem.id] = updatedNewItem;
+
+    // Validate no cycles were created
+    _validateNoCycles();
   }
 
   /// Get items that are not occluded
