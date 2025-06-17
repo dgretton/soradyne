@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:giantt_core/giantt_core.dart';
+import 'package:giantt_core/src/storage/file_header_generator.dart';
 
 /// Tests that execute actual Python CLI and compare with Dart implementation
 void main() {
@@ -295,38 +296,9 @@ String _normalizeOutput(String output) {
 }
 
 String _getItemsHeader() {
-  return '''
-##############################################
-#                                            #
-#                Giantt Items                #
-#                                            #
-#   This file contains all include Giantt   #
-#   items in topological order according    #
-#   to the REQUIRES (⊢) relation.           #
-#   You can use #include directives at the  #
-#   top of this file to include other       #
-#   Giantt item files.                      #
-#   Edit this file manually at your own     #
-#   risk.                                    #
-#                                            #
-##############################################
-
-''';
+  return FileHeaderGenerator.generateItemsFileHeader();
 }
 
 String _getOccludeHeader() {
-  return '''
-##############################################
-#                                            #
-#            Giantt Occluded Items           #
-#                                            #
-#   This file contains all occluded Giantt  #
-#   items in topological order according    #
-#   to the REQUIRES (⊢) relation.           #
-#   Edit this file manually at your own     #
-#   risk.                                    #
-#                                            #
-##############################################
-
-''';
+  return FileHeaderGenerator.generateOccludedItemsFileHeader();
 }
