@@ -14,3 +14,41 @@ dependencies:
   # Gantt-specific dependencies
   gantt_chart: ^0.2.0
   timeline_tile: ^2.0.0
+name: giantt
+description: Gantt chart CLI and Flutter app powered by Soradyne
+version: 1.0.0+1
+
+environment:
+  sdk: '^3.8.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Core giantt logic
+  giantt_core:
+    path: ../../packages/giantt_core
+  
+  # Shared packages
+  soradyne_flutter:
+    path: ../../packages/soradyne_flutter
+  ai_chat_flutter:
+    path: ../../packages/ai_chat_flutter
+  
+  # CLI dependencies
+  args: ^2.4.2
+  path: ^1.8.3
+  io: ^1.0.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  test: ^1.24.0
+  lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+executables:
+  giantt: giantt
