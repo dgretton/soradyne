@@ -178,8 +178,6 @@ void main() {
     });
 
     test('Python and Dart sort commands produce identical ordering', () async {
-      print('\n=== Testing sort command ===');
-      
       // Add items with dependencies in both systems
       await _addTestItem('task_a', 'Task A', pythonItemsPath, pythonOccludeItemsPath, dartItemsPath, dartOccludeItemsPath);
       await _addTestItem('task_b', 'Task B', pythonItemsPath, pythonOccludeItemsPath, dartItemsPath, dartOccludeItemsPath, requires: 'task_a');
@@ -199,18 +197,6 @@ void main() {
         workingDirectory: '.',
       );
       
-      print('Python sort exit code: ${pythonResult.exitCode}');
-      print('Python sort output:');
-      print(pythonResult.stdout);
-      print('Python sort stderr:');
-      print(pythonResult.stderr);
-      
-      print('Dart sort exit code: ${dartResult.exitCode}');
-      print('Dart sort output:');
-      print(dartResult.stdout);
-      print('Dart sort stderr:');
-      print(dartResult.stderr);
-      
       expect(dartResult.exitCode, equals(pythonResult.exitCode),
              reason: 'Sort exit codes should match');
       
@@ -221,35 +207,13 @@ void main() {
       final pythonItems = _extractItemLines(pythonContent);
       final dartItems = _extractItemLines(dartContent);
       
-      print('\nPython sorted order:');
-      for (int i = 0; i < pythonItems.length; i++) {
-        print('  [$i]: ${pythonItems[i]}');
-      }
-      
-      print('\nDart sorted order:');
-      for (int i = 0; i < dartItems.length; i++) {
-        print('  [$i]: ${dartItems[i]}');
-      }
-      
       expect(dartItems, equals(pythonItems),
              reason: 'Sorted order should be identical');
     });
 
     test('Python and Dart doctor commands produce identical issue detection', () async {
-      print('\n=== Testing doctor command ===');
-      
       // Add items with issues to both systems
       await _addTestItem('broken_task', 'Broken Task', pythonItemsPath, pythonOccludeItemsPath, dartItemsPath, dartOccludeItemsPath, requires: 'nonexistent');
-      
-      print('Added broken_task with nonexistent dependency');
-      
-      // Debug: Check what's in the files
-      final pythonContent = await File(pythonItemsPath).readAsString();
-      final dartContent = await File(dartItemsPath).readAsString();
-      print('Python file content:');
-      print(pythonContent);
-      print('Dart file content:');
-      print(dartContent);
       
       // Run Python doctor
       final pythonResult = await Process.run(
@@ -264,18 +228,6 @@ void main() {
         ['run', 'bin/giantt.dart', 'doctor', '--file', dartItemsPath, '--occlude-file', dartOccludeItemsPath],
         workingDirectory: '.',
       );
-      
-      print('Python doctor exit code: ${pythonResult.exitCode}');
-      print('Python doctor output:');
-      print(pythonResult.stdout);
-      print('Python doctor stderr:');
-      print(pythonResult.stderr);
-      
-      print('Dart doctor exit code: ${dartResult.exitCode}');
-      print('Dart doctor output:');
-      print(dartResult.stdout);
-      print('Dart doctor stderr:');
-      print(dartResult.stderr);
       
       expect(dartResult.exitCode, equals(pythonResult.exitCode),
              reason: 'Doctor exit codes should match');
