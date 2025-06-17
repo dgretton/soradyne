@@ -109,7 +109,7 @@ void main() {
         const originalLine = '◑ complex_task!! 2w3d "Complex \"task\" with everything" {"Chart1","Chart2"} urgent,important >>> ⊢[dep1,dep2] ►[blocked1] ≫[enhanced1] @@@ window(5d:2d,severe) # User note ### Auto note';
         
         final item = GianttParser.fromString(originalLine);
-        final regeneratedLine = GianttParser.toString(item);
+        final regeneratedLine = GianttParser.itemToString(item);
         final reparsedItem = GianttParser.fromString(regeneratedLine);
         
         expect(reparsedItem.id, equals(item.id));
@@ -127,7 +127,7 @@ void main() {
       test('should handle empty charts and tags', () {
         const line = '○ simple_task 1d "Simple task" {}';
         final item = GianttParser.fromString(line);
-        final regenerated = GianttParser.toString(item);
+        final regenerated = GianttParser.itemToString(item);
         final reparsed = GianttParser.fromString(regenerated);
         
         expect(reparsed.charts, isEmpty);

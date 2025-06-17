@@ -1,3 +1,5 @@
+import '../models/graph_exceptions.dart';
+
 /// Exception thrown when parsing a specific section fails
 class SectionParseException extends GianttParseException {
   const SectionParseException(this.section, String message, [String? input])

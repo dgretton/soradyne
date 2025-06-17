@@ -68,7 +68,7 @@ class GianttParser {
   }
 
   /// Convert a GianttItem to its string representation
-  static String toString(GianttItem item) {
+  static String itemToString(GianttItem item) {
     final buffer = StringBuffer();
     
     // Status, ID+Priority, Duration
