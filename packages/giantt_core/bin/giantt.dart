@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:args/args.dart';
 import 'package:giantt_core/giantt_core.dart';
+import 'package:giantt_core/src/commands/command_interface.dart';
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
@@ -273,7 +274,8 @@ Future<void> _executeInit(ArgResults args) async {
     } else {
       final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
       if (homeDir == null) {
-        throw CommandException('Unable to determine home directory');
+        stderr.writeln('Error: Unable to determine home directory');
+        exit(1);
       }
       baseDir = Directory('$homeDir/.giantt');
     }
@@ -374,12 +376,11 @@ Future<void> _executeShow(ArgResults args) async {
   final searchLog = args['log'] as bool;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath();
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath(occlude: true);
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
-    final repository = FileRepository();
-    final graph = await repository.loadGraph(itemsPath, occludeItemsPath);
+    final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
     
     if (!searchChart && !searchLog) {
       // Show item details
@@ -391,10 +392,9 @@ Future<void> _executeShow(ArgResults args) async {
     }
     
     if (searchLog) {
-      final logsPath = logFile ?? PathResolver.getDefaultGianttPath(filename: 'logs.jsonl');
-      final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath(filename: 'logs.jsonl', occlude: true);
-      final logRepository = LogRepository();
-      final logs = await logRepository.loadLogs(logsPath, occludeLogsPath);
+      final logsPath = logFile ?? PathResolver.getDefaultGianttPath('logs.jsonl');
+      final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath('logs.jsonl', occlude: true);
+      final logs = LogRepository.loadLogs(logsPath, occludeLogsPath);
       await _showLogs(logs, substring);
     }
   } catch (e) {
@@ -543,12 +543,11 @@ Future<void> _executeDoctor(ArgResults args) async {
   final occludeFile = args['occlude-file'] as String?;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath();
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath(occlude: true);
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
-    final repository = FileRepository();
-    final graph = await repository.loadGraph(itemsPath, occludeItemsPath);
+    final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
     final doctor = GraphDoctor(graph);
     
     if (args.command == null) {
@@ -663,7 +662,9 @@ Future<void> _executeDoctorFix(GraphDoctor doctor, ArgResults fixArgs, String it
   }
   
   // Confirm before fixing
-  if (!CommandUtils.confirm('Do you want to fix these issues?')) {
+  stdout.write('Do you want to fix these issues? [y/N]: ');
+  final input = stdin.readLineSync()?.trim().toLowerCase() ?? '';
+  if (input != 'y' && input != 'yes') {
     print('Aborted. No changes made.');
     return;
   }
@@ -676,8 +677,7 @@ Future<void> _executeDoctorFix(GraphDoctor doctor, ArgResults fixArgs, String it
   
   if (fixedIssues.isNotEmpty) {
     // Save changes
-    final repository = FileRepository();
-    await repository.saveGraph(itemsPath, occludeItemsPath, doctor.graph);
+    DualFileManager.saveGraph(itemsPath, occludeItemsPath, doctor.graph);
     
     print('\nSuccessfully fixed ${fixedIssues.length} issue(s):');
     for (final issue in fixedIssues) {
