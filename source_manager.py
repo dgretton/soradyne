@@ -28,7 +28,7 @@ class SoradyneManager:
         self.shell_files = []
         self.markdown_files = []
         self.other_files = []
-        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__', 'build', '.dart_tool', 'ios', 'android', 'web', 'windows', 'linux']
+        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__', 'build', '.dart_tool', 'ios', 'android', 'web', 'windows', 'linux', 'large_video_test', 'visual_block_test', 'renderer_test_output', 'heartrate_data', 'data']
         
         # Setup exclusion system
         self.exclusions_dir = os.path.join(self.source_dir, '.source_manager')
@@ -60,6 +60,13 @@ class SoradyneManager:
         self._add_if_exists('flutter_app/pubspec.yaml', self.yaml_files)
         self._add_if_exists('flutter_app/lib/main.dart', self.dart_files)
         self._add_if_exists('build_rust.sh', self.shell_files)
+        
+        # Add key Giantt core files
+        self._add_if_exists('packages/giantt_core/bin/giantt.dart', self.dart_files)
+        self._add_if_exists('packages/giantt_core/lib/giantt_core.dart', self.dart_files)
+        self._add_if_exists('packages/giantt_core/pubspec.yaml', self.yaml_files)
+        self._add_if_exists('docs/port_reference/giantt_cli.py', self.python_files)
+        self._add_if_exists('docs/port_reference/giantt_core.py', self.python_files)
         
         # Find all source files in the source directory
         for root, dirs, files in os.walk(self.source_dir):
