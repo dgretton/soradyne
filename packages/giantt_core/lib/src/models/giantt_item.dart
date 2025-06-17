@@ -148,6 +148,8 @@ class GianttItem {
     buffer.write(' {');
     if (charts.isNotEmpty) {
       buffer.write('"${charts.join('","')}"');
+    } else {
+      buffer.write('""');
     }
     buffer.write('}');
     

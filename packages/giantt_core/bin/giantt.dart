@@ -682,15 +682,10 @@ Future<void> _executeSort(ArgResults args) async {
     // Perform topological sort (this validates the graph)
     final sortedItems = graph.topologicalSort();
     
-    print('Graph is valid. Items in topological order:');
-    for (final item in sortedItems) {
-      print('  ${item.id} - ${item.title}');
-    }
-    
     // Save the sorted graph
     FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
     
-    print('\nGraph saved in topological order.');
+    print('Successfully sorted and saved items.');
   } catch (e) {
     stderr.writeln('Error: $e');
     exit(1);
@@ -835,7 +830,7 @@ Future<void> _executeDoctorCheck(GraphDoctor doctor) async {
   final issues = doctor.fullDiagnosis();
   
   if (issues.isEmpty) {
-    print('✓ Graph is healthy!');
+    // Don't print anything for healthy graph to match Python
     return;
   }
   
@@ -859,6 +854,9 @@ Future<void> _executeDoctorCheck(GraphDoctor doctor) async {
       }
     }
   }
+  
+  // Exit with error code to match Python behavior
+  exit(2);
 }
 
 Future<void> _executeDoctorFix(GraphDoctor doctor, ArgResults fixArgs, String itemsPath, String occludeItemsPath) async {
