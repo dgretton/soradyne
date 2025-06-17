@@ -112,9 +112,40 @@ class AddCommand extends CliCommand<AddArgs> {
         title: 'temp_title',
       );
 
-      // Check if item already exists
+      // Validate ID is unique and doesn't conflict with titles (matching Python logic)
       if (context.graph!.items.containsKey(args.id)) {
-        return CommandResult.failure('Item with ID "${args.id}" already exists');
+        final existingItem = context.graph!.items[args.id]!;
+        return CommandResult.failure('Item with ID "${args.id}" already exists\nExisting item: ${existingItem.id} - ${existingItem.title}');
+      }
+      
+      // Check if ID conflicts with any existing item titles
+      for (final item in context.graph!.items.values) {
+        if (args.id.toLowerCase() == item.title.toLowerCase()) {
+          return CommandResult.failure('Item ID "${args.id}" conflicts with title of another item\nConflicting item: ${item.id} - ${item.title}');
+        }
+        if (item.title.toLowerCase().contains(args.id.toLowerCase())) {
+          return CommandResult.failure('Item ID "${args.id}" conflicts with title of another item\nConflicting item: ${item.id} - ${item.title}');
+        }
+      }
+      
+      // Check if title conflicts with any existing item titles
+      for (final item in context.graph!.items.values) {
+        if (args.title.toLowerCase() == item.title.toLowerCase()) {
+          return CommandResult.failure('Title "${args.title}" conflicts with title of another item\nConflicting item: ${item.id} - ${item.title}');
+        }
+        if (item.title.toLowerCase().contains(args.title.toLowerCase()) || 
+            args.title.toLowerCase().contains(item.title.toLowerCase())) {
+          return CommandResult.failure('Title "${args.title}" conflicts with title of another item\nConflicting item: ${item.id} - ${item.title}');
+        }
+      }
+      
+      // Validate that all referenced items exist
+      for (final entry in args.relations.entries) {
+        for (final targetId in entry.value) {
+          if (!context.graph!.items.containsKey(targetId)) {
+            return CommandResult.failure('Referenced item "$targetId" does not exist');
+          }
+        }
       }
 
       // Create new item
@@ -141,6 +172,15 @@ class AddCommand extends CliCommand<AddArgs> {
 
       // Add to graph
       context.graph!.addItem(newItem);
+
+      // Check for cycles after adding the item
+      try {
+        context.graph!.topologicalSort();
+      } on CycleDetectedException catch (e) {
+        // Remove the item we just added since it creates a cycle
+        context.graph!.items.remove(args.id);
+        return CommandResult.failure('Adding this item would create a dependency cycle: ${e.cycleItems.join(' -> ')}');
+      }
 
       // Save graph
       DualFileManager.saveGraph(

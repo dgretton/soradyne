@@ -454,10 +454,41 @@ Future<void> _executeAdd(ArgResults args) async {
     // Load existing graph
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
     
-    // Check if ID already exists
+    // Validate ID is unique and doesn't conflict with titles (matching Python logic)
     if (graph.items.containsKey(id)) {
+      final existingItem = graph.items[id]!;
       stderr.writeln('Error: Item with ID "$id" already exists');
+      stderr.writeln('Existing item: ${existingItem.id} - ${existingItem.title}');
       exit(1);
+    }
+    
+    // Check if ID conflicts with any existing item titles
+    for (final item in graph.items.values) {
+      if (id.toLowerCase() == item.title.toLowerCase()) {
+        stderr.writeln('Error: Item ID "$id" conflicts with title of another item');
+        stderr.writeln('Conflicting item: ${item.id} - ${item.title}');
+        exit(1);
+      }
+      if (item.title.toLowerCase().contains(id.toLowerCase())) {
+        stderr.writeln('Error: Item ID "$id" conflicts with title of another item');
+        stderr.writeln('Conflicting item: ${item.id} - ${item.title}');
+        exit(1);
+      }
+    }
+    
+    // Check if title conflicts with any existing item titles
+    for (final item in graph.items.values) {
+      if (title.toLowerCase() == item.title.toLowerCase()) {
+        stderr.writeln('Error: Title "$title" conflicts with title of another item');
+        stderr.writeln('Conflicting item: ${item.id} - ${item.title}');
+        exit(1);
+      }
+      if (item.title.toLowerCase().contains(title.toLowerCase()) || 
+          title.toLowerCase().contains(item.title.toLowerCase())) {
+        stderr.writeln('Error: Title "$title" conflicts with title of another item');
+        stderr.writeln('Conflicting item: ${item.id} - ${item.title}');
+        exit(1);
+      }
     }
     
     // Parse duration

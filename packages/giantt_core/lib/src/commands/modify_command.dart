@@ -153,6 +153,22 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
         );
       }
 
+      // Check for cycles before applying changes (especially for relation modifications)
+      if (args.addRelations.isNotEmpty || args.removeRelations.isNotEmpty) {
+        // Create a temporary graph to test the changes
+        final tempGraph = GianttGraph();
+        for (final item in context.graph!.items.values) {
+          tempGraph.addItem(item);
+        }
+        tempGraph.addItem(modifiedItem); // Replace with modified version
+        
+        try {
+          tempGraph.topologicalSort();
+        } on CycleDetectedException catch (e) {
+          return CommandResult.failure('Modifying relations would create a dependency cycle: ${e.cycleItems.join(' -> ')}');
+        }
+      }
+
       // Update in graph
       context.graph!.addItem(modifiedItem);
 

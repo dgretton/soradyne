@@ -57,6 +57,8 @@ class GraphDoctor {
     _issues.clear();
     _checkReferences();
     _checkChains();
+    _checkTimeConstraints();
+    _checkIdTitleConflicts();
     // Note: Orphan, chart, and tag checks commented out as they may not be actual issues
     return List.unmodifiable(_issues);
   }
@@ -313,4 +315,62 @@ class GraphDoctor {
 
   /// Get current issues
   List<Issue> get issues => List.unmodifiable(_issues);
+
+  /// Check for time constraint violations
+  void _checkTimeConstraints() {
+    for (final item in graph.items.values) {
+      if (item.timeConstraint != null) {
+        // Check if time constraint is valid
+        final constraint = item.timeConstraint!;
+        
+        // Add validation for time windows here
+        // This would check if the constraint makes sense given dependencies
+        // For now, we'll add a placeholder for future time constraint validation
+        
+        // Example: Check if constraint conflicts with dependencies
+        final requiredItems = item.relations['REQUIRES'] ?? [];
+        for (final requiredId in requiredItems) {
+          final requiredItem = graph.items[requiredId];
+          if (requiredItem?.timeConstraint != null) {
+            // Could add logic here to check if time constraints are compatible
+          }
+        }
+      }
+    }
+  }
+
+  /// Check for ID and title conflicts
+  void _checkIdTitleConflicts() {
+    final itemsList = graph.items.values.toList();
+    
+    for (int i = 0; i < itemsList.length; i++) {
+      final item1 = itemsList[i];
+      
+      for (int j = i + 1; j < itemsList.length; j++) {
+        final item2 = itemsList[j];
+        
+        // Check for title conflicts
+        if (item1.title.toLowerCase() == item2.title.toLowerCase()) {
+          _issues.add(Issue(
+            type: IssueType.chartInconsistency, // Reusing existing type for now
+            itemId: item1.id,
+            message: "Title conflicts with item '${item2.id}': '${item2.title}'",
+            relatedIds: [item2.id],
+            suggestedFix: "Rename one of the items to have a unique title",
+          ));
+        }
+        
+        // Check for ID/title cross-conflicts
+        if (item1.id.toLowerCase() == item2.title.toLowerCase()) {
+          _issues.add(Issue(
+            type: IssueType.chartInconsistency, // Reusing existing type for now
+            itemId: item1.id,
+            message: "ID conflicts with title of item '${item2.id}': '${item2.title}'",
+            relatedIds: [item2.id],
+            suggestedFix: "Rename the ID or title to avoid conflict",
+          ));
+        }
+      }
+    }
+  }
 }
