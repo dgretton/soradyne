@@ -1,2 +1,181 @@
-// TODO: Implement Step 6 - File Repository
-// This will contain file I/O operations
+import 'dart:io';
+import '../models/giantt_item.dart';
+import '../models/graph_exceptions.dart';
+import '../graph/giantt_graph.dart';
+import '../parser/giantt_parser.dart';
+
+/// Repository for file I/O operations with include support
+class FileRepository {
+  /// Parse include directives from a file
+  /// 
+  /// Include directives should be at the top of the file in the format:
+  /// #include path/to/file.txt
+  static List<String> parseIncludeDirectives(String filepath) {
+    final includes = <String>[];
+    
+    try {
+      final file = File(filepath);
+      if (!file.existsSync()) {
+        return includes;
+      }
+      
+      final lines = file.readAsLinesSync();
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty || !trimmed.startsWith('#include ')) {
+          break; // Only process directives at the top
+        }
+        final includePath = trimmed.substring(9).trim(); // Remove '#include ' prefix
+        includes.add(includePath);
+      }
+    } catch (e) {
+      throw GraphException('Error reading include directives from $filepath: $e');
+    }
+    
+    return includes;
+  }
+
+  /// Load a graph from a file, processing include directives
+  /// 
+  /// Args:
+  ///   filepath: Path to the file to load
+  ///   loadedFiles: Set of files already loaded (to prevent circular includes)
+  ///   
+  /// Returns:
+  ///   GianttGraph object
+  static GianttGraph loadGraphFromFile(String filepath, [Set<String>? loadedFiles]) {
+    loadedFiles ??= <String>{};
+    
+    // Prevent circular includes
+    if (loadedFiles.contains(filepath)) {
+      throw GraphException('Circular include detected for $filepath');
+    }
+    
+    loadedFiles.add(filepath);
+    
+    final file = File(filepath);
+    if (!file.existsSync()) {
+      throw GraphException('File not found: $filepath');
+    }
+    
+    // Process include directives
+    final includes = parseIncludeDirectives(filepath);
+    
+    // Create the graph
+    final graph = GianttGraph();
+    
+    // Load included files first
+    for (final includePath in includes) {
+      // Handle relative paths
+      String resolvedPath;
+      if (_isAbsolutePath(includePath)) {
+        resolvedPath = includePath;
+      } else {
+        final baseDir = _getDirectoryPath(filepath);
+        resolvedPath = _joinPaths(baseDir, includePath);
+      }
+      
+      try {
+        final includeGraph = loadGraphFromFile(resolvedPath, Set.from(loadedFiles));
+        // Merge the included graph
+        for (final item in includeGraph.items.values) {
+          graph.addItem(item);
+        }
+      } catch (e) {
+        throw GraphException('Error loading include $resolvedPath: $e');
+      }
+    }
+    
+    // Now load the main file content
+    final lines = file.readAsLinesSync();
+    final isOccludeFile = filepath.contains('occlude');
+    
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isNotEmpty && !trimmed.startsWith('#')) {
+        try {
+          final item = GianttParser.fromString(trimmed, occlude: isOccludeFile);
+          graph.addItem(item);
+        } catch (e) {
+          // Skip invalid lines with warning
+          print('Warning: Skipping invalid line in $filepath: $e');
+        }
+      }
+    }
+    
+    return graph;
+  }
+
+  /// Load a graph from main and occluded files, processing includes
+  static GianttGraph loadGraph(String filepath, String occludeFilepath) {
+    final loadedFiles = <String>{};
+    final mainGraph = loadGraphFromFile(filepath, loadedFiles);
+    final occludeGraph = loadGraphFromFile(occludeFilepath, Set.from(loadedFiles));
+    
+    // Merge graphs
+    for (final item in occludeGraph.items.values) {
+      mainGraph.addItem(item);
+    }
+    
+    return mainGraph;
+  }
+
+  /// Check if a path is absolute
+  static bool _isAbsolutePath(String path) {
+    return path.startsWith('/') || (path.length > 1 && path[1] == ':'); // Unix or Windows
+  }
+
+  /// Get the directory part of a file path
+  static String _getDirectoryPath(String filepath) {
+    final lastSeparator = filepath.lastIndexOf(Platform.pathSeparator);
+    if (lastSeparator == -1) {
+      return '.'; // Current directory
+    }
+    return filepath.substring(0, lastSeparator);
+  }
+
+  /// Join two path components
+  static String _joinPaths(String dir, String filename) {
+    if (dir.endsWith(Platform.pathSeparator)) {
+      return dir + filename;
+    }
+    return dir + Platform.pathSeparator + filename;
+  }
+
+  /// Get the include structure of a file
+  static void showIncludeStructure(String filepath, {bool recursive = false, int depth = 0, Set<String>? visited}) {
+    visited ??= <String>{};
+    
+    final indent = '  ' * depth;
+    
+    if (visited.contains(filepath)) {
+      print('${indent}└─ $filepath (circular include, skipping)');
+      return;
+    }
+    
+    visited.add(filepath);
+    
+    if (!File(filepath).existsSync()) {
+      print('${indent}└─ $filepath (file not found)');
+      return;
+    }
+    
+    print('${indent}└─ $filepath');
+    
+    if (recursive) {
+      final includes = parseIncludeDirectives(filepath);
+      for (final includePath in includes) {
+        // Handle relative paths
+        String resolvedPath;
+        if (_isAbsolutePath(includePath)) {
+          resolvedPath = includePath;
+        } else {
+          final baseDir = _getDirectoryPath(filepath);
+          resolvedPath = _joinPaths(baseDir, includePath);
+        }
+        
+        showIncludeStructure(resolvedPath, recursive: true, depth: depth + 1, visited: Set.from(visited));
+      }
+    }
+  }
+}
