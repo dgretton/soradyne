@@ -271,11 +271,15 @@ class GianttGraph {
       final currentItem = _items[itemId];
       if (currentItem == null) return 0;
       
+      // Consider both REQUIRES and ANYOF relations for depth calculation
       final requires = currentItem.relations['REQUIRES'] ?? [];
-      if (requires.isEmpty) return 0;
+      final anyof = currentItem.relations['ANYOF'] ?? [];
+      final allDeps = [...requires, ...anyof];
+      
+      if (allDeps.isEmpty) return 0;
       
       int maxDepth = 0;
-      for (final depId in requires) {
+      for (final depId in allDeps) {
         if (_items.containsKey(depId)) {
           final depDepth = calculateDepth(depId);
           maxDepth = maxDepth > depDepth ? maxDepth : depDepth;
