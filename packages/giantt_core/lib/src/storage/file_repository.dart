@@ -10,6 +10,24 @@ import 'path_resolver.dart';
 
 /// Repository for file I/O operations with include support
 class FileRepository {
+  /// Load a graph from main and occluded files
+  static GianttGraph loadGraph(String filepath, String occludeFilepath) {
+    // TODO: Implement graph loading with include processing
+    throw UnimplementedError('Graph loading not yet implemented');
+  }
+  
+  /// Load logs from main and occluded files
+  static LogCollection loadLogs(String filepath, String occludeFilepath) {
+    // TODO: Implement log loading
+    throw UnimplementedError('Log loading not yet implemented');
+  }
+  
+  /// Save a graph to main and occluded files
+  static void saveGraph(String filepath, String occludeFilepath, GianttGraph graph) {
+    // TODO: Implement graph saving
+    throw UnimplementedError('Graph saving not yet implemented');
+  }
+
   /// Parse include directives from a file
   /// 
   /// Include directives should be at the top of the file in the format:
