@@ -268,7 +268,7 @@ void main() {
           duration: GianttDuration.zero(),
           charts: [],
           tags: [],
-          relations: {},
+          relations: {'BLOCKS': ['task1']}, // Add the reciprocal relation to avoid incomplete chain
           timeConstraint: null,
           userComment: null,
           autoComment: null,
@@ -279,7 +279,7 @@ void main() {
         graph.addItem(validItem);
 
         final issues = doctor.fullDiagnosis();
-        expect(issues, hasLength(1));
+        expect(issues, hasLength(1)); // Should only find the dangling reference
 
         final fixedIssues = doctor.fixIssues();
         expect(fixedIssues, hasLength(1));
