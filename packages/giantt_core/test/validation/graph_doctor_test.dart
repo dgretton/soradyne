@@ -332,13 +332,13 @@ void main() {
         final issues = doctor.fullDiagnosis();
         expect(issues, hasLength(1));
 
-        // This type of issue typically can't be auto-fixed
+        // Try to fix the issue - incomplete chain issues can be auto-fixed
         final fixedIssues = doctor.fixIssues();
-        expect(fixedIssues, isEmpty);
+        expect(fixedIssues, hasLength(1));
 
-        // Issue should still remain
+        // Issue should be fixed
         final remainingIssues = doctor.fullDiagnosis();
-        expect(remainingIssues, hasLength(1));
+        expect(remainingIssues, isEmpty);
       });
     });
 

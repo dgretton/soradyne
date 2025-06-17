@@ -159,35 +159,28 @@ class GraphDoctor {
     final relatedItem = graph.items[issue.relatedIds.first];
     if (item == null || relatedItem == null) return false;
 
-    // Parse the suggested fix to determine what to do
+    // Parse the suggested fix: "giantt modify <target> --add <relation> <source>"
     final fixParts = issue.suggestedFix!.split(' ');
-    if (fixParts.length < 5) return false;
+    if (fixParts.length < 6) return false;
 
     final targetId = fixParts[2];
-    final action = fixParts[3];
     final relType = fixParts[4].toUpperCase();
+    final sourceId = fixParts[5];
 
-    if (targetId != issue.itemId && targetId != issue.relatedIds.first) {
-      return false;
-    }
+    final targetItem = graph.items[targetId];
+    if (targetItem == null) return false;
 
-    if (action.toLowerCase().contains('add')) {
-      final targetItem = graph.items[targetId];
-      if (targetItem == null) return false;
-
-      // Add the relation
-      final relations = Map<String, List<String>>.from(targetItem.relations);
-      relations.putIfAbsent(relType, () => []);
+    // Add the relation
+    final relations = Map<String, List<String>>.from(targetItem.relations);
+    relations.putIfAbsent(relType, () => []);
+    
+    if (!relations[relType]!.contains(sourceId)) {
+      relations[relType]!.add(sourceId);
       
-      final relationTarget = fixParts.length > 5 ? fixParts[5] : issue.relatedIds.first;
-      if (!relations[relType]!.contains(relationTarget)) {
-        relations[relType]!.add(relationTarget);
-        
-        // Update the item
-        final updatedItem = targetItem.copyWith(relations: relations);
-        graph.addItem(updatedItem);
-        return true;
-      }
+      // Update the item
+      final updatedItem = targetItem.copyWith(relations: relations);
+      graph.addItem(updatedItem);
+      return true;
     }
 
     return false;
