@@ -102,7 +102,7 @@ ArgParser _createShowCommand() {
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('log-file', abbr: 'l', help: 'Giantt log file to use')
-    ..addOption('occlude-log-file', abbr: 'al', help: 'Giantt occlude log file to use')
+    ..addOption('occlude-log-file', help: 'Giantt occlude log file to use')
     ..addFlag('chart', help: 'Search in chart names', negatable: false)
     ..addFlag('log', help: 'Search in logs and log sessions', negatable: false);
 }
@@ -140,7 +140,7 @@ ArgParser _createTouchCommand() {
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('log-file', abbr: 'l', help: 'Giantt log file to use')
-    ..addOption('occlude-log-file', abbr: 'al', help: 'Giantt occlude log file to use');
+    ..addOption('occlude-log-file', help: 'Giantt occlude log file to use');
 }
 
 ArgParser _createInsertCommand() {
