@@ -29,6 +29,8 @@ void main() {
     });
 
     test('Item parsing matches Python exactly', () {
+      print('\n=== Item Parsing Compatibility Test ===');
+      
       // Test cases from Python implementation
       final testCases = [
         // Basic item
@@ -62,18 +64,43 @@ void main() {
         '○ comment_task 1d "Comment Task" {} # User comment ### Auto comment',
       ];
 
-      for (final testCase in testCases) {
-        // Parse with Dart
-        final dartItem = GianttParser.fromString(testCase);
+      print('Testing ${testCases.length} Python format strings:');
+      
+      for (int i = 0; i < testCases.length; i++) {
+        final testCase = testCases[i];
+        print('\nTest ${i + 1}:');
+        print('  Python: $testCase');
         
-        // Convert back to string
-        final dartOutput = dartItem.toFileString();
-        
-        // Should match original (allowing for minor formatting differences)
-        expect(_normalizeItemString(dartOutput), 
-               equals(_normalizeItemString(testCase)),
-               reason: 'Failed for test case: $testCase');
+        try {
+          // Parse with Dart
+          final dartItem = GianttParser.fromString(testCase);
+          
+          // Convert back to string
+          final dartOutput = dartItem.toFileString();
+          print('  Dart:   $dartOutput');
+          
+          // Check if they match
+          final normalizedPython = _normalizeItemString(testCase);
+          final normalizedDart = _normalizeItemString(dartOutput);
+          final match = normalizedDart == normalizedPython;
+          
+          print('  Result: ${match ? "✓ MATCH" : "✗ DIFFER"}');
+          
+          if (!match) {
+            print('  Normalized Python: "$normalizedPython"');
+            print('  Normalized Dart:   "$normalizedDart"');
+          }
+          
+          // Should match original (allowing for minor formatting differences)
+          expect(normalizedDart, equals(normalizedPython),
+                 reason: 'Failed for test case: $testCase');
+        } catch (e) {
+          print('  Result: ✗ PARSE ERROR - $e');
+          rethrow;
+        }
       }
+      
+      print('\n✓ All ${testCases.length} test cases passed!');
     });
 
     test('Status symbol parsing matches Python', () {

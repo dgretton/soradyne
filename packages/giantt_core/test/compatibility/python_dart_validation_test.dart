@@ -25,6 +25,20 @@ void main() {
     });
 
     test('File format output matches Python exactly', () async {
+      print('\n=== File Format Validation ===');
+      
+      // Expected Python outputs for comparison
+      final expectedPythonOutputs = [
+        '○ task_a 1d "First Task" {}',
+        '◑ task_b!! 2d "Second Task" {"Chart1"} urgent >>> ⊢[task_a]',
+        '● task_c... 0.5d "Task with \\"quotes\\" and special chars" {"Chart1","Chart2"} done,tested >>> ⊢[task_b] ►[task_d]',
+      ];
+      
+      print('Expected Python CLI outputs:');
+      for (int i = 0; i < expectedPythonOutputs.length; i++) {
+        print('  Python[$i]: ${expectedPythonOutputs[i]}');
+      }
+      
       // Create items using Dart CLI equivalent operations
       final graph = GianttGraph();
       
@@ -76,27 +90,38 @@ void main() {
       final lines = content.split('\n').where((line) => 
         line.trim().isNotEmpty && !line.trim().startsWith('#')).toList();
 
+      print('\nActual Dart CLI outputs:');
+      for (int i = 0; i < lines.length; i++) {
+        print('  Dart[$i]:   ${lines[i]}');
+      }
+      
+      print('\nComparison Results:');
+      for (int i = 0; i < expectedPythonOutputs.length && i < lines.length; i++) {
+        final match = lines[i] == expectedPythonOutputs[i];
+        print('  Line $i: ${match ? "✓ MATCH" : "✗ DIFFER"}');
+        if (!match) {
+          print('    Expected: ${expectedPythonOutputs[i]}');
+          print('    Actual:   ${lines[i]}');
+        }
+      }
+
       // Validate exact format matches Python output
       expect(lines.length, equals(3), reason: 'Should have exactly 3 item lines');
       
-      // Validate task_a format
-      expect(lines[0], equals('○ task_a 1d "First Task" {}'),
-             reason: 'Basic item format should match Python');
-      
-      // Validate task_b format  
-      expect(lines[1], equals('◑ task_b!! 2d "Second Task" {"Chart1"} urgent >>> ⊢[task_a]'),
-             reason: 'Complex item format should match Python');
-      
-      // Validate task_c format with JSON escaping
-      expect(lines[2], contains('"Task with \\"quotes\\" and special chars"'),
-             reason: 'JSON escaping should match Python');
-      expect(lines[2], contains('{"Chart1","Chart2"}'),
-             reason: 'Multiple charts should be formatted correctly');
-      expect(lines[2], contains('done,tested'),
-             reason: 'Multiple tags should be comma-separated');
+      // Validate each line matches Python exactly
+      for (int i = 0; i < expectedPythonOutputs.length; i++) {
+        expect(lines[i], equals(expectedPythonOutputs[i]),
+               reason: 'Line $i should match Python output exactly');
+      }
     });
 
     test('Topological sort order matches Python', () async {
+      print('\n=== Topological Sort Validation ===');
+      
+      // Expected Python topological sort order for this dependency chain
+      final expectedPythonOrder = ['a_first', 'b_middle', 'z_last'];
+      print('Expected Python topological order: $expectedPythonOrder');
+      
       // Create a dependency chain that Python would sort in a specific order
       final graph = GianttGraph();
       
@@ -122,16 +147,23 @@ void main() {
         ),
       ];
 
+      print('\nAdding items in random order:');
       // Add in random order
       graph.addItem(items[0]); // z_last
+      print('  Added: z_last (requires b_middle)');
       graph.addItem(items[1]); // a_first  
+      print('  Added: a_first (no dependencies)');
       graph.addItem(items[2]); // b_middle
+      print('  Added: b_middle (requires a_first)');
 
       // Sort should produce: a_first, b_middle, z_last
       final sorted = graph.topologicalSort();
       final sortedIds = sorted.map((item) => item.id).toList();
       
-      expect(sortedIds, equals(['a_first', 'b_middle', 'z_last']),
+      print('\nDart topological sort result: $sortedIds');
+      print('Comparison: ${sortedIds.toString() == expectedPythonOrder.toString() ? "✓ MATCH" : "✗ DIFFER"}');
+      
+      expect(sortedIds, equals(expectedPythonOrder),
              reason: 'Topological sort should match Python dependency order');
 
       // Save and reload to verify file order
@@ -139,15 +171,62 @@ void main() {
       await File(occludeItemsPath).writeAsString(_getOccludeHeader());
       FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
       
+      print('\nTesting file save/reload persistence:');
       final reloaded = FileRepository.loadGraph(itemsPath, occludeItemsPath);
       final reloadedSorted = reloaded.topologicalSort();
       final reloadedIds = reloadedSorted.map((item) => item.id).toList();
       
-      expect(reloadedIds, equals(['a_first', 'b_middle', 'z_last']),
+      print('After save/reload: $reloadedIds');
+      print('Persistence check: ${reloadedIds.toString() == expectedPythonOrder.toString() ? "✓ PRESERVED" : "✗ LOST"}');
+      
+      expect(reloadedIds, equals(expectedPythonOrder),
              reason: 'File save/load should preserve topological order');
     });
 
     test('Symbol mappings are identical to Python', () {
+      print('\n=== Symbol Mapping Validation ===');
+      
+      // Expected Python symbol mappings
+      final expectedStatusSymbols = {
+        'NOT_STARTED': '○',
+        'IN_PROGRESS': '◑', 
+        'BLOCKED': '⊘',
+        'COMPLETED': '●',
+      };
+      
+      final expectedPrioritySymbols = {
+        'LOWEST': ',,,',
+        'LOW': '...',
+        'NEUTRAL': '',
+        'UNSURE': '?',
+        'MEDIUM': '!',
+        'HIGH': '!!',
+        'CRITICAL': '!!!',
+      };
+      
+      final expectedRelationSymbols = {
+        'REQUIRES': '⊢',
+        'BLOCKS': '►',
+        'ANYOF': '⋲',
+        'SUFFICIENT': '≻',
+        'SUPERCHARGES': '≫',
+        'INDICATES': '∴',
+        'TOGETHER': '∪',
+        'CONFLICTS': '⊟',
+      };
+      
+      print('Python Status Symbols:');
+      expectedStatusSymbols.forEach((name, symbol) => 
+        print('  $name: "$symbol"'));
+      
+      print('\nPython Priority Symbols:');
+      expectedPrioritySymbols.forEach((name, symbol) => 
+        print('  $name: "$symbol"'));
+      
+      print('\nPython Relation Symbols:');
+      expectedRelationSymbols.forEach((name, symbol) => 
+        print('  $name: "$symbol"'));
+
       // Test all status symbols
       final statusMappings = {
         GianttStatus.notStarted: '○',
@@ -156,7 +235,10 @@ void main() {
         GianttStatus.completed: '●',
       };
 
+      print('\nDart Status Symbol Validation:');
       for (final entry in statusMappings.entries) {
+        final match = entry.key.symbol == entry.value;
+        print('  ${entry.key.name}: "${entry.key.symbol}" ${match ? "✓" : "✗"}');
         expect(entry.key.symbol, equals(entry.value),
                reason: 'Status ${entry.key.name} should have symbol ${entry.value}');
       }
@@ -172,7 +254,10 @@ void main() {
         GianttPriority.critical: '!!!',
       };
 
+      print('\nDart Priority Symbol Validation:');
       for (final entry in priorityMappings.entries) {
+        final match = entry.key.symbol == entry.value;
+        print('  ${entry.key.name}: "${entry.key.symbol}" ${match ? "✓" : "✗"}');
         expect(entry.key.symbol, equals(entry.value),
                reason: 'Priority ${entry.key.name} should have symbol "${entry.value}"');
       }
@@ -191,13 +276,27 @@ void main() {
       );
 
       final output = item.toFileString();
-      expect(output, contains('⊢[dep1]'), reason: 'REQUIRES should use ⊢ symbol');
-      expect(output, contains('►[blocked1]'), reason: 'BLOCKS should use ► symbol');
-      expect(output, contains('⋲[any1]'), reason: 'ANYOF should use ⋲ symbol');
-      expect(output, contains('≻[suff1]'), reason: 'SUFFICIENT should use ≻ symbol');
+      print('\nDart Relation Symbol Validation:');
+      print('  Generated output: $output');
+      
+      final relationTests = [
+        ('REQUIRES', '⊢[dep1]'),
+        ('BLOCKS', '►[blocked1]'),
+        ('ANYOF', '⋲[any1]'),
+        ('SUFFICIENT', '≻[suff1]'),
+      ];
+      
+      for (final test in relationTests) {
+        final contains = output.contains(test.$2);
+        print('  ${test.$1}: ${test.$2} ${contains ? "✓" : "✗"}');
+        expect(output, contains(test.$2), 
+               reason: '${test.$1} should use ${test.$2}');
+      }
     });
 
     test('Round-trip parsing preserves data exactly', () {
+      print('\n=== Round-trip Parsing Validation ===');
+      
       // Test complex items that exercise all parsing features
       final testCases = [
         '○ simple 1d "Simple Task" {}',
@@ -207,15 +306,34 @@ void main() {
         '○ relations 1d "All Relations" {} >>> ⊢[r1] ⋲[a1] ≫[s1] ∴[i1] ∪[t1] ⊟[c1] ►[b1] ≻[sf1]',
       ];
 
-      for (final testCase in testCases) {
+      print('Testing round-trip parsing (Python format → Dart parse → Dart format):');
+      
+      for (int i = 0; i < testCases.length; i++) {
+        final testCase = testCases[i];
+        print('\nTest case ${i + 1}:');
+        print('  Input:  $testCase');
+        
         // Parse the string
         final parsed = GianttParser.fromString(testCase);
         
         // Convert back to string
         final output = parsed.toFileString();
+        print('  Output: $output');
+        
+        // Check if they match
+        final normalizedInput = _normalizeString(testCase);
+        final normalizedOutput = _normalizeString(output);
+        final match = normalizedOutput == normalizedInput;
+        
+        print('  Result: ${match ? "✓ PRESERVED" : "✗ CHANGED"}');
+        
+        if (!match) {
+          print('  Normalized Input:  "$normalizedInput"');
+          print('  Normalized Output: "$normalizedOutput"');
+        }
         
         // Should be identical (normalized for whitespace)
-        expect(_normalizeString(output), equals(_normalizeString(testCase)),
+        expect(normalizedOutput, equals(normalizedInput),
                reason: 'Round-trip should preserve: $testCase');
       }
     });
