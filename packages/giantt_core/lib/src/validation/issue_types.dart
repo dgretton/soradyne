@@ -1,3 +1,6 @@
+import '../models/duration.dart';
+import '../graph/giantt_graph.dart';
+
 /// Additional validation issue types for comprehensive graph checking
 enum ValidationSeverity {
   warning,
