@@ -173,6 +173,7 @@ ArgParser _createShowCommand() {
 
 ArgParser _createModifyCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addFlag('add', help: 'Add a relation', negatable: false)
@@ -201,6 +202,7 @@ ArgParser _createSortCommand() {
 
 ArgParser _createTouchCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('log-file', abbr: 'l', help: 'Giantt log file to use')
@@ -219,6 +221,7 @@ ArgParser _createInsertCommand() {
 
 ArgParser _createIncludesCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addFlag('recursive', abbr: 'r', help: 'Show recursive includes', negatable: false);
 }
@@ -425,8 +428,102 @@ String _createOccludeItemsBanner() {
 }
 
 Future<void> _executeAdd(ArgResults args) async {
-  print('TODO: Implement add command');
-  // TODO: Implement add logic
+  if (args.rest.length < 2) {
+    stderr.writeln('Error: Please provide both ID and title');
+    stderr.writeln('Usage: giantt add <id> <title> [options]');
+    exit(1);
+  }
+  
+  final id = args.rest[0];
+  final title = args.rest[1];
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final duration = args['duration'] as String;
+  final priority = args['priority'] as String;
+  final charts = args['charts'] as String?;
+  final tags = args['tags'] as String?;
+  final status = args['status'] as String;
+  final requires = args['requires'] as String?;
+  final anyOf = args['any-of'] as String?;
+  
+  try {
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    
+    // Load existing graph
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    
+    // Check if ID already exists
+    if (graph.items.containsKey(id)) {
+      stderr.writeln('Error: Item with ID "$id" already exists');
+      exit(1);
+    }
+    
+    // Parse duration
+    final parsedDuration = GianttDuration.parse(duration);
+    
+    // Parse priority
+    final parsedPriority = GianttPriority.fromName(priority);
+    
+    // Parse status
+    final parsedStatus = GianttStatus.fromName(status);
+    
+    // Parse charts
+    final chartList = charts?.split(',').map((c) => c.trim()).toList() ?? <String>[];
+    
+    // Parse tags
+    final tagList = tags?.split(',').map((t) => t.trim()).toList() ?? <String>[];
+    
+    // Parse relations
+    final relations = <String, List<String>>{};
+    if (requires != null) {
+      relations['REQUIRES'] = requires.split(',').map((r) => r.trim()).toList();
+    }
+    if (anyOf != null) {
+      relations['ANYOF'] = anyOf.split(',').map((a) => a.trim()).toList();
+    }
+    
+    // Validate that required items exist
+    for (final entry in relations.entries) {
+      for (final targetId in entry.value) {
+        if (!graph.items.containsKey(targetId)) {
+          stderr.writeln('Error: Referenced item "$targetId" does not exist');
+          exit(1);
+        }
+      }
+    }
+    
+    // Create new item
+    final newItem = GianttItem(
+      id: id,
+      title: title,
+      status: parsedStatus,
+      priority: parsedPriority,
+      duration: parsedDuration,
+      charts: chartList,
+      tags: tagList,
+      relations: relations,
+    );
+    
+    // Add to graph
+    graph.addItem(newItem);
+    
+    // Check for cycles
+    try {
+      graph.topologicalSort();
+    } catch (e) {
+      stderr.writeln('Error: Adding this item would create a cycle in dependencies');
+      exit(1);
+    }
+    
+    // Save graph
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    
+    print('Successfully added item "$id"');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeShow(ArgResults args) async {
@@ -572,13 +669,90 @@ Future<void> _executeSetStatus(ArgResults args) async {
 }
 
 Future<void> _executeSort(ArgResults args) async {
-  print('TODO: Implement sort command');
-  // TODO: Implement sort logic
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  
+  try {
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    
+    // Load graph
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    
+    // Perform topological sort (this validates the graph)
+    final sortedItems = graph.topologicalSort();
+    
+    print('Graph is valid. Items in topological order:');
+    for (final item in sortedItems) {
+      print('  ${item.id} - ${item.title}');
+    }
+    
+    // Save the sorted graph
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    
+    print('\nGraph saved in topological order.');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeTouch(ArgResults args) async {
-  print('TODO: Implement touch command');
-  // TODO: Implement touch logic
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final logFile = args['log-file'] as String?;
+  final occludeLogFile = args['occlude-log-file'] as String?;
+  
+  try {
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    
+    // Touch items files
+    final itemsFile = File(itemsPath);
+    final occludeItemsFile = File(occludeItemsPath);
+    
+    if (itemsFile.existsSync()) {
+      await itemsFile.setLastModified(DateTime.now());
+      print('Touched: $itemsPath');
+    } else {
+      print('File not found: $itemsPath');
+    }
+    
+    if (occludeItemsFile.existsSync()) {
+      await occludeItemsFile.setLastModified(DateTime.now());
+      print('Touched: $occludeItemsPath');
+    } else {
+      print('File not found: $occludeItemsPath');
+    }
+    
+    // Touch log files if specified
+    if (logFile != null || occludeLogFile != null) {
+      final logsPath = logFile ?? PathResolver.getDefaultGianttPath('logs.jsonl');
+      final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath('logs.jsonl', occlude: true);
+      
+      final logsFile = File(logsPath);
+      final occludeLogsFile = File(occludeLogsPath);
+      
+      if (logsFile.existsSync()) {
+        await logsFile.setLastModified(DateTime.now());
+        print('Touched: $logsPath');
+      } else {
+        print('File not found: $logsPath');
+      }
+      
+      if (occludeLogsFile.existsSync()) {
+        await occludeLogsFile.setLastModified(DateTime.now());
+        print('Touched: $occludeLogsPath');
+      } else {
+        print('File not found: $occludeLogsPath');
+      }
+    }
+    
+    print('Touch operation completed.');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeInsert(ArgResults args) async {
@@ -587,8 +761,23 @@ Future<void> _executeInsert(ArgResults args) async {
 }
 
 Future<void> _executeIncludes(ArgResults args) async {
-  print('TODO: Implement includes command');
-  // TODO: Implement includes logic
+  final file = args['file'] as String?;
+  final recursive = args['recursive'] as bool;
+  
+  try {
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    
+    if (!File(itemsPath).existsSync()) {
+      stderr.writeln('Error: File not found: $itemsPath');
+      exit(1);
+    }
+    
+    print('Include structure for: $itemsPath');
+    FileRepository.showIncludeStructure(itemsPath, recursive: recursive);
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeClean(ArgResults args) async {
