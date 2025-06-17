@@ -1,8 +1,10 @@
 import 'dart:io';
 import '../models/giantt_item.dart';
+import '../models/log_entry.dart';
 import '../models/graph_exceptions.dart';
 import '../graph/giantt_graph.dart';
 import '../parser/giantt_parser.dart';
+import '../logging/log_collection.dart';
 import 'atomic_file_writer.dart';
 import 'backup_manager.dart';
 import 'file_header_generator.dart';
@@ -10,23 +12,6 @@ import 'path_resolver.dart';
 
 /// Repository for file I/O operations with include support
 class FileRepository {
-  /// Load a graph from main and occluded files
-  static GianttGraph loadGraph(String filepath, String occludeFilepath) {
-    // TODO: Implement graph loading with include processing
-    throw UnimplementedError('Graph loading not yet implemented');
-  }
-  
-  /// Load logs from main and occluded files
-  static LogCollection loadLogs(String filepath, String occludeFilepath) {
-    // TODO: Implement log loading
-    throw UnimplementedError('Log loading not yet implemented');
-  }
-  
-  /// Save a graph to main and occluded files
-  static void saveGraph(String filepath, String occludeFilepath, GianttGraph graph) {
-    // TODO: Implement graph saving
-    throw UnimplementedError('Graph saving not yet implemented');
-  }
 
   /// Parse include directives from a file
   /// 
@@ -129,8 +114,6 @@ class FileRepository {
   }
 
   /// Load a graph from main and occluded files, processing includes
-  /// 
-  /// Note: This method is deprecated. Use DualFileManager.loadGraph() instead.
   static GianttGraph loadGraph(String filepath, String occludeFilepath) {
     final loadedFiles = <String>{};
     final mainGraph = loadGraphFromFile(filepath, loadedFiles);
@@ -142,6 +125,19 @@ class FileRepository {
     }
     
     return mainGraph;
+  }
+
+  /// Load logs from main and occluded files
+  static LogCollection loadLogs(String filepath, String occludeFilepath) {
+    final logs = LogCollection();
+    
+    // Load include logs
+    logs.addEntries(_loadLogsFromFile(filepath, occlude: false));
+    
+    // Load occlude logs
+    logs.addEntries(_loadLogsFromFile(occludeFilepath, occlude: true));
+    
+    return logs;
   }
 
   /// Save a graph to files with atomic operations and proper headers
