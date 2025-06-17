@@ -676,6 +676,16 @@ Future<void> _executeSort(ArgResults args) async {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
+    // Check if files exist
+    if (!File(itemsPath).existsSync()) {
+      stderr.writeln('Error: File not found: $itemsPath');
+      exit(1);
+    }
+    if (!File(occludeItemsPath).existsSync()) {
+      stderr.writeln('Error: File not found: $occludeItemsPath');
+      exit(1);
+    }
+    
     // Load graph
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
     
