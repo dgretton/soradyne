@@ -196,6 +196,7 @@ ArgParser _createSetStatusCommand() {
 
 ArgParser _createSortCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use');
 }
