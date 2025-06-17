@@ -447,8 +447,8 @@ Future<void> _executeAdd(ArgResults args) async {
   final anyOf = args['any-of'] as String?;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
     // Load existing graph
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
@@ -541,8 +541,8 @@ Future<void> _executeShow(ArgResults args) async {
   final searchLog = args['log'] as bool;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
@@ -557,8 +557,8 @@ Future<void> _executeShow(ArgResults args) async {
     }
     
     if (searchLog) {
-      final logsPath = logFile ?? PathResolver.getDefaultGianttPath('logs.jsonl');
-      final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath('logs.jsonl', occlude: true);
+      final logsPath = logFile ?? _getDefaultGianttPath('logs.jsonl');
+      final occludeLogsPath = occludeLogFile ?? _getDefaultGianttPath('logs.jsonl', occlude: true);
       final logs = FileRepository.loadLogs(logsPath, occludeLogsPath);
       await _showLogs(logs, substring);
     }
@@ -673,8 +673,8 @@ Future<void> _executeSort(ArgResults args) async {
   final occludeFile = args['occlude-file'] as String?;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
@@ -704,8 +704,8 @@ Future<void> _executeTouch(ArgResults args) async {
   final occludeLogFile = args['occlude-log-file'] as String?;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
     // Touch items files
     final itemsFile = File(itemsPath);
@@ -727,8 +727,8 @@ Future<void> _executeTouch(ArgResults args) async {
     
     // Touch log files if specified
     if (logFile != null || occludeLogFile != null) {
-      final logsPath = logFile ?? PathResolver.getDefaultGianttPath('logs.jsonl');
-      final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath('logs.jsonl', occlude: true);
+      final logsPath = logFile ?? _getDefaultGianttPath('logs.jsonl');
+      final occludeLogsPath = occludeLogFile ?? _getDefaultGianttPath('logs.jsonl', occlude: true);
       
       final logsFile = File(logsPath);
       final occludeLogsFile = File(occludeLogsPath);
@@ -765,7 +765,7 @@ Future<void> _executeIncludes(ArgResults args) async {
   final recursive = args['recursive'] as bool;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     
     if (!File(itemsPath).existsSync()) {
       stderr.writeln('Error: File not found: $itemsPath');
@@ -950,4 +950,27 @@ Future<void> _executeDoctorListTypes() async {
   for (final issueType in IssueType.values) {
     print('  • ${issueType.value}');
   }
+}
+
+/// Get the default path for Giantt files
+String _getDefaultGianttPath(String filename, {bool occlude = false}) {
+  final filepath = '${occlude ? 'occlude' : 'include'}${Platform.pathSeparator}$filename';
+  
+  // First check for local .giantt directory
+  final localDir = Directory('.giantt');
+  if (localDir.existsSync()) {
+    return '.giantt${Platform.pathSeparator}$filepath';
+  }
+  
+  // Fall back to home directory
+  final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (homeDir != null) {
+    final homeGianttDir = Directory('$homeDir${Platform.pathSeparator}.giantt');
+    if (homeGianttDir.existsSync()) {
+      return '$homeDir${Platform.pathSeparator}.giantt${Platform.pathSeparator}$filepath';
+    }
+  }
+  
+  // If neither exists, return local path for creation
+  return '.giantt${Platform.pathSeparator}$filepath';
 }
