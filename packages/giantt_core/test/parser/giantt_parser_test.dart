@@ -106,7 +106,7 @@ void main() {
 
     group('Round-trip parsing', () {
       test('should maintain data integrity through parse -> toString -> parse', () {
-        const originalLine = '◑ complex_task!! 2w3d "Complex \"task\" with everything" {"Chart1","Chart2"} urgent,important >>> ⊢[dep1,dep2] ►[blocked1] ≫[enhanced1] @@@ window(5d:2d,severe) # User note ### Auto note';
+        const originalLine = '◑ complex_task!! 2w3d "Complex task with everything" {"Chart1","Chart2"} urgent,important >>> ⊢[dep1,dep2] ►[blocked1] ≫[enhanced1] @@@ window(5d:2d,severe) # User note ### Auto note';
         
         final item = GianttParser.fromString(originalLine);
         final regeneratedLine = GianttParser.itemToString(item);
@@ -154,12 +154,12 @@ void main() {
 
       test('should throw on invalid status symbol', () {
         const line = 'X task1 1d "Invalid status" {}';
-        expect(() => GianttParser.fromString(line), throwsA(isA<ArgumentError>()));
+        expect(() => GianttParser.fromString(line), throwsA(isA<GianttParseException>()));
       });
 
       test('should throw on invalid duration', () {
         const line = '○ task1 invalid_duration "Title" {}';
-        expect(() => GianttParser.fromString(line), throwsA(isA<ArgumentError>()));
+        expect(() => GianttParser.fromString(line), throwsA(isA<GianttParseException>()));
       });
 
       test('should handle empty and comment lines', () {

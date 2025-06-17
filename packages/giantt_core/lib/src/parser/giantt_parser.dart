@@ -41,7 +41,7 @@ class GianttParser {
       final (id, priority) = _parseIdPriority(idPriority);
       
       // Parse duration
-      final parsedDuration = GianttDuration.parse(duration);
+      final parsedDuration = _parseDurationSafely(duration);
       
       // Parse post-title section
       final (charts, tags, relations, timeConstraint, userComment, autoComment) = 
@@ -136,9 +136,12 @@ class GianttParser {
     final idPriority = match.group(2)!;
     final duration = match.group(3)!.trim();
     
-    final status = GianttStatus.fromSymbol(statusSymbol);
-    
-    return (status, idPriority, duration);
+    try {
+      final status = GianttStatus.fromSymbol(statusSymbol);
+      return (status, idPriority, duration);
+    } catch (e) {
+      throw GianttParseException('Invalid status symbol: $statusSymbol', preTitle);
+    }
   }
 
   /// Parse ID and priority from combined string
@@ -296,19 +299,30 @@ class GianttParser {
     String? userComment;
     String? autoComment;
     
-    // Look for user comment (single #)
-    final userCommentMatch = RegExp(r'(?:^|\s)#\s*([^#].*)$').firstMatch(text);
+    // Look for auto comment first (triple ###) to avoid conflicts
+    final autoCommentMatch = RegExp(r'###\s*(.*)$').firstMatch(text);
+    if (autoCommentMatch != null) {
+      autoComment = autoCommentMatch.group(1)?.trim();
+      // Remove the auto comment from text to avoid conflicts with user comment parsing
+      text = text.replaceFirst(RegExp(r'###.*$'), '').trim();
+    }
+    
+    // Look for user comment (single # but not ###)
+    final userCommentMatch = RegExp(r'(?:^|\s)#(?!##)\s*(.*)$').firstMatch(text);
     if (userCommentMatch != null) {
       userComment = userCommentMatch.group(1)?.trim();
     }
     
-    // Look for auto comment (triple ###)
-    final autoCommentMatch = RegExp(r'(?:^|\s)###\s*(.*)$').firstMatch(text);
-    if (autoCommentMatch != null) {
-      autoComment = autoCommentMatch.group(1)?.trim();
-    }
-    
     return (userComment, autoComment);
+  }
+
+  /// Parse duration safely, wrapping errors in GianttParseException
+  static GianttDuration _parseDurationSafely(String duration) {
+    try {
+      return GianttDuration.parse(duration);
+    } catch (e) {
+      throw GianttParseException('Invalid duration format: $duration', duration);
+    }
   }
 
   /// Get the symbol for a relation type name
