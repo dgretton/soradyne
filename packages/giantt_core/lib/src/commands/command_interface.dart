@@ -125,38 +125,3 @@ class CommandContext {
   String get logsPath => '$workspacePath/logs.txt';
   String get occludeLogsPath => '$workspacePath/occlude/logs.txt';
 }
-
-/// Base interface for all commands
-abstract class Command<T> {
-  const Command();
-
-  /// Execute the command
-  Future<CommandResult<T>> execute(CommandContext context);
-
-  /// Get command name for CLI
-  String get name;
-
-  /// Get command description for help
-  String get description;
-
-  /// Get command usage for help
-  String get usage;
-}
-
-/// Interface for commands that can be used in CLI
-abstract class CliCommand<T> extends Command<T> {
-  const CliCommand();
-
-  /// Parse arguments from CLI
-  T parseArgs(List<String> args);
-
-  /// Execute with parsed arguments
-  Future<CommandResult<T>> executeWithArgs(CommandContext context, List<String> args) async {
-    try {
-      final parsedArgs = parseArgs(args);
-      return await execute(context);
-    } catch (e) {
-      return CommandResult.failure('Invalid arguments: $e');
-    }
-  }
-}

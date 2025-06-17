@@ -380,7 +380,7 @@ Future<void> _executeShow(ArgResults args) async {
     final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
-    final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
     
     if (!searchChart && !searchLog) {
       // Show item details
@@ -394,7 +394,7 @@ Future<void> _executeShow(ArgResults args) async {
     if (searchLog) {
       final logsPath = logFile ?? PathResolver.getDefaultGianttPath('logs.jsonl');
       final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath('logs.jsonl', occlude: true);
-      final logs = LogRepository.loadLogs(logsPath, occludeLogsPath);
+      final logs = FileRepository.loadLogs(logsPath, occludeLogsPath);
       await _showLogs(logs, substring);
     }
   } catch (e) {
@@ -547,7 +547,7 @@ Future<void> _executeDoctor(ArgResults args) async {
     final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
-    final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
     final doctor = GraphDoctor(graph);
     
     if (args.command == null) {
@@ -677,7 +677,7 @@ Future<void> _executeDoctorFix(GraphDoctor doctor, ArgResults fixArgs, String it
   
   if (fixedIssues.isNotEmpty) {
     // Save changes
-    DualFileManager.saveGraph(itemsPath, occludeItemsPath, doctor.graph);
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, doctor.graph);
     
     print('\nSuccessfully fixed ${fixedIssues.length} issue(s):');
     for (final issue in fixedIssues) {
