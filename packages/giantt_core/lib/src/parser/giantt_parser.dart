@@ -308,7 +308,7 @@ class GianttParser {
     }
     
     // Look for user comment (single # but not ###)
-    final userCommentMatch = RegExp(r'(?:^|\s)#(?!##)\s*(.*)$').firstMatch(text);
+    final userCommentMatch = RegExp(r'#(?!##)\s*(.*)$').firstMatch(text);
     if (userCommentMatch != null) {
       userComment = userCommentMatch.group(1)?.trim();
     }
