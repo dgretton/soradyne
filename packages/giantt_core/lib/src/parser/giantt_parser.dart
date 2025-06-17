@@ -69,57 +69,7 @@ class GianttParser {
 
   /// Convert a GianttItem to its string representation
   static String itemToString(GianttItem item) {
-    final buffer = StringBuffer();
-    
-    // Status, ID+Priority, Duration
-    buffer.write('${item.status.symbol} ${item.id}${item.priority.symbol} ${item.duration} ');
-    
-    // JSON-encoded title
-    buffer.write(jsonEncode(item.title));
-    
-    // Charts
-    buffer.write(' {');
-    if (item.charts.isNotEmpty) {
-      buffer.write('"${item.charts.join('","')}"');
-    }
-    buffer.write('}');
-    
-    // Tags
-    if (item.tags.isNotEmpty) {
-      buffer.write(' ${item.tags.join(',')}');
-    }
-    
-    // Relations
-    if (item.relations.isNotEmpty) {
-      buffer.write(' >>> ');
-      final relationParts = <String>[];
-      
-      for (final entry in item.relations.entries) {
-        final relationType = entry.key;
-        final targets = entry.value;
-        if (targets.isNotEmpty) {
-          // Find the symbol for this relation type
-          final symbol = _getRelationSymbol(relationType);
-          relationParts.add('$symbol[${targets.join(',')}]');
-        }
-      }
-      buffer.write(relationParts.join(' '));
-    }
-    
-    // Time constraint
-    if (item.timeConstraint != null) {
-      buffer.write(' @@@ ${item.timeConstraint}');
-    }
-    
-    // Comments
-    if (item.userComment != null && item.userComment!.isNotEmpty) {
-      buffer.write(' # ${item.userComment}');
-    }
-    if (item.autoComment != null && item.autoComment!.isNotEmpty) {
-      buffer.write(' ### ${item.autoComment}');
-    }
-    
-    return buffer.toString();
+    return item.toFileString();
   }
 
   /// Parse the pre-title section into status, id+priority, and duration
@@ -337,21 +287,6 @@ class GianttParser {
     return text;
   }
 
-  /// Get the symbol for a relation type name
-  static String _getRelationSymbol(String relationType) {
-    const typeToSymbol = {
-      'REQUIRES': '⊢',
-      'ANYOF': '⋲',
-      'SUPERCHARGES': '≫',
-      'INDICATES': '∴',
-      'TOGETHER': '∪',
-      'CONFLICTS': '⊟',
-      'BLOCKS': '►',
-      'SUFFICIENT': '≻',
-    };
-    
-    return typeToSymbol[relationType] ?? '?';
-  }
 }
 
 /// Extension to add strip method to String

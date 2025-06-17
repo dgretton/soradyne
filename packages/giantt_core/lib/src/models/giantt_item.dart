@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'status.dart';
 import 'priority.dart';
@@ -127,4 +128,75 @@ class GianttItem {
 
   @override
   String toString() => 'GianttItem(id: $id, title: $title, status: $status)';
+
+  /// Convert this item to its string representation for file storage
+  String toFileString() {
+    final buffer = StringBuffer();
+    
+    // Status, ID+Priority, Duration
+    buffer.write('${status.symbol} $id${priority.symbol} $duration ');
+    
+    // JSON-encoded title
+    buffer.write(jsonEncode(title));
+    
+    // Charts
+    buffer.write(' {');
+    if (charts.isNotEmpty) {
+      buffer.write('"${charts.join('","')}"');
+    }
+    buffer.write('}');
+    
+    // Tags
+    if (tags.isNotEmpty) {
+      buffer.write(' ${tags.join(',')}');
+    }
+    
+    // Relations
+    if (relations.isNotEmpty) {
+      buffer.write(' >>> ');
+      final relationParts = <String>[];
+      
+      for (final entry in relations.entries) {
+        final relationType = entry.key;
+        final targets = entry.value;
+        if (targets.isNotEmpty) {
+          // Find the symbol for this relation type
+          final symbol = _getRelationSymbol(relationType);
+          relationParts.add('$symbol[${targets.join(',')}]');
+        }
+      }
+      buffer.write(relationParts.join(' '));
+    }
+    
+    // Time constraint
+    if (timeConstraint != null) {
+      buffer.write(' @@@ $timeConstraint');
+    }
+    
+    // Comments
+    if (userComment != null && userComment!.isNotEmpty) {
+      buffer.write(' # $userComment');
+    }
+    if (autoComment != null && autoComment!.isNotEmpty) {
+      buffer.write(' ### $autoComment');
+    }
+    
+    return buffer.toString();
+  }
+
+  /// Get the symbol for a relation type name
+  static String _getRelationSymbol(String relationType) {
+    const typeToSymbol = {
+      'REQUIRES': '⊢',
+      'ANYOF': '⋲',
+      'SUPERCHARGES': '≫',
+      'INDICATES': '∴',
+      'TOGETHER': '∪',
+      'CONFLICTS': '⊟',
+      'BLOCKS': '►',
+      'SUFFICIENT': '≻',
+    };
+    
+    return typeToSymbol[relationType] ?? '?';
+  }
 }
