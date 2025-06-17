@@ -260,8 +260,98 @@ Future<void> _executeCommand(ArgResults command) async {
 
 // Command implementations - these will be filled in with actual logic
 Future<void> _executeInit(ArgResults args) async {
-  print('TODO: Implement init command');
-  // TODO: Implement initialization logic
+  final dev = args['dev'] as bool;
+  final dataDir = args['data-dir'] as String?;
+  
+  try {
+    // Determine base directory
+    late Directory baseDir;
+    if (dataDir != null) {
+      baseDir = Directory(dataDir);
+    } else if (dev) {
+      baseDir = Directory('.giantt');
+    } else {
+      final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      if (homeDir == null) {
+        throw CommandException('Unable to determine home directory');
+      }
+      baseDir = Directory('$homeDir/.giantt');
+    }
+    
+    // Create directory structure
+    final includeDir = Directory('${baseDir.path}/include');
+    final occludeDir = Directory('${baseDir.path}/occlude');
+    
+    await includeDir.create(recursive: true);
+    await occludeDir.create(recursive: true);
+    
+    // Create initial files if they don't exist
+    final files = {
+      '${includeDir.path}/items.txt': _createItemsBanner(),
+      '${includeDir.path}/metadata.json': '{}',
+      '${includeDir.path}/logs.jsonl': '',
+      '${occludeDir.path}/items.txt': _createOccludeItemsBanner(),
+      '${occludeDir.path}/metadata.json': '{}',
+      '${occludeDir.path}/logs.jsonl': '',
+    };
+    
+    final alreadyExists = <String>[];
+    
+    for (final entry in files.entries) {
+      final file = File(entry.key);
+      if (await file.exists()) {
+        alreadyExists.add(entry.key);
+      } else {
+        await file.writeAsString(entry.value);
+      }
+    }
+    
+    if (alreadyExists.length == files.length) {
+      print('Giantt is already initialized at ${baseDir.path}. Enjoy!');
+    } else {
+      print('Initialized Giantt at ${baseDir.path}');
+    }
+  } catch (e) {
+    stderr.writeln('Error initializing Giantt: $e');
+    exit(1);
+  }
+}
+
+String _createItemsBanner() {
+  return '''
+##############################################
+#                                            #
+#                Giantt Items                #
+#                                            #
+#   This file contains all include Giantt   #
+#   items in topological order according    #
+#   to the REQUIRES (⊢) relation.           #
+#   You can use #include directives at the  #
+#   top of this file to include other       #
+#   Giantt item files.                      #
+#   Edit this file manually at your own     #
+#   risk.                                    #
+#                                            #
+##############################################
+
+''';
+}
+
+String _createOccludeItemsBanner() {
+  return '''
+##############################################
+#                                            #
+#            Giantt Occluded Items           #
+#                                            #
+#   This file contains all occluded Giantt  #
+#   items in topological order according    #
+#   to the REQUIRES (⊢) relation.           #
+#   Edit this file manually at your own     #
+#   risk.                                    #
+#                                            #
+##############################################
+
+''';
 }
 
 Future<void> _executeAdd(ArgResults args) async {
@@ -270,8 +360,132 @@ Future<void> _executeAdd(ArgResults args) async {
 }
 
 Future<void> _executeShow(ArgResults args) async {
-  print('TODO: Implement show command');
-  // TODO: Implement show logic
+  if (args.rest.isEmpty) {
+    stderr.writeln('Error: Please provide a substring to search for');
+    exit(1);
+  }
+  
+  final substring = args.rest.first;
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final logFile = args['log-file'] as String?;
+  final occludeLogFile = args['occlude-log-file'] as String?;
+  final searchChart = args['chart'] as bool;
+  final searchLog = args['log'] as bool;
+  
+  try {
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath();
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath(occlude: true);
+    
+    // Load graph
+    final repository = FileRepository();
+    final graph = await repository.loadGraph(itemsPath, occludeItemsPath);
+    
+    if (!searchChart && !searchLog) {
+      // Show item details
+      await _showOneItem(graph, substring);
+    }
+    
+    if (searchChart) {
+      await _showChart(graph, substring);
+    }
+    
+    if (searchLog) {
+      final logsPath = logFile ?? PathResolver.getDefaultGianttPath(filename: 'logs.jsonl');
+      final occludeLogsPath = occludeLogFile ?? PathResolver.getDefaultGianttPath(filename: 'logs.jsonl', occlude: true);
+      final logRepository = LogRepository();
+      final logs = await logRepository.loadLogs(logsPath, occludeLogsPath);
+      await _showLogs(logs, substring);
+    }
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
+}
+
+Future<void> _showOneItem(GianttGraph graph, String substring) async {
+  try {
+    GianttItem item;
+    
+    // If there's an exact match to an ID, select that item
+    if (graph.items.containsKey(substring)) {
+      item = graph.items[substring]!;
+    } else {
+      // Otherwise, find by title substring
+      item = graph.findBySubstring(substring);
+    }
+    
+    print('Title: ${item.title}');
+    print('ID: ${item.id}');
+    print('Status: ${item.status.name}');
+    print('Priority: ${item.priority.name}');
+    print('Duration: ${item.duration}');
+    print('Charts: ${item.charts.join(', ')}');
+    print('Tags: ${item.tags.isNotEmpty ? item.tags.join(', ') : 'None'}');
+    print('Time Constraint: ${item.timeConstraint ?? 'None'}');
+    print('Relations:');
+    
+    if (item.relations.isEmpty) {
+      print('  None');
+    } else {
+      for (final entry in item.relations.entries) {
+        print('  - ${entry.key}: ${entry.value.join(', ')}');
+      }
+    }
+    
+    print('Comment: ${item.userComment ?? 'None'}');
+    print('Auto Comment: ${item.autoComment ?? 'None'}');
+  } catch (e) {
+    print('Error: $e');
+  }
+}
+
+Future<void> _showChart(GianttGraph graph, String substring) async {
+  final chartItems = <String, List<GianttItem>>{};
+  
+  for (final item in graph.items.values) {
+    for (final chart in item.charts) {
+      if (chart.toLowerCase().contains(substring.toLowerCase())) {
+        chartItems.putIfAbsent(chart, () => []).add(item);
+      }
+    }
+  }
+  
+  if (chartItems.isEmpty) {
+    print("No items found in chart '$substring'");
+    return;
+  }
+  
+  for (final entry in chartItems.entries) {
+    print("Chart '${entry.key}':");
+    for (final item in entry.value) {
+      print('  - ${item.id} ${item.title}');
+    }
+  }
+}
+
+Future<void> _showLogs(LogCollection logs, String substring) async {
+  // Search in logs by session
+  final sessionEntries = logs.getBySession(substring);
+  if (sessionEntries.isNotEmpty) {
+    print("Logs for session '$substring':");
+    for (final entry in sessionEntries) {
+      print('  - $entry');
+    }
+  }
+  
+  // Search in logs by substring
+  final substringEntries = logs.getBySubstring(substring);
+  if (substringEntries.isNotEmpty) {
+    print("Logs matching '$substring':");
+    for (final entry in substringEntries) {
+      print('  - $entry');
+    }
+  }
+  
+  if (sessionEntries.isEmpty && substringEntries.isEmpty) {
+    print("No logs found for '$substring'");
+  }
 }
 
 Future<void> _executeModify(ArgResults args) async {
@@ -325,6 +539,158 @@ Future<void> _executeOcclude(ArgResults args) async {
 }
 
 Future<void> _executeDoctor(ArgResults args) async {
-  print('TODO: Implement doctor command');
-  // TODO: Implement doctor logic
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  
+  try {
+    final itemsPath = file ?? PathResolver.getDefaultGianttPath();
+    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath(occlude: true);
+    
+    // Load graph
+    final repository = FileRepository();
+    final graph = await repository.loadGraph(itemsPath, occludeItemsPath);
+    final doctor = GraphDoctor(graph);
+    
+    if (args.command == null) {
+      // Default to check command
+      await _executeDoctorCheck(doctor);
+    } else {
+      switch (args.command!.name) {
+        case 'check':
+          await _executeDoctorCheck(doctor);
+          break;
+        case 'fix':
+          await _executeDoctorFix(doctor, args.command!, itemsPath, occludeItemsPath);
+          break;
+        case 'list-types':
+          await _executeDoctorListTypes();
+          break;
+        default:
+          throw ArgumentError('Unknown doctor subcommand: ${args.command!.name}');
+      }
+    }
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
+}
+
+Future<void> _executeDoctorCheck(GraphDoctor doctor) async {
+  final issues = doctor.fullDiagnosis();
+  
+  if (issues.isEmpty) {
+    print('✓ Graph is healthy!');
+    return;
+  }
+  
+  // Group issues by type
+  final issuesByType = <IssueType, List<Issue>>{};
+  for (final issue in issues) {
+    issuesByType.putIfAbsent(issue.type, () => []).add(issue);
+  }
+  
+  print('\nFound ${issues.length} issue${issues.length != 1 ? 's' : ''}:');
+  
+  for (final entry in issuesByType.entries) {
+    final issueType = entry.key;
+    final typeIssues = entry.value;
+    print('\n${issueType.value} (${typeIssues.length} issues):');
+    
+    for (final issue in typeIssues) {
+      print('  • ${issue.itemId}: ${issue.message}');
+      if (issue.suggestedFix != null) {
+        print('    Suggested fix: ${issue.suggestedFix}');
+      }
+    }
+  }
+}
+
+Future<void> _executeDoctorFix(GraphDoctor doctor, ArgResults fixArgs, String itemsPath, String occludeItemsPath) async {
+  final issueTypeStr = fixArgs['type'] as String?;
+  final itemId = fixArgs['item'] as String?;
+  final fixAll = fixArgs['all'] as bool;
+  final dryRun = fixArgs['dry-run'] as bool;
+  
+  // Run diagnosis first
+  final issues = doctor.fullDiagnosis();
+  
+  if (issues.isEmpty) {
+    print('✓ Graph is healthy! No issues to fix.');
+    return;
+  }
+  
+  // Filter issues based on options
+  List<Issue> issuesToFix = [];
+  
+  if (issueTypeStr != null) {
+    try {
+      final issueType = IssueType.fromString(issueTypeStr);
+      issuesToFix = doctor.getIssuesByType(issueType);
+      if (issuesToFix.isEmpty) {
+        print("No issues of type '$issueTypeStr' found.");
+        return;
+      }
+    } catch (e) {
+      final validTypes = IssueType.values.map((t) => t.value).join(', ');
+      print("Invalid issue type: $issueTypeStr. Valid types are: $validTypes");
+      return;
+    }
+  } else if (itemId != null) {
+    issuesToFix = issues.where((i) => i.itemId == itemId).toList();
+    if (issuesToFix.isEmpty) {
+      print("No issues found for item '$itemId'.");
+      return;
+    }
+  } else if (fixAll) {
+    issuesToFix = issues;
+  } else {
+    print('Please specify --type, --item, or --all to indicate which issues to fix.');
+    return;
+  }
+  
+  // Show what would be fixed
+  print('\nFound ${issuesToFix.length} issue(s) that can be fixed:');
+  for (final issue in issuesToFix) {
+    print('  • ${issue.itemId}: ${issue.message}');
+    if (issue.suggestedFix != null) {
+      print('    Suggested fix: ${issue.suggestedFix}');
+    }
+  }
+  
+  if (dryRun) {
+    print('\nDry run - no changes made.');
+    return;
+  }
+  
+  // Confirm before fixing
+  if (!CommandUtils.confirm('Do you want to fix these issues?')) {
+    print('Aborted. No changes made.');
+    return;
+  }
+  
+  // Fix issues
+  final fixedIssues = doctor.fixIssues(
+    issueType: issueTypeStr != null ? IssueType.fromString(issueTypeStr) : null,
+    itemId: itemId,
+  );
+  
+  if (fixedIssues.isNotEmpty) {
+    // Save changes
+    final repository = FileRepository();
+    await repository.saveGraph(itemsPath, occludeItemsPath, doctor.graph);
+    
+    print('\nSuccessfully fixed ${fixedIssues.length} issue(s):');
+    for (final issue in fixedIssues) {
+      print('  • ${issue.itemId}: ${issue.message}');
+    }
+  } else {
+    print('\nNo issues were fixed. Some issues may require manual intervention.');
+  }
+}
+
+Future<void> _executeDoctorListTypes() async {
+  print('Available issue types:');
+  for (final issueType in IssueType.values) {
+    print('  • ${issueType.value}');
+  }
 }
