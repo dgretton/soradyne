@@ -59,7 +59,7 @@ void main() {
       print('Running Python init...');
       final pythonResult = await Process.run(
         'python3', 
-        ['docs/port_reference/giantt_cli.py', 'init', '--data-dir', pythonTempDir.path],
+        ['../../docs/port_reference/giantt_cli.py', 'init', '--data-dir', pythonTempDir.path],
         workingDirectory: '.',
       );
       
@@ -74,7 +74,7 @@ void main() {
       final dartResult = await Process.run(
         'dart', 
         ['run', 'bin/giantt.dart', 'init', '--data-dir', tempDir.path],
-        workingDirectory: 'packages/giantt_core',
+        workingDirectory: '.',
       );
       
       print('Dart init exit code: ${dartResult.exitCode}');
@@ -135,12 +135,12 @@ void main() {
         
         // Run Python add
         final pythonArgs = [
-          'docs/port_reference/giantt_cli.py', 'add',
+          '../../docs/port_reference/giantt_cli.py', 'add',
           '--file', pythonItemsPath,
           '--occlude-file', pythonOccludeItemsPath,
           testCase['id'] as String,
           testCase['title'] as String,
-          ...(testCase['args'] as List<String>),
+          ...(testCase['args'] as List<dynamic>).cast<String>(),
         ];
         
         print('Python command: python3 ${pythonArgs.join(' ')}');
@@ -162,7 +162,7 @@ void main() {
         ];
         
         print('Dart command: dart ${dartArgs.join(' ')}');
-        final dartResult = await Process.run('dart', dartArgs, workingDirectory: 'packages/giantt_core');
+        final dartResult = await Process.run('dart', dartArgs, workingDirectory: '.');
         
         print('Dart add exit code: ${dartResult.exitCode}');
         if (dartResult.exitCode != 0) {
@@ -215,7 +215,7 @@ void main() {
       // Run Python show
       final pythonResult = await Process.run(
         'python3', 
-        ['docs/port_reference/giantt_cli.py', 'show', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath, 'test_item'],
+        ['../../docs/port_reference/giantt_cli.py', 'show', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath, 'test_item'],
         workingDirectory: '.',
       );
       
@@ -223,7 +223,7 @@ void main() {
       final dartResult = await Process.run(
         'dart', 
         ['run', 'bin/giantt.dart', 'show', '--file', dartItemsPath, '--occlude-file', dartOccludeItemsPath, 'test_item'],
-        workingDirectory: 'packages/giantt_core',
+        workingDirectory: '.',
       );
       
       print('Python show output:');
@@ -254,7 +254,7 @@ void main() {
       // Run Python sort
       final pythonResult = await Process.run(
         'python3', 
-        ['docs/port_reference/giantt_cli.py', 'sort', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath],
+        ['../../docs/port_reference/giantt_cli.py', 'sort', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath],
         workingDirectory: '.',
       );
       
@@ -262,7 +262,7 @@ void main() {
       final dartResult = await Process.run(
         'dart', 
         ['run', 'bin/giantt.dart', 'sort', '--file', dartItemsPath, '--occlude-file', dartOccludeItemsPath],
-        workingDirectory: 'packages/giantt_core',
+        workingDirectory: '.',
       );
       
       print('Python sort output:');
@@ -304,7 +304,7 @@ void main() {
       // Run Python doctor
       final pythonResult = await Process.run(
         'python3', 
-        ['docs/port_reference/giantt_cli.py', 'doctor', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath],
+        ['../../docs/port_reference/giantt_cli.py', 'doctor', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath],
         workingDirectory: '.',
       );
       
@@ -312,7 +312,7 @@ void main() {
       final dartResult = await Process.run(
         'dart', 
         ['run', 'bin/giantt.dart', 'doctor', '--file', dartItemsPath, '--occlude-file', dartOccludeItemsPath],
-        workingDirectory: 'packages/giantt_core',
+        workingDirectory: '.',
       );
       
       print('Python doctor output:');
@@ -341,7 +341,7 @@ Future<void> _addTestItem(String id, String title, String pythonItemsPath, Strin
   // Add to Python
   await Process.run(
     'python3', 
-    ['docs/port_reference/giantt_cli.py', 'add', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath, id, title, ...extraArgs],
+    ['../../docs/port_reference/giantt_cli.py', 'add', '--file', pythonItemsPath, '--occlude-file', pythonOccludeItemsPath, id, title, ...extraArgs],
     workingDirectory: '.',
   );
   
@@ -349,7 +349,7 @@ Future<void> _addTestItem(String id, String title, String pythonItemsPath, Strin
   await Process.run(
     'dart', 
     ['run', 'bin/giantt.dart', 'add', '--file', dartItemsPath, '--occlude-file', dartOccludeItemsPath, id, title, ...extraArgs],
-    workingDirectory: 'packages/giantt_core',
+    workingDirectory: '.',
   );
 }
 
