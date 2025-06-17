@@ -201,29 +201,32 @@ class GianttParser {
     // Parse charts
     final charts = _parseCharts(chartsStr);
     
+    // Parse comments from the entire remainder first
+    final (userComment, autoComment) = _parseComments(remainder);
+    
     // Split remainder by >>> to separate tags from relations
     final parts = remainder.split('>>>');
     final tagsStr = parts[0].trim();
     final relationsAndConstraints = parts.length > 1 ? parts[1].trim() : '';
     
-    // Parse tags
-    final tags = _parseTags(tagsStr);
+    // Parse tags (remove comments from tags string)
+    final cleanTagsStr = _removeComments(tagsStr);
+    final tags = _parseTags(cleanTagsStr);
     
     // Split relations section by @@@ to separate relations from time constraints
     final constraintParts = relationsAndConstraints.split('@@@');
     final relationsStr = constraintParts[0].trim();
     final timeConstraintStr = constraintParts.length > 1 ? constraintParts[1].trim() : null;
     
-    // Parse relations
-    final relations = _parseRelations(relationsStr);
+    // Parse relations (remove comments from relations string)
+    final cleanRelationsStr = _removeComments(relationsStr);
+    final relations = _parseRelations(cleanRelationsStr);
     
-    // Parse time constraint
-    final timeConstraint = timeConstraintStr != null && timeConstraintStr.isNotEmpty
-        ? TimeConstraint.fromString(timeConstraintStr)
+    // Parse time constraint (remove comments from constraint string)
+    final cleanTimeConstraintStr = timeConstraintStr != null ? _removeComments(timeConstraintStr) : null;
+    final timeConstraint = cleanTimeConstraintStr != null && cleanTimeConstraintStr.isNotEmpty
+        ? TimeConstraint.fromString(cleanTimeConstraintStr)
         : null;
-    
-    // Parse comments (user # and auto ###)
-    final (userComment, autoComment) = _parseComments(relationsAndConstraints);
     
     return (charts, tags, relations, timeConstraint, userComment, autoComment);
   }
@@ -323,6 +326,15 @@ class GianttParser {
     } catch (e) {
       throw GianttParseException('Invalid duration format: $duration', duration);
     }
+  }
+
+  /// Remove comments from a string
+  static String _removeComments(String text) {
+    // Remove auto comments (###)
+    text = text.replaceFirst(RegExp(r'###.*$'), '').trim();
+    // Remove user comments (#)
+    text = text.replaceFirst(RegExp(r'#(?!##).*$'), '').trim();
+    return text;
   }
 
   /// Get the symbol for a relation type name
