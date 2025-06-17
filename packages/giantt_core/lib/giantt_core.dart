@@ -22,6 +22,10 @@ export 'src/graph/cycle_detector.dart';
 
 // Storage
 export 'src/storage/file_repository.dart';
+export 'src/storage/atomic_file_writer.dart';
+export 'src/storage/backup_manager.dart';
+export 'src/storage/file_header_generator.dart';
+export 'src/storage/path_resolver.dart';
 
 // Validation
 export 'src/validation/graph_doctor.dart';

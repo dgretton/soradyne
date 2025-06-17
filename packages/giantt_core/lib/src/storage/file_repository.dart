@@ -3,6 +3,10 @@ import '../models/giantt_item.dart';
 import '../models/graph_exceptions.dart';
 import '../graph/giantt_graph.dart';
 import '../parser/giantt_parser.dart';
+import 'atomic_file_writer.dart';
+import 'backup_manager.dart';
+import 'file_header_generator.dart';
+import 'path_resolver.dart';
 
 /// Repository for file I/O operations with include support
 class FileRepository {
@@ -118,6 +122,128 @@ class FileRepository {
     }
     
     return mainGraph;
+  }
+
+  /// Save a graph to files with atomic operations and proper headers
+  static void saveGraph(String filepath, String occludeFilepath, GianttGraph graph) {
+    try {
+      // First perform topological sort to validate the graph
+      final sortedItems = graph.topologicalSort();
+
+      // Prepare file contents
+      final includeContent = StringBuffer();
+      final occludeContent = StringBuffer();
+
+      // Add headers
+      includeContent.writeln(FileHeaderGenerator.generateItemsFileHeader());
+      includeContent.writeln();
+      
+      occludeContent.writeln(FileHeaderGenerator.generateOccludedItemsFileHeader());
+      occludeContent.writeln();
+
+      // Add items to appropriate files
+      for (final item in sortedItems) {
+        final itemString = item.toFileString();
+        if (item.occlude) {
+          occludeContent.writeln(itemString);
+        } else {
+          includeContent.writeln(itemString);
+        }
+      }
+
+      // Write both files atomically
+      final fileContents = {
+        filepath: includeContent.toString(),
+        occludeFilepath: occludeContent.toString(),
+      };
+
+      AtomicFileWriter.writeFiles(fileContents);
+
+    } catch (e) {
+      if (e is GraphException) rethrow;
+      throw GraphException('Failed to save graph: $e');
+    }
+  }
+
+  /// Initialize a Giantt workspace with proper directory structure
+  static void initializeWorkspace(String basePath, {bool dev = false}) {
+    try {
+      // Create directory structure
+      final includeDir = '$basePath${Platform.pathSeparator}include';
+      final occludeDir = '$basePath${Platform.pathSeparator}occlude';
+      
+      PathResolver.ensureDirectoryExists(includeDir);
+      PathResolver.ensureDirectoryExists(occludeDir);
+
+      // Create initial files with headers
+      final files = {
+        '$includeDir${Platform.pathSeparator}items.txt': 
+            FileHeaderGenerator.generateItemsFileHeader(),
+        '$includeDir${Platform.pathSeparator}logs.jsonl': 
+            FileHeaderGenerator.generateLogsFileHeader(),
+        '$includeDir${Platform.pathSeparator}metadata.json': 
+            FileHeaderGenerator.generateMetadataFileHeader() + '\n{}\n',
+        '$occludeDir${Platform.pathSeparator}items.txt': 
+            FileHeaderGenerator.generateOccludedItemsFileHeader(),
+        '$occludeDir${Platform.pathSeparator}logs.jsonl': 
+            FileHeaderGenerator.generateOccludedLogsFileHeader(),
+        '$occludeDir${Platform.pathSeparator}metadata.json': 
+            FileHeaderGenerator.generateMetadataFileHeader() + '\n{}\n',
+      };
+
+      // Only create files that don't already exist
+      final filesToCreate = <String, String>{};
+      for (final entry in files.entries) {
+        if (!File(entry.key).existsSync()) {
+          filesToCreate[entry.key] = entry.value;
+        }
+      }
+
+      if (filesToCreate.isNotEmpty) {
+        AtomicFileWriter.writeFiles(filesToCreate, createBackup: false);
+      }
+
+    } catch (e) {
+      throw GraphException('Failed to initialize workspace: $e');
+    }
+  }
+
+  /// Check if a workspace is properly initialized
+  static bool isWorkspaceInitialized(String basePath) {
+    return PathResolver.gianttWorkspaceExists(basePath);
+  }
+
+  /// Get the default file paths for a workspace
+  static Map<String, String> getDefaultFilePaths([String? basePath]) {
+    basePath ??= PathResolver.getActiveGianttWorkspace();
+    
+    return {
+      'items': '$basePath${Platform.pathSeparator}include${Platform.pathSeparator}items.txt',
+      'occlude_items': '$basePath${Platform.pathSeparator}occlude${Platform.pathSeparator}items.txt',
+      'logs': '$basePath${Platform.pathSeparator}include${Platform.pathSeparator}logs.jsonl',
+      'occlude_logs': '$basePath${Platform.pathSeparator}occlude${Platform.pathSeparator}logs.jsonl',
+      'metadata': '$basePath${Platform.pathSeparator}include${Platform.pathSeparator}metadata.json',
+      'occlude_metadata': '$basePath${Platform.pathSeparator}occlude${Platform.pathSeparator}metadata.json',
+    };
+  }
+
+  /// Validate that all required files exist and are accessible
+  static void validateWorkspace(String basePath) {
+    final paths = getDefaultFilePaths(basePath);
+    
+    for (final entry in paths.entries) {
+      final file = File(entry.value);
+      if (!file.existsSync()) {
+        throw GraphException('Required file missing: ${entry.value}');
+      }
+      
+      // Check if file is readable
+      try {
+        file.readAsStringSync();
+      } catch (e) {
+        throw GraphException('Cannot read file ${entry.value}: $e');
+      }
+    }
   }
 
   /// Check if a path is absolute
