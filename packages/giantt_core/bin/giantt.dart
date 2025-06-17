@@ -840,12 +840,12 @@ Future<void> _executeDoctorCheck(GraphDoctor doctor) async {
     issuesByType.putIfAbsent(issue.type, () => []).add(issue);
   }
   
-  print('\nFound ${issues.length} issue${issues.length != 1 ? 's' : ''}:');
+  print('Found ${issues.length} issue${issues.length != 1 ? 's' : ''}:');
   
   for (final entry in issuesByType.entries) {
     final issueType = entry.key;
     final typeIssues = entry.value;
-    print('\n${issueType.value} (${typeIssues.length} issues):');
+    print('${issueType.value} (${typeIssues.length} issues):');
     
     for (final issue in typeIssues) {
       print('  • ${issue.itemId}: ${issue.message}');

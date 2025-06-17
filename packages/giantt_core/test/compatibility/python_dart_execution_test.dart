@@ -49,53 +49,27 @@ void main() {
     });
 
     test('Python and Dart init commands produce identical directory structure', () async {
-      print('\n=== Testing init command ===');
-      
       // Clean up existing directories
       await tempDir.delete(recursive: true);
       await pythonTempDir.delete(recursive: true);
       
       // Run Python init
-      print('Running Python init...');
       final pythonResult = await Process.run(
         'python3', 
         ['../../docs/port_reference/giantt_cli.py', 'init', '--data-dir', pythonTempDir.path],
         workingDirectory: '.',
       );
       
-      print('Python init exit code: ${pythonResult.exitCode}');
-      print('Python init stdout: ${pythonResult.stdout}');
-      if (pythonResult.stderr.isNotEmpty) {
-        print('Python init stderr: ${pythonResult.stderr}');
-      }
-      
       // Run Dart init
-      print('Running Dart init...');
       final dartResult = await Process.run(
         'dart', 
         ['run', 'bin/giantt.dart', 'init', '--data-dir', tempDir.path],
         workingDirectory: '.',
       );
       
-      print('Dart init exit code: ${dartResult.exitCode}');
-      print('Dart init stdout: ${dartResult.stdout}');
-      if (dartResult.stderr.isNotEmpty) {
-        print('Dart init stderr: ${dartResult.stderr}');
-      }
-      
       // Compare directory structures
       final pythonFiles = await _getDirectoryStructure(pythonTempDir.path);
       final dartFiles = await _getDirectoryStructure(tempDir.path);
-      
-      print('\nPython created files:');
-      for (final file in pythonFiles) {
-        print('  $file');
-      }
-      
-      print('\nDart created files:');
-      for (final file in dartFiles) {
-        print('  $file');
-      }
       
       expect(dartFiles.length, equals(pythonFiles.length), 
              reason: 'Should create same number of files');
@@ -109,8 +83,6 @@ void main() {
     });
 
     test('Python and Dart add commands produce identical file content', () async {
-      print('\n=== Testing add command ===');
-      
       // Test cases to add
       final testCases = [
         {
@@ -131,8 +103,6 @@ void main() {
       ];
       
       for (final testCase in testCases) {
-        print('\nTesting add: ${testCase['id']}');
-        
         // Run Python add
         final pythonArgs = [
           '../../docs/port_reference/giantt_cli.py', 'add',
@@ -143,13 +113,7 @@ void main() {
           ...(testCase['args'] as List<dynamic>).cast<String>(),
         ];
         
-        print('Python command: python3 ${pythonArgs.join(' ')}');
         final pythonResult = await Process.run('python3', pythonArgs, workingDirectory: '.');
-        
-        print('Python add exit code: ${pythonResult.exitCode}');
-        if (pythonResult.exitCode != 0) {
-          print('Python add stderr: ${pythonResult.stderr}');
-        }
         
         // Run Dart add
         final dartArgs = [
@@ -161,13 +125,7 @@ void main() {
           ...(testCase['args'] as List<dynamic>).cast<String>(),
         ];
         
-        print('Dart command: dart ${dartArgs.join(' ')}');
         final dartResult = await Process.run('dart', dartArgs, workingDirectory: '.');
-        
-        print('Dart add exit code: ${dartResult.exitCode}');
-        if (dartResult.exitCode != 0) {
-          print('Dart add stderr: ${dartResult.stderr}');
-        }
         
         expect(dartResult.exitCode, equals(pythonResult.exitCode),
                reason: 'Exit codes should match for ${testCase['id']}');
@@ -177,25 +135,9 @@ void main() {
       final pythonContent = await File(pythonItemsPath).readAsString();
       final dartContent = await File(dartItemsPath).readAsString();
       
-      print('\nPython file content:');
-      print(pythonContent);
-      
-      print('\nDart file content:');
-      print(dartContent);
-      
       // Extract just the item lines (skip headers)
       final pythonItems = _extractItemLines(pythonContent);
       final dartItems = _extractItemLines(dartContent);
-      
-      print('\nPython items:');
-      for (int i = 0; i < pythonItems.length; i++) {
-        print('  [$i]: ${pythonItems[i]}');
-      }
-      
-      print('\nDart items:');
-      for (int i = 0; i < dartItems.length; i++) {
-        print('  [$i]: ${dartItems[i]}');
-      }
       
       expect(dartItems.length, equals(pythonItems.length),
              reason: 'Should have same number of items');
@@ -207,8 +149,6 @@ void main() {
     });
 
     test('Python and Dart show commands produce identical output', () async {
-      print('\n=== Testing show command ===');
-      
       // First add an item to both
       await _addTestItem('test_item', 'Test Item', pythonItemsPath, pythonOccludeItemsPath, dartItemsPath, dartOccludeItemsPath);
       
@@ -225,12 +165,6 @@ void main() {
         ['run', 'bin/giantt.dart', 'show', '--file', dartItemsPath, '--occlude-file', dartOccludeItemsPath, 'test_item'],
         workingDirectory: '.',
       );
-      
-      print('Python show output:');
-      print(pythonResult.stdout);
-      
-      print('Dart show output:');
-      print(dartResult.stdout);
       
       expect(dartResult.exitCode, equals(pythonResult.exitCode),
              reason: 'Exit codes should match');
