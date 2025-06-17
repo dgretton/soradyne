@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:giantt_core/giantt_core.dart';
 import 'package:giantt_core/src/commands/command_interface.dart';
+import 'package:giantt_core/src/storage/file_header_generator.dart';
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
@@ -392,40 +393,11 @@ Future<void> _executeInit(ArgResults args) async {
 }
 
 String _createItemsBanner() {
-  return '''
-##############################################
-#                                            #
-#                Giantt Items                #
-#                                            #
-#   This file contains all include Giantt   #
-#   items in topological order according    #
-#   to the REQUIRES (⊢) relation.           #
-#   You can use #include directives at the  #
-#   top of this file to include other       #
-#   Giantt item files.                      #
-#   Edit this file manually at your own     #
-#   risk.                                    #
-#                                            #
-##############################################
-
-''';
+  return FileHeaderGenerator.generateItemsFileHeader();
 }
 
 String _createOccludeItemsBanner() {
-  return '''
-##############################################
-#                                            #
-#            Giantt Occluded Items           #
-#                                            #
-#   This file contains all occluded Giantt  #
-#   items in topological order according    #
-#   to the REQUIRES (⊢) relation.           #
-#   Edit this file manually at your own     #
-#   risk.                                    #
-#                                            #
-##############################################
-
-''';
+  return FileHeaderGenerator.generateOccludedItemsFileHeader();
 }
 
 Future<void> _executeAdd(ArgResults args) async {
