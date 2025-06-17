@@ -1,20 +1,4 @@
 name: giantt
-description: Gantt chart app powered by Soradyne
-
-environment:
-  sdk: '^3.8.0'
-
-dependencies:
-  flutter:
-    sdk: flutter
-  soradyne_flutter:
-    path: ../../packages/soradyne_flutter
-  ai_chat_flutter:
-    path: ../../packages/ai_chat_flutter
-  # Gantt-specific dependencies
-  gantt_chart: ^0.2.0
-  timeline_tile: ^2.0.0
-name: giantt
 description: Gantt chart CLI and Flutter app powered by Soradyne
 version: 1.0.0+1
 
@@ -40,6 +24,10 @@ dependencies:
   args: ^2.4.2
   path: ^1.8.3
   io: ^1.0.4
+  
+  # Gantt-specific dependencies
+  gantt_chart: ^0.2.0
+  timeline_tile: ^2.0.0
 
 dev_dependencies:
   flutter_test:
