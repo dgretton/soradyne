@@ -279,18 +279,18 @@ void main() {
       print('\nDart Relation Symbol Validation:');
       print('  Generated output: $output');
       
-      final relationTests = [
-        ('REQUIRES', '⊢[dep1]'),
-        ('BLOCKS', '►[blocked1]'),
-        ('ANYOF', '⋲[any1]'),
-        ('SUFFICIENT', '≻[suff1]'),
-      ];
+      final relationTests = {
+        'REQUIRES': '⊢[dep1]',
+        'BLOCKS': '►[blocked1]',
+        'ANYOF': '⋲[any1]',
+        'SUFFICIENT': '≻[suff1]',
+      };
       
-      for (final test in relationTests) {
-        final contains = output.contains(test.$2);
-        print('  ${test.$1}: ${test.$2} ${contains ? "✓" : "✗"}');
-        expect(output, contains(test.$2), 
-               reason: '${test.$1} should use ${test.$2}');
+      for (final test in relationTests.entries) {
+        final contains = output.contains(test.value);
+        print('  ${test.key}: ${test.value} ${contains ? "✓" : "✗"}');
+        expect(output, contains(test.value), 
+               reason: '${test.key} should use ${test.value}');
       }
     });
 
