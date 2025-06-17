@@ -44,6 +44,12 @@ void main(List<String> arguments) async {
       exit(1);
     }
 
+    // Check for subcommand help
+    if (results.command!['help'] as bool? ?? false) {
+      _printSubcommandHelp(results.command!.name!, parser);
+      return;
+    }
+
     await _executeCommand(results.command!);
   } catch (e) {
     stderr.writeln('Error: $e');
@@ -78,14 +84,71 @@ void _printUsage(ArgParser parser) {
   print('Run "giantt <command> --help" for more information on a command.');
 }
 
+void _printSubcommandHelp(String commandName, ArgParser parser) {
+  final command = parser.commands[commandName];
+  if (command == null) {
+    stderr.writeln('Unknown command: $commandName');
+    exit(1);
+  }
+
+  switch (commandName) {
+    case 'init':
+      print('Initialize Giantt directory structure and files.');
+      print('');
+      print('Usage: giantt init [options]');
+      print('');
+      print('Options:');
+      print(command.usage);
+      break;
+    case 'add':
+      print('Add a new item to the Giantt chart.');
+      print('');
+      print('Usage: giantt add <id> <title> [options]');
+      print('');
+      print('Options:');
+      print(command.usage);
+      break;
+    case 'show':
+      print('Show details of an item matching the substring.');
+      print('');
+      print('Usage: giantt show <substring> [options]');
+      print('');
+      print('Options:');
+      print(command.usage);
+      break;
+    case 'doctor':
+      print('Check the health of the Giantt graph and fix issues.');
+      print('');
+      print('Usage: giantt doctor [subcommand] [options]');
+      print('');
+      print('Subcommands:');
+      print('  check       Check for issues (default)');
+      print('  fix         Fix issues automatically');
+      print('  list-types  List available issue types');
+      print('');
+      print('Options:');
+      print(command.usage);
+      break;
+    default:
+      print('Help for $commandName command.');
+      print('');
+      print('Usage: giantt $commandName [options]');
+      print('');
+      print('Options:');
+      print(command.usage);
+  }
+}
+
 ArgParser _createInitCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addFlag('dev', help: 'Initialize for development', negatable: false)
     ..addOption('data-dir', help: 'Custom data directory location');
 }
 
 ArgParser _createAddCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('duration', defaultsTo: '1d', help: 'Duration (e.g., 1d, 2w, 3mo)')
@@ -99,6 +162,7 @@ ArgParser _createAddCommand() {
 
 ArgParser _createShowCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('log-file', abbr: 'l', help: 'Giantt log file to use')
@@ -193,19 +257,23 @@ ArgParser _createOccludeCommand() {
 
 ArgParser _createDoctorCommand() {
   final parser = ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use');
   
   // Add subcommands for doctor
-  parser.addCommand('check', ArgParser());
+  parser.addCommand('check', ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this subcommand', negatable: false));
   
   parser.addCommand('fix', ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this subcommand', negatable: false)
     ..addOption('type', abbr: 't', help: 'Type of issue to fix (e.g., dangling_reference)')
     ..addOption('item', abbr: 'i', help: 'Fix issues for a specific item ID')
     ..addFlag('all', abbr: 'a', help: 'Fix all fixable issues', negatable: false)
     ..addFlag('dry-run', help: 'Show what would be fixed without making changes', negatable: false));
     
-  parser.addCommand('list-types', ArgParser());
+  parser.addCommand('list-types', ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this subcommand', negatable: false));
   
   return parser;
 }
