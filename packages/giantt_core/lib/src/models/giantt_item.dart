@@ -64,6 +64,11 @@ class GianttItem {
   /// Whether this item is occluded (archived)
   final bool occlude;
 
+  /// Set the occlude status of this item
+  GianttItem setOcclude(bool occlude) {
+    return copyWith(occlude: occlude);
+  }
+
   /// Create a copy with modified properties
   GianttItem copyWith({
     String? id,

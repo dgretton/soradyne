@@ -30,6 +30,25 @@ class LogEntry {
   /// Whether this entry is occluded
   final bool occlude;
 
+  /// Set the occlude status of this entry
+  LogEntry setOcclude(bool occlude) {
+    return copyWith(occlude: occlude);
+  }
+
+  /// Create a LogEntry from a JSON line
+  static LogEntry fromJsonLine(String jsonLine, {bool occlude = false}) {
+    // This would parse the JSONL format from Python
+    // For now, placeholder implementation
+    throw UnimplementedError('LogEntry.fromJsonLine not yet implemented');
+  }
+
+  /// Convert to JSON line format
+  String toJsonLine() {
+    // This would serialize to JSONL format matching Python
+    // For now, placeholder implementation
+    throw UnimplementedError('LogEntry.toJsonLine not yet implemented');
+  }
+
   /// Create a copy with modified properties
   LogEntry copyWith({
     String? session,

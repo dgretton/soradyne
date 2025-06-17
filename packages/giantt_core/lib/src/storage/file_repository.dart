@@ -111,6 +111,8 @@ class FileRepository {
   }
 
   /// Load a graph from main and occluded files, processing includes
+  /// 
+  /// Note: This method is deprecated. Use DualFileManager.loadGraph() instead.
   static GianttGraph loadGraph(String filepath, String occludeFilepath) {
     final loadedFiles = <String>{};
     final mainGraph = loadGraphFromFile(filepath, loadedFiles);

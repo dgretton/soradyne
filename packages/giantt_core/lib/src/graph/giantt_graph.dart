@@ -348,6 +348,40 @@ class GianttGraph {
     );
   }
 
+  /// Occlude an item by ID
+  void occludeItem(String itemId) {
+    final item = _items[itemId];
+    if (item != null) {
+      _items[itemId] = item.setOcclude(true);
+    }
+  }
+
+  /// Include (un-occlude) an item by ID
+  void includeItem(String itemId) {
+    final item = _items[itemId];
+    if (item != null) {
+      _items[itemId] = item.setOcclude(false);
+    }
+  }
+
+  /// Occlude items by tag
+  void occludeItemsByTag(String tag) {
+    for (final entry in _items.entries) {
+      if (entry.value.tags.contains(tag) && !entry.value.occlude) {
+        _items[entry.key] = entry.value.setOcclude(true);
+      }
+    }
+  }
+
+  /// Include items by tag
+  void includeItemsByTag(String tag) {
+    for (final entry in _items.entries) {
+      if (entry.value.tags.contains(tag) && entry.value.occlude) {
+        _items[entry.key] = entry.value.setOcclude(false);
+      }
+    }
+  }
+
   /// Create a copy of this graph
   GianttGraph copy() {
     final newGraph = GianttGraph();
