@@ -1,7 +1,6 @@
 import 'package:meta/meta.dart';
 
 /// Type of relation between Giantt items with corresponding symbols
-@immutable
 enum RelationType {
   requires('⊢', 'REQUIRES'),
   anyof('⋲', 'ANYOF'),

@@ -1,7 +1,6 @@
 import 'package:meta/meta.dart';
 
 /// Priority level of a Giantt item with corresponding symbols
-@immutable
 enum GianttPriority {
   lowest(',,,', 'LOWEST'),
   low('...', 'LOW'),

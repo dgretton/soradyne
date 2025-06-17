@@ -1,7 +1,6 @@
 import 'package:meta/meta.dart';
 
 /// Status of a Giantt item with corresponding symbols
-@immutable
 enum GianttStatus {
   notStarted('○', 'NOT_STARTED'),
   inProgress('◑', 'IN_PROGRESS'), 
