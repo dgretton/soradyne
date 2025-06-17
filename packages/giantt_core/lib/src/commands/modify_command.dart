@@ -4,6 +4,8 @@ import '../models/status.dart';
 import '../models/priority.dart';
 import '../models/duration.dart';
 import '../storage/dual_file_manager.dart';
+import '../graph/giantt_graph.dart';
+import '../models/graph_exceptions.dart';
 
 /// Arguments for modify command
 class ModifyArgs {

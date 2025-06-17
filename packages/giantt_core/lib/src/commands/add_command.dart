@@ -5,6 +5,8 @@ import '../models/priority.dart';
 import '../models/duration.dart';
 import '../storage/dual_file_manager.dart';
 import '../parser/giantt_parser.dart';
+import '../graph/giantt_graph.dart';
+import '../models/graph_exceptions.dart';
 
 /// Arguments for add command
 class AddArgs {
