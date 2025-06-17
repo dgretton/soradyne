@@ -320,4 +320,34 @@ class FileRepository {
       }
     }
   }
+
+  /// Load logs from a single file
+  static List<LogEntry> _loadLogsFromFile(String filepath, {required bool occlude}) {
+    final logs = <LogEntry>[];
+    
+    try {
+      final file = File(filepath);
+      if (!file.existsSync()) {
+        return logs;
+      }
+
+      final lines = file.readAsLinesSync();
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty && !trimmed.startsWith('#')) {
+          try {
+            final log = LogEntry.fromJsonLine(trimmed, occlude: occlude);
+            logs.add(log);
+          } catch (e) {
+            // Skip invalid lines with warning
+            print('Warning: Skipping invalid log line in $filepath: $e');
+          }
+        }
+      }
+    } catch (e) {
+      throw GraphException('Error loading logs from $filepath: $e');
+    }
+    
+    return logs;
+  }
 }
