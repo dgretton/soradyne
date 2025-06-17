@@ -4,6 +4,8 @@ import '../models/log_entry.dart';
 import '../models/graph_exceptions.dart';
 import '../graph/giantt_graph.dart';
 import '../parser/giantt_parser.dart';
+import '../logging/log_collection.dart';
+import '../logging/log_occluder.dart';
 import 'atomic_file_writer.dart';
 import 'backup_manager.dart';
 import 'file_header_generator.dart';
@@ -329,46 +331,3 @@ class LogOccludeResult {
   bool get hasOccluded => occludedCount > 0;
 }
 
-/// Collection of log entries with query capabilities
-class LogCollection {
-  final List<LogEntry> _entries = [];
-
-  /// Get all entries
-  List<LogEntry> get entries => List.unmodifiable(_entries);
-
-  /// Add a single entry
-  void addEntry(LogEntry entry) {
-    _entries.add(entry);
-    _sortEntries();
-  }
-
-  /// Add multiple entries
-  void addEntries(List<LogEntry> entries) {
-    _entries.addAll(entries);
-    _sortEntries();
-  }
-
-  /// Replace an entry with a new one
-  void replaceEntry(LogEntry oldEntry, LogEntry newEntry) {
-    final index = _entries.indexOf(oldEntry);
-    if (index != -1) {
-      _entries[index] = newEntry;
-      _sortEntries();
-    }
-  }
-
-  /// Get entries that are not occluded
-  List<LogEntry> get includedEntries {
-    return _entries.where((entry) => !entry.occlude).toList();
-  }
-
-  /// Get entries that are occluded
-  List<LogEntry> get occludedEntries {
-    return _entries.where((entry) => entry.occlude).toList();
-  }
-
-  /// Sort entries by timestamp
-  void _sortEntries() {
-    _entries.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-  }
-}

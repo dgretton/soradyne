@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:meta/meta.dart';
 
 /// Represents a single log entry
@@ -37,16 +38,31 @@ class LogEntry {
 
   /// Create a LogEntry from a JSON line
   static LogEntry fromJsonLine(String jsonLine, {bool occlude = false}) {
-    // This would parse the JSONL format from Python
-    // For now, placeholder implementation
-    throw UnimplementedError('LogEntry.fromJsonLine not yet implemented');
+    try {
+      final data = json.decode(jsonLine) as Map<String, dynamic>;
+      return LogEntry(
+        session: data['s'] as String,
+        timestamp: DateTime.parse(data['t'] as String),
+        message: data['m'] as String,
+        tags: Set<String>.from(data['tags'] as List),
+        metadata: Map<String, String>.from(data['meta'] as Map? ?? {}),
+        occlude: occlude,
+      );
+    } catch (e) {
+      throw FormatException('Invalid log entry format: $e');
+    }
   }
 
   /// Convert to JSON line format
   String toJsonLine() {
-    // This would serialize to JSONL format matching Python
-    // For now, placeholder implementation
-    throw UnimplementedError('LogEntry.toJsonLine not yet implemented');
+    final data = {
+      's': session,
+      't': timestamp.toIso8601String(),
+      'm': message,
+      'tags': tags.toList()..sort(),
+      'meta': metadata,
+    };
+    return json.encode(data);
   }
 
   /// Create a copy with modified properties
@@ -66,6 +82,50 @@ class LogEntry {
       metadata: metadata ?? this.metadata,
       occlude: occlude ?? this.occlude,
     );
+  }
+
+  /// Factory constructor to create a new log entry with current timestamp
+  factory LogEntry.create(
+    String sessionTag,
+    String message, {
+    List<String>? additionalTags,
+    Map<String, String>? metadata,
+    bool occlude = false,
+  }) {
+    final tags = <String>{sessionTag};
+    if (additionalTags != null) {
+      tags.addAll(additionalTags);
+    }
+
+    return LogEntry(
+      session: sessionTag,
+      timestamp: DateTime.now().toUtc(),
+      message: message,
+      tags: tags,
+      metadata: metadata ?? {},
+      occlude: occlude,
+    );
+  }
+
+  /// Check if entry has a specific tag
+  bool hasTag(String tag) => tags.contains(tag);
+
+  /// Check if entry has any of the specified tags
+  bool hasAnyTags(List<String> tagList) => tags.any(tagList.contains);
+
+  /// Check if entry has all of the specified tags
+  bool hasAllTags(List<String> tagList) => tagList.every(tags.contains);
+
+  /// Add a tag to the entry
+  LogEntry addTag(String tag) {
+    final newTags = Set<String>.from(tags)..add(tag);
+    return copyWith(tags: newTags);
+  }
+
+  /// Remove a tag from the entry
+  LogEntry removeTag(String tag) {
+    final newTags = Set<String>.from(tags)..remove(tag);
+    return copyWith(tags: newTags);
   }
 
   @override
