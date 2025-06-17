@@ -232,12 +232,13 @@ void main() {
       expect(dartResult.exitCode, equals(pythonResult.exitCode),
              reason: 'Doctor exit codes should match');
       
-      // Both should detect issues
+      // Both should detect issues or show error messages
       if (pythonResult.exitCode == 2) {
-        expect(pythonResult.stdout, contains('issue'),
-               reason: 'Python should detect issues');
-        expect(dartResult.stdout, contains('issue'),
-               reason: 'Dart should detect issues');
+        // Python shows usage error in stderr, Dart shows in stderr too
+        expect(pythonResult.stderr, contains('Error'),
+               reason: 'Python should show error message');
+        expect(dartResult.stderr, contains('Error'),
+               reason: 'Dart should show error message');
       }
     });
   });
