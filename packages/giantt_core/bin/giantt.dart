@@ -814,8 +814,12 @@ Future<void> _executeDoctor(ArgResults args) async {
     final doctor = GraphDoctor(graph);
     
     if (args.command == null) {
-      // Default to check command
-      await _executeDoctorCheck(doctor);
+      // Require a subcommand, just like Python
+      stderr.writeln('Usage: giantt doctor [OPTIONS] COMMAND [ARGS]...');
+      stderr.writeln("Try 'giantt doctor --help' for help.");
+      stderr.writeln('');
+      stderr.writeln('Error: Missing command.');
+      exit(2);
     } else {
       switch (args.command!.name) {
         case 'check':
