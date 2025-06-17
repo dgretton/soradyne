@@ -591,7 +591,7 @@ Future<void> _showOneItem(GianttGraph graph, String substring) async {
     print('Relations:');
     
     if (item.relations.isEmpty) {
-      print('  None');
+      // Don't print anything for empty relations to match Python
     } else {
       for (final entry in item.relations.entries) {
         print('  - ${entry.key}: ${entry.value.join(', ')}');
@@ -800,8 +800,8 @@ Future<void> _executeDoctor(ArgResults args) async {
   final occludeFile = args['occlude-file'] as String?;
   
   try {
-    final itemsPath = file ?? PathResolver.getDefaultGianttPath('items.txt');
-    final occludeItemsPath = occludeFile ?? PathResolver.getDefaultGianttPath('items.txt', occlude: true);
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
     // Load graph
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);

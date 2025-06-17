@@ -158,7 +158,7 @@ void main() {
           '--occlude-file', dartOccludeItemsPath,
           testCase['id'] as String,
           testCase['title'] as String,
-          ...(testCase['args'] as List<String>),
+          ...(testCase['args'] as List<dynamic>).cast<String>(),
         ];
         
         print('Dart command: dart ${dartArgs.join(' ')}');
