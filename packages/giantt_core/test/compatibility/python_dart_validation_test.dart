@@ -287,8 +287,8 @@ void main() {
       };
       
       for (final test in relationTests.entries) {
-        final contains = output.contains(test.value);
-        print('  ${test.key}: ${test.value} ${contains ? "✓" : "✗"}');
+        final containsSymbol = output.contains(test.value);
+        print('  ${test.key}: ${test.value} ${containsSymbol ? "✓" : "✗"}');
         expect(output, contains(test.value), 
                reason: '${test.key} should use ${test.value}');
       }
