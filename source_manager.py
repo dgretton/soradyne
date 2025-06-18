@@ -169,10 +169,11 @@ class SourceManager:
     
     def _should_skip_file(self, rel_path: str, file_name: str) -> bool:
         """Check if a file should be skipped based on patterns."""
-        # Skip test data directories
+        # Skip test data directories and macOS build artifacts
         test_data_patterns = [
             'data/', 'heartrate_data/', 'large_video_test/', 'visual_block_test/',
-            'renderer_test_output/', 'rimsd_', '/Pods/', '/Target Support Files/'
+            'renderer_test_output/', 'rimsd_', 'Pods/', 'Target Support Files/',
+            'macos/Pods/', 'macos/Runner/Assets.xcassets/'
         ]
         
         for pattern in test_data_patterns:
@@ -190,6 +191,16 @@ class SourceManager:
             # Skip JSON files in test/data directories
             if any(test_dir in rel_path for test_dir in ['data/', 'heartrate_data/', 'test_output/']):
                 return True
+            
+            # Skip UUID-named JSON files (likely test data)
+            import re
+            uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$'
+            if re.match(uuid_pattern, file_name):
+                return True
+        
+        # Skip header files in Pods directories
+        if file_name.endswith('.h') and 'Pods/' in rel_path:
+            return True
         
         return False
     
