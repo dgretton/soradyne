@@ -174,6 +174,9 @@ class SourceManager:
         # Convert to string and normalize path separators
         rel_path_str = str(rel_path).replace('\\', '/')
         
+        # Debug output
+        debug_skip = False
+        
         # Skip test data directories and macOS build artifacts
         skip_patterns = [
             r'^data/',
@@ -190,26 +193,40 @@ class SourceManager:
         
         for pattern in skip_patterns:
             if re.search(pattern, rel_path_str):
+                if debug_skip:
+                    print(f"DEBUG: Skipping {rel_path_str} due to pattern: {pattern}")
                 return True
         
         # Skip all metadata and build artifact JSON files
         if file_name.endswith('.json'):
             # Skip metadata files
             if file_name in ['metadata.json', 'Contents.json']:
+                if debug_skip:
+                    print(f"DEBUG: Skipping {rel_path_str} - metadata JSON file")
                 return True
             
             # Skip podspec files
             if file_name.endswith('.podspec.json'):
+                if debug_skip:
+                    print(f"DEBUG: Skipping {rel_path_str} - podspec JSON file")
                 return True
             
             # Skip UUID-named JSON files (test data)
             uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$'
             if re.match(uuid_pattern, file_name):
+                if debug_skip:
+                    print(f"DEBUG: Skipping {rel_path_str} - UUID JSON file")
                 return True
         
         # Skip all header files in Pods directories
         if file_name.endswith('.h') and 'Pods' in rel_path_str:
+            if debug_skip:
+                print(f"DEBUG: Skipping {rel_path_str} - header file in Pods")
             return True
+        
+        # Debug output for files that are NOT being skipped but probably should be
+        if any(pattern in rel_path_str for pattern in ['data/', 'heartrate_data/', 'Pods/', 'metadata.json']):
+            print(f"DEBUG: NOT skipping {rel_path_str} (file: {file_name}) - check patterns")
         
         return False
     
