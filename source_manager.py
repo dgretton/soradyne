@@ -171,6 +171,9 @@ class SourceManager:
         """Check if a file should be skipped based on patterns."""
         import re
         
+        # Convert to string and normalize path separators
+        rel_path_str = str(rel_path).replace('\\', '/')
+        
         # Skip test data directories and macOS build artifacts
         skip_patterns = [
             r'^data/',
@@ -179,17 +182,17 @@ class SourceManager:
             r'^visual_block_test/',
             r'^renderer_test_output/',
             r'rimsd_',
-            r'/Pods/',
-            r'/Target Support Files/',
-            r'macos/Pods/',
-            r'macos/Runner/Assets\.xcassets/',
+            r'Pods/',
+            r'Target Support Files/',
+            r'macos/',
+            r'\.xcassets/',
         ]
         
         for pattern in skip_patterns:
-            if re.search(pattern, rel_path):
+            if re.search(pattern, rel_path_str):
                 return True
         
-        # Skip all JSON files in test data directories
+        # Skip all metadata and build artifact JSON files
         if file_name.endswith('.json'):
             # Skip metadata files
             if file_name in ['metadata.json', 'Contents.json']:
@@ -203,14 +206,9 @@ class SourceManager:
             uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$'
             if re.match(uuid_pattern, file_name):
                 return True
-            
-            # Skip JSON files in specific test directories
-            test_dirs = ['data/', 'heartrate_data/', 'test_output/', 'large_video_test/', 'visual_block_test/']
-            if any(test_dir in rel_path for test_dir in test_dirs):
-                return True
         
-        # Skip header files in Pods directories
-        if file_name.endswith('.h') and '/Pods/' in rel_path:
+        # Skip all header files in Pods directories
+        if file_name.endswith('.h') and 'Pods' in rel_path_str:
             return True
         
         return False
