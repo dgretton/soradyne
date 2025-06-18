@@ -175,7 +175,7 @@ class SourceManager:
         rel_path_str = str(rel_path).replace('\\', '/')
         
         # Debug output
-        debug_skip = False
+        debug_skip = True
         
         # Skip test data directories and macOS build artifacts
         skip_patterns = [
