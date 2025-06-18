@@ -102,10 +102,7 @@ class SourceManager:
             json.dump(self.config, f, indent=2)
         
     def collect_files(self):
-        """Collect files based on configuration."""
-        # Find all the files currently included in the concatenated file
-        included_files = self._currently_included_files()
-
+        """Collect files based on current configuration and filtering rules only."""
         # Clear existing collections
         for category in self.file_collections:
             self.file_collections[category] = []
@@ -137,17 +134,6 @@ class SourceManager:
                 
                 # Categorize file by extension
                 self._categorize_and_add_file(str(rel_path), file)
-        
-        # Add any manually included files that weren't found
-        for rel_path in included_files:
-            if str(rel_path) in self.individual_exclusions:
-                continue
-            
-            # Check if file is already in a collection
-            already_included = any(str(rel_path) in collection for collection in self.file_collections.values())
-            if not already_included:
-                file_name = Path(rel_path).name
-                self._categorize_and_add_file(str(rel_path), file_name)
         
         # Print summary
         total_files = sum(len(collection) for collection in self.file_collections.values())
@@ -637,8 +623,10 @@ Configuration:
 
 Note:
   The 'list' command shows files from the existing output file.
-  If you've updated filtering rules or exclusions, run 'generate'
-  first to create a new output file with the updated file set.
+  The 'generate' command always uses current filtering rules and
+  configuration - it does not preserve previously included files
+  that would now be filtered out. Run 'generate' to apply any
+  changes to filtering rules or exclusions.
         """
     )
     parser.add_argument('--source', default='.', help='Source directory (default: current directory)')
