@@ -281,6 +281,11 @@ class SourceManager:
         """Check if a file path matches any exclusion pattern"""
         import fnmatch
         
+        # Always exclude the configured output file
+        output_filename = Path(self.output_file).name
+        if Path(file_path).name == output_filename:
+            return True
+        
         for exclusion in self.individual_exclusions:
             # Check exact match
             if file_path == exclusion:
