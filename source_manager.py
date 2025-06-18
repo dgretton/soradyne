@@ -84,7 +84,7 @@ class SourceManager:
             "excluded_dirs": [
                 ".git", "node_modules", "__pycache__", ".pytest_cache",
                 "target", "build", "dist", ".dart_tool", "coverage",
-                "venv", "env", ".env", "vendor"
+                "venv", "env", ".env", "vendor", ".aider"
             ],
             "priority_files": [],
             "auto_include_patterns": [],
@@ -186,6 +186,12 @@ class SourceManager:
                 f.write("# Individual file exclusions for source_manager\n")
                 f.write("# One file path per line, relative to project root\n")
                 f.write("# Lines starting with # are comments and will be ignored\n\n")
+                f.write("# Common development files to exclude\n")
+                f.write(".aider.chat.history.md\n")
+                f.write(".aider.input.history\n")
+                f.write(".aider.tags.cache.v3\n")
+                f.write("source_complete.txt\n")
+                f.write("soradyne_complete.txt\n")
     
     def _load_exclusions(self):
         """Load the list of excluded files"""
