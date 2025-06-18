@@ -1,0 +1,79 @@
+{
+  "project_name": "Source Code",
+  "output_file": "source_complete.txt",
+  "file_types": {
+    "source": {
+      "extensions": [
+        ".py",
+        ".js",
+        ".ts",
+        ".rs",
+        ".dart",
+        ".java",
+        ".cpp",
+        ".c",
+        ".h",
+        ".go",
+        ".cs"
+      ],
+      "description": "Source code files"
+    },
+    "config": {
+      "extensions": [
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".cfg"
+      ],
+      "description": "Configuration files"
+    },
+    "markup": {
+      "extensions": [
+        ".html",
+        ".xml",
+        ".md",
+        ".rst"
+      ],
+      "description": "Markup and documentation files"
+    },
+    "scripts": {
+      "extensions": [
+        ".sh",
+        ".bat",
+        ".ps1"
+      ],
+      "description": "Shell scripts and batch files"
+    }
+  },
+  "excluded_dirs": [
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    "target",
+    "build",
+    "dist",
+    ".dart_tool",
+    "coverage",
+    "venv",
+    "env",
+    ".env",
+    "vendor",
+    ".aider",
+    ".vscode",
+    ".idea",
+    "bin",
+    "obj",
+    ".webpack",
+    "out",
+    "Generated"
+  ],
+  "auto_include_patterns": [],
+  "banner_config": {
+    "padding_h": 5,
+    "padding_v": 1,
+    "char": "="
+  }
+}

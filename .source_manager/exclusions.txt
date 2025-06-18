@@ -1,8 +1,18 @@
-# Individual file exclusions for source_manager
+# Individual file exclusions for source_manager.py
 # One file path per line, relative to project root
 # Lines starting with # are comments and will be ignored
 
-# Common output files
-source_complete.txt
 *.log
+*.sh
 *.tmp
+*/Pods/*
+*/RunnerTests/*
+*GeneratedPluginRegistrant.swift
+*Test.swift
+.idea/*
+apps/soradyne_demo/flutter_app/macos/*
+data/*
+heartrate_data/*
+large_video_test/*
+packages/giantt_core/.giantt/*
+visual_block_test/*
