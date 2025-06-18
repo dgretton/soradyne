@@ -127,6 +127,10 @@ class SourceManager:
                 if str(rel_path) in self.individual_exclusions:
                     continue
                 
+                # Skip aider files that might be in root directory
+                if file.startswith('.aider'):
+                    continue
+                
                 # Categorize file by extension
                 self._categorize_and_add_file(str(rel_path), file)
         
@@ -190,6 +194,7 @@ class SourceManager:
                 f.write(".aider.chat.history.md\n")
                 f.write(".aider.input.history\n")
                 f.write(".aider.tags.cache.v3\n")
+                f.write(".aider.conf.yml\n")
                 f.write("source_complete.txt\n")
                 f.write("soradyne_complete.txt\n")
     
