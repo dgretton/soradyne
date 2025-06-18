@@ -1,6 +1,6 @@
 {
-  "project_name": "Source Code",
-  "output_file": "source_complete.txt",
+  "project_name": "Soradyne & Giantt Multi-Platform Suite",
+  "output_file": "soradyne_giantt_source.txt",
   "file_types": {
     "source": {
       "extensions": [
