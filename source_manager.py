@@ -131,6 +131,10 @@ class SourceManager:
                 if file.startswith('.aider'):
                     continue
                 
+                # Skip test data and metadata files
+                if self._should_skip_file(str(rel_path), file):
+                    continue
+                
                 # Categorize file by extension
                 self._categorize_and_add_file(str(rel_path), file)
         
@@ -162,6 +166,32 @@ class SourceManager:
         if self._add_if_exists(file_path):
             file_name = Path(file_path).name
             self._categorize_and_add_file(file_path, file_name, force=True)
+    
+    def _should_skip_file(self, rel_path: str, file_name: str) -> bool:
+        """Check if a file should be skipped based on patterns."""
+        # Skip test data directories
+        test_data_patterns = [
+            'data/', 'heartrate_data/', 'large_video_test/', 'visual_block_test/',
+            'renderer_test_output/', 'rimsd_', '/Pods/', '/Target Support Files/'
+        ]
+        
+        for pattern in test_data_patterns:
+            if pattern in rel_path:
+                return True
+        
+        # Skip metadata and test output JSON files
+        if file_name.endswith('.json'):
+            skip_json_patterns = [
+                'metadata.json', 'Contents.json', '.podspec.json'
+            ]
+            if any(pattern in file_name for pattern in skip_json_patterns):
+                return True
+            
+            # Skip JSON files in test/data directories
+            if any(test_dir in rel_path for test_dir in ['data/', 'heartrate_data/', 'test_output/']):
+                return True
+        
+        return False
     
     def _categorize_and_add_file(self, rel_path: str, file_name: str, force: bool = False):
         """Categorize a file by extension and add to appropriate collection."""
