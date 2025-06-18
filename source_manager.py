@@ -634,6 +634,11 @@ Examples:
 Configuration:
   The tool uses .source_manager/config.json for settings.
   Run 'init' to create a default configuration file.
+
+Note:
+  The 'list' command shows files from the existing output file.
+  If you've updated filtering rules or exclusions, run 'generate'
+  first to create a new output file with the updated file set.
         """
     )
     parser.add_argument('--source', default='.', help='Source directory (default: current directory)')
