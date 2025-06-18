@@ -1,153 +1,195 @@
 #!/usr/bin/env python3
 """
-Soradyne Source Manager
+Universal Source Manager
 
-This script helps manage the concatenated Soradyne source code file.
-It allows you to:
-- Generate a new concatenated file from all source files (Rust, HTML, Python, TOML)
-- Add a new file to the existing concatenated file
-- View all files currently included in the concatenation
+A configurable tool for collecting and concatenating source code files from any repository.
+Designed to help prepare comprehensive source code documentation for LLM analysis.
+
+Features:
+- Configurable file type collection via JSON config
+- Automatic discovery with customizable patterns
+- Manual file addition and exclusion management
+- Interactive and batch modes
+- Flexible output formatting
+- Project-agnostic design
+
+Usage:
+    source_manager.py init                    # Create default config
+    source_manager.py generate               # Generate concatenated file
+    source_manager.py add <file>             # Add specific file
+    source_manager.py exclude <file>         # Exclude file from collection
+    source_manager.py list                   # Show included files
+    source_manager.py interactive            # Interactive mode
 """
 
 import os
 import sys
 import glob
 import argparse
+import json
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Set, Optional, Any
 
-class SoradyneManager:
-    def __init__(self, source_dir='.', output_file='soradyne_complete.txt'):
-        self.source_dir = source_dir
-        self.output_file = output_file
-        self.rust_files = []
-        self.dart_files = []
-        self.html_files = []
-        self.python_files = []
-        self.toml_files = []
-        self.yaml_files = []
-        self.shell_files = []
-        self.markdown_files = []
-        self.other_files = []
-        self.excluded_dirs = ['.git', 'target', 'dist', 'node_modules', '__pycache__', 'build', '.dart_tool', 'ios', 'android', 'web', 'windows', 'linux', 'large_video_test', 'visual_block_test', 'renderer_test_output', 'heartrate_data', 'data']
+class SourceManager:
+    def __init__(self, source_dir='.', output_file=None, config_file=None):
+        self.source_dir = Path(source_dir).resolve()
+        self.config_file = config_file or self.source_dir / '.source_manager' / 'config.json'
+        self.config = self._load_config()
+        self.output_file = output_file or self.config.get('output_file', 'source_complete.txt')
         
-        # Setup exclusion system
-        self.exclusions_dir = os.path.join(self.source_dir, '.source_manager')
-        self.exclusions_file = os.path.join(self.exclusions_dir, 'individual_exclusions.txt')
+        # File collections by category
+        self.file_collections = {category: [] for category in self.config['file_types'].keys()}
+        
+        # Exclusion management
+        self.exclusions_dir = self.source_dir / '.source_manager'
+        self.exclusions_file = self.exclusions_dir / 'exclusions.txt'
         self._ensure_exclusions_setup()
         self.individual_exclusions = self._load_exclusions()
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """Load configuration from JSON file or create default."""
+        if self.config_file.exists():
+            try:
+                with open(self.config_file, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                print(f"Warning: Could not load config from {self.config_file}, using defaults")
+        
+        return self._default_config()
+    
+    def _default_config(self) -> Dict[str, Any]:
+        """Return default configuration."""
+        return {
+            "project_name": "Source Code",
+            "output_file": "source_complete.txt",
+            "file_types": {
+                "source": {
+                    "extensions": [".py", ".js", ".ts", ".rs", ".dart", ".java", ".cpp", ".c", ".h", ".go"],
+                    "description": "Source code files"
+                },
+                "config": {
+                    "extensions": [".json", ".yaml", ".yml", ".toml", ".ini", ".cfg"],
+                    "description": "Configuration files"
+                },
+                "markup": {
+                    "extensions": [".html", ".xml", ".md", ".rst"],
+                    "description": "Markup and documentation files"
+                },
+                "scripts": {
+                    "extensions": [".sh", ".bat", ".ps1"],
+                    "description": "Shell scripts and batch files"
+                }
+            },
+            "excluded_dirs": [
+                ".git", "node_modules", "__pycache__", ".pytest_cache",
+                "target", "build", "dist", ".dart_tool", "coverage",
+                "venv", "env", ".env", "vendor"
+            ],
+            "priority_files": [],
+            "auto_include_patterns": [],
+            "banner_config": {
+                "padding_h": 5,
+                "padding_v": 1,
+                "char": "="
+            }
+        }
+    
+    def _save_config(self):
+        """Save current configuration to file."""
+        self.exclusions_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.config_file, 'w') as f:
+            json.dump(self.config, f, indent=2)
         
     def collect_files(self):
-        """Collect all Rust and TypeScript source files in the source directory"""
-        # Find all the files currently included in the concatenated file, including those added manually
+        """Collect files based on configuration."""
+        # Find all the files currently included in the concatenated file
         included_files = self._currently_included_files()
 
-        # Clear existing lists
-        self.rust_files = []
-        self.dart_files = []
-        self.html_files = []
-        self.python_files = []
-        self.toml_files = []
-        self.yaml_files = []
-        self.shell_files = []
-        self.markdown_files = []
-        self.other_files = []
+        # Clear existing collections
+        for category in self.file_collections:
+            self.file_collections[category] = []
         
-        # Start with key files
-        self._add_if_exists('lib.rs', self.rust_files)
-        self._add_if_exists('src/lib.rs', self.rust_files)
-        self._add_if_exists('src/core/mod.rs', self.rust_files)
-        self._add_if_exists('Cargo.toml', self.toml_files)
-        self._add_if_exists('flutter_app/pubspec.yaml', self.yaml_files)
-        self._add_if_exists('flutter_app/lib/main.dart', self.dart_files)
-        self._add_if_exists('build_rust.sh', self.shell_files)
+        # Add priority files first
+        for priority_file in self.config.get('priority_files', []):
+            self._add_priority_file(priority_file)
         
-        # Add key Giantt core files
-        self._add_if_exists('packages/giantt_core/bin/giantt.dart', self.dart_files)
-        self._add_if_exists('packages/giantt_core/lib/giantt_core.dart', self.dart_files)
-        self._add_if_exists('packages/giantt_core/pubspec.yaml', self.yaml_files)
-        self._add_if_exists('docs/port_reference/giantt_cli.py', self.python_files)
-        self._add_if_exists('docs/port_reference/giantt_core.py', self.python_files)
-        
-        # Find all source files in the source directory
+        # Auto-discover files by walking the directory tree
         for root, dirs, files in os.walk(self.source_dir):
             # Skip excluded directories
-            dirs[:] = [d for d in dirs if d not in self.excluded_dirs]
+            dirs[:] = [d for d in dirs if d not in self.config['excluded_dirs']]
             
             for file in files:
-                full_path = os.path.join(root, file)
-                rel_path = os.path.relpath(full_path, self.source_dir)
+                full_path = Path(root) / file
+                rel_path = full_path.relative_to(self.source_dir)
                 
                 # Skip excluded files
-                if rel_path in self.individual_exclusions:
+                if str(rel_path) in self.individual_exclusions:
                     continue
                 
-                # Collect Rust files
-                if file.endswith('.rs'):
-                    if rel_path not in self.rust_files:
-                        self.rust_files.append(rel_path)
-                
-                # Collect Dart files
-                elif file.endswith('.dart'):
-                    if rel_path not in self.dart_files:
-                        self.dart_files.append(rel_path)
-                
-                # Collect Python files
-                elif file.endswith('.py'):
-                    if rel_path not in self.python_files:
-                        self.python_files.append(rel_path)
-                
-                # Collect TOML files
-                elif file.endswith('.toml'):
-                    if rel_path not in self.toml_files:
-                        self.toml_files.append(rel_path)
-                
-                # Collect YAML files
-                elif file.endswith('.yaml') or file.endswith('.yml'):
-                    if rel_path not in self.yaml_files:
-                        self.yaml_files.append(rel_path)
+                # Categorize file by extension
+                self._categorize_and_add_file(str(rel_path), file)
         
+        # Add any manually included files that weren't found
         for rel_path in included_files:
-            # Skip excluded files
-            if rel_path in self.individual_exclusions:
+            if str(rel_path) in self.individual_exclusions:
                 continue
-                
-            if (rel_path not in self.rust_files and rel_path not in self.dart_files and 
-                rel_path not in self.html_files and rel_path not in self.python_files and 
-                rel_path not in self.toml_files and rel_path not in self.yaml_files and
-                rel_path not in self.shell_files and rel_path not in self.markdown_files):
-                if rel_path.endswith('.rs'):
-                    self._add_if_exists(rel_path, self.rust_files)
-                elif rel_path.endswith('.dart'):
-                    self._add_if_exists(rel_path, self.dart_files)
-                elif rel_path.endswith('.py'):
-                    self._add_if_exists(rel_path, self.python_files)
-                elif rel_path.endswith('.toml'):
-                    self._add_if_exists(rel_path, self.toml_files)
-                elif rel_path.endswith('.yaml') or rel_path.endswith('.yml'):
-                    self._add_if_exists(rel_path, self.yaml_files)
-                else:
-                    self._add_if_exists(rel_path, self.other_files)
+            
+            # Check if file is already in a collection
+            already_included = any(str(rel_path) in collection for collection in self.file_collections.values())
+            if not already_included:
+                file_name = Path(rel_path).name
+                self._categorize_and_add_file(str(rel_path), file_name)
         
-        total_files = len(self.rust_files) + len(self.dart_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.yaml_files) + len(self.shell_files) + len(self.markdown_files) + len(self.other_files)
-        print(f"Found {len(self.rust_files)} Rust files, {len(self.dart_files)} Dart files, {len(self.html_files)} HTML files, {len(self.python_files)} Python files, {len(self.toml_files)} TOML files, {len(self.yaml_files)} YAML files, {len(self.shell_files)} shell files, {len(self.markdown_files)} markdown files, and {len(self.other_files)} other files.")
+        # Print summary
+        total_files = sum(len(collection) for collection in self.file_collections.values())
+        category_counts = {cat: len(files) for cat, files in self.file_collections.items() if files}
+        
+        print(f"Found {total_files} files:")
+        for category, count in category_counts.items():
+            description = self.config['file_types'][category]['description']
+            print(f"  {count} {description.lower()}")
         print(f"Excluded {len(self.individual_exclusions)} individual files.")
-        return self.rust_files, self.html_files, self.python_files, self.toml_files, self.other_files
+        
+        return self.file_collections
+    
+    def _add_priority_file(self, file_path: str):
+        """Add a priority file to the appropriate collection."""
+        if self._add_if_exists(file_path):
+            file_name = Path(file_path).name
+            self._categorize_and_add_file(file_path, file_name, force=True)
+    
+    def _categorize_and_add_file(self, rel_path: str, file_name: str, force: bool = False):
+        """Categorize a file by extension and add to appropriate collection."""
+        file_ext = Path(file_name).suffix.lower()
+        
+        for category, config in self.config['file_types'].items():
+            if file_ext in config['extensions']:
+                if rel_path not in self.file_collections[category]:
+                    self.file_collections[category].append(rel_path)
+                return
+        
+        # If no category matches and force is True, add to 'other' category
+        if force:
+            if 'other' not in self.file_collections:
+                self.file_collections['other'] = []
+            if rel_path not in self.file_collections['other']:
+                self.file_collections['other'].append(rel_path)
         
     def _ensure_exclusions_setup(self):
         """Ensure the .source_manager directory and exclusions file exist"""
-        if not os.path.exists(self.exclusions_dir):
-            os.makedirs(self.exclusions_dir)
+        self.exclusions_dir.mkdir(parents=True, exist_ok=True)
         
-        if not os.path.exists(self.exclusions_file):
+        if not self.exclusions_file.exists():
             # Create default exclusions file
             with open(self.exclusions_file, 'w') as f:
-                f.write("# Individual file exclusions for source_manager.py\n")
+                f.write("# Individual file exclusions for source_manager\n")
                 f.write("# One file path per line, relative to project root\n")
                 f.write("# Lines starting with # are comments and will be ignored\n\n")
     
     def _load_exclusions(self):
         """Load the list of excluded files"""
-        if not os.path.exists(self.exclusions_file):
+        if not self.exclusions_file.exists():
             return []
         
         with open(self.exclusions_file, 'r') as f:
@@ -200,22 +242,19 @@ class SoradyneManager:
             print(f"{i}. {exclusion}")
         print(f"\nTotal: {len(self.individual_exclusions)} excluded files")
     
-    def _add_if_exists(self, file_path, file_list):
-        """Add a file to the list if it exists and is not excluded"""
+    def _add_if_exists(self, file_path):
+        """Check if a file exists and is not excluded"""
         if file_path in self.individual_exclusions:
             return False
         
-        full_path = os.path.join(self.source_dir, file_path)
-        if os.path.exists(full_path):
-            file_list.append(file_path)
-            return True
-        return False
+        full_path = self.source_dir / file_path
+        return full_path.exists()
     
     def _generate_directory_tree(self):
         """Generate a directory tree of included files"""
-        all_files = (self.rust_files + self.dart_files + self.html_files + 
-                    self.python_files + self.toml_files + self.yaml_files + 
-                    self.shell_files + self.markdown_files + self.other_files)
+        all_files = []
+        for collection in self.file_collections.values():
+            all_files.extend(collection)
         
         # Build directory structure
         tree = {}
@@ -243,7 +282,7 @@ class SoradyneManager:
                     lines.extend(format_tree(subtree, prefix + extension, is_last_item))
             return lines
         
-        tree_lines = ["PROJECT DIRECTORY STRUCTURE (included files only):"]
+        tree_lines = [f"{self.config['project_name'].upper()} DIRECTORY STRUCTURE (included files only):"]
         tree_lines.append(".")
         tree_lines.extend(format_tree(tree))
         return "\n".join(tree_lines)
@@ -306,13 +345,20 @@ class SoradyneManager:
         self.collect_files()
         
         with open(self.output_file, 'w') as output:
-            total_files = len(self.rust_files) + len(self.dart_files) + len(self.html_files) + len(self.python_files) + len(self.toml_files) + len(self.yaml_files) + len(self.shell_files) + len(self.markdown_files) + len(self.other_files)
+            total_files = sum(len(collection) for collection in self.file_collections.values())
             
-            output.write("=====================================================================\n")
-            output.write("= SORADYNE PROTOCOL - COMPLETE SOURCE CODE                         =\n")
-            output.write(f"= Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}                           =\n")
-            output.write(f"= Total files: {total_files}                                               =\n")
-            output.write("=====================================================================\n\n")
+            # Generate header
+            project_name = self.config['project_name'].upper()
+            header_text = f"{project_name} - COMPLETE SOURCE CODE"
+            border_char = self.config['banner_config']['char']
+            border_len = max(70, len(header_text) + 10)
+            border = border_char * border_len
+            
+            output.write(f"{border}\n")
+            output.write(f"{border_char} {header_text:<{border_len-4}} {border_char}\n")
+            output.write(f"{border_char} Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S'):<{border_len-16}} {border_char}\n")
+            output.write(f"{border_char} Total files: {total_files:<{border_len-15}} {border_char}\n")
+            output.write(f"{border}\n\n")
             
             # Add directory tree
             output.write(self._generate_directory_tree())
@@ -323,172 +369,49 @@ class SoradyneManager:
             output.write(self._generate_exclusions_summary())
             output.write("\n=====================================================================\n\n")
             
-            # Add Rust files
-            output.write("=====================================================================\n")
-            output.write("= RUST SOURCE CODE                                                 =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.rust_files:
-                full_path = os.path.join(self.source_dir, file_path)
+            # Write files by category
+            for category, files in self.file_collections.items():
+                if not files:
+                    continue
                 
-                output.write("\n\n// =====================================================================\n")
-                output.write(f"// FILE: {file_path}\n")
-                output.write("// =====================================================================\n\n")
+                category_config = self.config['file_types'][category]
+                section_title = category_config['description'].upper()
                 
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
-            
-            # Add Dart files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= DART/FLUTTER SOURCE CODE                                        =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.dart_files:
-                full_path = os.path.join(self.source_dir, file_path)
+                border = "=" * 70
+                output.write(f"\n\n{border}\n")
+                output.write(f"= {section_title:<66} =\n")
+                output.write(f"{border}\n\n")
                 
-                output.write("\n\n// =====================================================================\n")
-                output.write(f"// FILE: {file_path}\n")
-                output.write("// =====================================================================\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
-            
-            # Add HTML files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= HTML FILES                                                      =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.html_files:
-                full_path = os.path.join(self.source_dir, file_path)
-                
-                output.write("\n\n<!-- =====================================================================\n")
-                output.write(f"FILE: {file_path}\n")
-                output.write("===================================================================== -->\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"<!-- [Error reading file: {file_path} - possible binary content] -->\n")
-            
-            # Add Python files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= PYTHON FILES                                                    =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.python_files:
-                full_path = os.path.join(self.source_dir, file_path)
-                
-                output.write("\n\n# =====================================================================\n")
-                output.write(f"# FILE: {file_path}\n")
-                output.write("# =====================================================================\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
-            
-            # Add TOML files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= TOML FILES                                                      =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.toml_files:
-                full_path = os.path.join(self.source_dir, file_path)
-                
-                output.write("\n\n# =====================================================================\n")
-                output.write(f"# FILE: {file_path}\n")
-                output.write("# =====================================================================\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
-            
-            # Add YAML files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= YAML FILES                                                      =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.yaml_files:
-                full_path = os.path.join(self.source_dir, file_path)
-                
-                output.write("\n\n# =====================================================================\n")
-                output.write(f"# FILE: {file_path}\n")
-                output.write("# =====================================================================\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
-            
-            # Add shell files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= SHELL SCRIPTS                                                   =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.shell_files:
-                full_path = os.path.join(self.source_dir, file_path)
-                
-                output.write("\n\n# =====================================================================\n")
-                output.write(f"# FILE: {file_path}\n")
-                output.write("# =====================================================================\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"# [Error reading file: {file_path} - possible binary content]\n")
-            
-            # Add markdown files
-            output.write("\n\n\n=====================================================================\n")
-            output.write("= MARKDOWN FILES                                                  =\n")
-            output.write("=====================================================================\n\n")
-            
-            for file_path in self.markdown_files:
-                full_path = os.path.join(self.source_dir, file_path)
-                
-                output.write("\n\n<!-- =====================================================================\n")
-                output.write(f"FILE: {file_path}\n")
-                output.write("===================================================================== -->\n\n")
-                
-                try:
-                    with open(full_path, 'r', encoding='utf-8') as input_file:
-                        output.write(input_file.read())
-                except UnicodeDecodeError:
-                    output.write(f"<!-- [Error reading file: {file_path} - possible binary content] -->\n")
-            
-                # Add other files
-                if self.other_files:
-                    output.write("\n\n\n=====================================================================\n")
-                    output.write("= OTHER FILES                                                     =\n")
-                    output.write("=====================================================================\n\n")
-
-                    for file_path in self.other_files:
-                        full_path = os.path.join(self.source_dir, file_path)
+                for file_path in files:
+                    full_path = self.source_dir / file_path
                     
-                        output.write("\n\n// =====================================================================\n")
-                        output.write(f"// FILE: {file_path}\n")
-                        output.write("// =====================================================================\n\n")
+                    # Choose comment style based on file extension
+                    ext = Path(file_path).suffix.lower()
+                    if ext in ['.html', '.xml', '.md']:
+                        comment_start = "<!-- "
+                        comment_end = " -->"
+                    elif ext in ['.py', '.sh', '.yaml', '.yml', '.toml']:
+                        comment_start = "# "
+                        comment_end = ""
+                    else:
+                        comment_start = "// "
+                        comment_end = ""
                     
-                        try:
-                            with open(full_path, 'r', encoding='utf-8') as input_file:
-                                output.write(input_file.read())
-                        except UnicodeDecodeError:
-                            output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
-
-                output.write("\n\n// =====================================================================\n")
-                output.write("= END OF FILES                                                    =\n")
-                output.write("=====================================================================\n\n")
+                    output.write(f"\n\n{comment_start}{'=' * 69}{comment_end}\n")
+                    output.write(f"{comment_start}FILE: {file_path}{comment_end}\n")
+                    output.write(f"{comment_start}{'=' * 69}{comment_end}\n\n")
+                    
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as input_file:
+                            output.write(input_file.read())
+                    except UnicodeDecodeError:
+                        output.write(f"{comment_start}[Error reading file: {file_path} - possible binary content]{comment_end}\n")
+            
+            # Footer
+            border = "=" * 70
+            output.write(f"\n\n{border}\n")
+            output.write(f"= {'END OF FILES':<66} =\n")
+            output.write(f"{border}\n\n")
 
         print(f"Concatenation complete! Output file: {self.output_file}")
         
@@ -534,7 +457,7 @@ class SoradyneManager:
     
     def list_files(self):
         """List all files currently included in the concatenation"""
-        if not os.path.exists(self.output_file):
+        if not Path(self.output_file).exists():
             print(f"Error: Output file '{self.output_file}' does not exist. Generate it first.")
             return
             
@@ -545,145 +468,225 @@ class SoradyneManager:
         
         print(f"Files included in {self.output_file}:")
         
-        rust_files = [f for f in included_files if f.endswith('.rs')]
-        dart_files = [f for f in included_files if f.endswith('.dart')]
-        html_files = [f for f in included_files if f.endswith('.html')]
-        python_files = [f for f in included_files if f.endswith('.py')]
-        toml_files = [f for f in included_files if f.endswith('.toml')]
-        yaml_files = [f for f in included_files if f.endswith('.yaml') or f.endswith('.yml')]
-        shell_files = [f for f in included_files if f.endswith('.sh')]
-        markdown_files = [f for f in included_files if f.endswith('.md')]
-        other_files = [f for f in included_files if not (f.endswith('.rs') or f.endswith('.dart') or f.endswith('.html') or f.endswith('.py') or f.endswith('.toml') or f.endswith('.yaml') or f.endswith('.yml') or f.endswith('.sh') or f.endswith('.md'))]
+        # Group files by category
+        categorized_files = {category: [] for category in self.config['file_types'].keys()}
+        uncategorized_files = []
         
-        print("\nRust files:")
-        for i, file_path in enumerate(rust_files):
-            print(f"{i+1}. {file_path}")
+        for file_path in included_files:
+            ext = Path(file_path).suffix.lower()
+            categorized = False
+            
+            for category, config in self.config['file_types'].items():
+                if ext in config['extensions']:
+                    categorized_files[category].append(file_path)
+                    categorized = True
+                    break
+            
+            if not categorized:
+                uncategorized_files.append(file_path)
         
-        print("\nDart files:")
-        for i, file_path in enumerate(dart_files):
-            print(f"{i+1}. {file_path}")
+        # Print categorized files
+        total_count = 0
+        for category, files in categorized_files.items():
+            if files:
+                description = self.config['file_types'][category]['description']
+                print(f"\n{description}:")
+                for i, file_path in enumerate(files, 1):
+                    print(f"{i:3}. {file_path}")
+                total_count += len(files)
         
-        print("\nHTML files:")
-        for i, file_path in enumerate(html_files):
-            print(f"{i+1}. {file_path}")
+        # Print uncategorized files
+        if uncategorized_files:
+            print(f"\nOther files:")
+            for i, file_path in enumerate(uncategorized_files, 1):
+                print(f"{i:3}. {file_path}")
+            total_count += len(uncategorized_files)
         
-        print("\nPython files:")
-        for i, file_path in enumerate(python_files):
-            print(f"{i+1}. {file_path}")
+        # Print summary
+        category_summary = []
+        for category, files in categorized_files.items():
+            if files:
+                category_summary.append(f"{len(files)} {category}")
         
-        print("\nTOML files:")
-        for i, file_path in enumerate(toml_files):
-            print(f"{i+1}. {file_path}")
+        if uncategorized_files:
+            category_summary.append(f"{len(uncategorized_files)} other")
         
-        print("\nYAML files:")
-        for i, file_path in enumerate(yaml_files):
-            print(f"{i+1}. {file_path}")
+        print(f"\nTotal: {total_count} files ({', '.join(category_summary)})")
+    
+    def init_config(self):
+        """Initialize configuration file with defaults."""
+        if self.config_file.exists():
+            print(f"Configuration already exists at {self.config_file}")
+            return False
         
-        print("\nShell files:")
-        for i, file_path in enumerate(shell_files):
-            print(f"{i+1}. {file_path}")
-        
-        print("\nMarkdown files:")
-        for i, file_path in enumerate(markdown_files):
-            print(f"{i+1}. {file_path}")
-
-        if other_files:
-            print("\nOther files:")
-            for i, file_path in enumerate(other_files):
-                print(f"{i+1}. {file_path}")
-        
-        print(f"\nTotal: {len(included_files)} files ({len(rust_files)} Rust, {len(dart_files)} Dart, {len(html_files)} HTML, {len(python_files)} Python, {len(toml_files)} TOML, {len(yaml_files)} YAML, {len(shell_files)} Shell, {len(markdown_files)} Markdown)")
+        self.config = self._default_config()
+        self._save_config()
+        print(f"Created default configuration at {self.config_file}")
+        print("Edit this file to customize file types, exclusions, and other settings.")
+        return True
+    
+    def show_config(self):
+        """Display current configuration."""
+        print("Current configuration:")
+        print(json.dumps(self.config, indent=2))
+    
+    def add_file_type(self, category: str, extensions: List[str], description: str):
+        """Add a new file type category."""
+        self.config['file_types'][category] = {
+            'extensions': extensions,
+            'description': description
+        }
+        self._save_config()
+        print(f"Added file type category '{category}' with extensions: {', '.join(extensions)}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Manage Soradyne source code concatenation')
-    parser.add_argument('--source', default='.', help='Source directory containing Rust and TypeScript files')
-    parser.add_argument('--output', default='soradyne_complete.txt', help='Output file path')
+    parser = argparse.ArgumentParser(
+        description='Universal Source Manager - Collect and concatenate source code files',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s init                     # Create default configuration
+  %(prog)s generate                 # Generate concatenated source file
+  %(prog)s add src/main.py          # Add specific file
+  %(prog)s exclude tests/           # Exclude directory
+  %(prog)s list                     # Show included files
+  %(prog)s config                   # Show current configuration
+  %(prog)s interactive              # Interactive mode
+
+Configuration:
+  The tool uses .source_manager/config.json for settings.
+  Run 'init' to create a default configuration file.
+        """
+    )
+    parser.add_argument('--source', default='.', help='Source directory (default: current directory)')
+    parser.add_argument('--output', help='Output file path (overrides config)')
+    parser.add_argument('--config', help='Configuration file path')
     
-    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
-    generate_parser = subparsers.add_parser('generate', help='Generate a new concatenated file')
+    # Init command
+    init_parser = subparsers.add_parser('init', help='Initialize configuration file')
     
-    add_parser = subparsers.add_parser('add', help='Add a new file to the existing concatenated file')
+    # Generate command
+    generate_parser = subparsers.add_parser('generate', help='Generate concatenated source file')
+    
+    # Add command
+    add_parser = subparsers.add_parser('add', help='Add specific file to collection')
     add_parser.add_argument('file', help='Path to the file to add')
     
-    list_parser = subparsers.add_parser('list', help='List all files included in the concatenation')
+    # List command
+    list_parser = subparsers.add_parser('list', help='List all included files')
     
-    # Exclusion management commands
-    exclude_parser = subparsers.add_parser('exclude', help='Add a file to the exclusions list')
+    # Config commands
+    config_parser = subparsers.add_parser('config', help='Show current configuration')
+    
+    # Exclusion management
+    exclude_parser = subparsers.add_parser('exclude', help='Add file/pattern to exclusions')
     exclude_parser.add_argument('file', help='Path to the file to exclude')
     
-    include_parser = subparsers.add_parser('include', help='Remove a file from the exclusions list')
+    include_parser = subparsers.add_parser('include', help='Remove file from exclusions')
     include_parser.add_argument('file', help='Path to the file to include')
     
-    list_exclusions_parser = subparsers.add_parser('list-exclusions', help='List all excluded files')
+    list_exclusions_parser = subparsers.add_parser('list-exclusions', help='List excluded files')
     
+    # File type management
+    add_type_parser = subparsers.add_parser('add-type', help='Add new file type category')
+    add_type_parser.add_argument('category', help='Category name')
+    add_type_parser.add_argument('extensions', nargs='+', help='File extensions (e.g., .py .pyx)')
+    add_type_parser.add_argument('--description', required=True, help='Category description')
+    
+    # Interactive mode
     interactive_parser = subparsers.add_parser('interactive', help='Run in interactive mode')
     
     args = parser.parse_args()
     
-    manager = SoradyneManager(args.source, args.output)
+    if not args.command:
+        parser.print_help()
+        return
     
-    if args.command == 'generate':
+    manager = SourceManager(args.source, args.output, args.config)
+    
+    if args.command == 'init':
+        manager.init_config()
+    elif args.command == 'generate':
         manager.generate_concatenated_file()
     elif args.command == 'add':
         manager.add_file(args.file)
     elif args.command == 'list':
         manager.list_files()
+    elif args.command == 'config':
+        manager.show_config()
     elif args.command == 'exclude':
         manager.add_exclusion(args.file)
     elif args.command == 'include':
         manager.remove_exclusion(args.file)
     elif args.command == 'list-exclusions':
         manager.list_exclusions()
+    elif args.command == 'add-type':
+        manager.add_file_type(args.category, args.extensions, args.description)
     elif args.command == 'interactive':
         run_interactive_mode(manager)
-    else:
-        parser.print_help()
 
 def run_interactive_mode(manager):
     """Run an interactive command loop"""
-    print("Soradyne Source Manager - Interactive Mode")
+    print("Universal Source Manager - Interactive Mode")
     print("Type 'help' for a list of commands")
     
     while True:
-        cmd = input("\nsoradyne> ").strip().lower()
+        cmd = input("\nsource> ").strip()
         
-        if cmd == 'exit' or cmd == 'quit':
+        if cmd.lower() in ['exit', 'quit']:
             break
-        elif cmd == 'help':
+        elif cmd.lower() == 'help':
             print("Available commands:")
-            print("  generate           - Generate a new concatenated file")
-            print("  add <file>         - Add a new file to the concatenated file")
-            print("  list               - List all files in the concatenation")
-            print("  exclude <file>     - Add a file to the exclusions list")
-            print("  include <file>     - Remove a file from the exclusions list")
-            print("  list-exclusions    - List all excluded files")
-            print("  exit/quit          - Exit the program")
-        elif cmd == 'generate':
+            print("  generate              - Generate a new concatenated file")
+            print("  add <file>            - Add a new file to the collection")
+            print("  list                  - List all files in the concatenation")
+            print("  config                - Show current configuration")
+            print("  exclude <file>        - Add a file to the exclusions list")
+            print("  include <file>        - Remove a file from the exclusions list")
+            print("  list-exclusions       - List all excluded files")
+            print("  add-type <cat> <exts> - Add new file type category")
+            print("  exit/quit             - Exit the program")
+        elif cmd.lower() == 'generate':
             manager.generate_concatenated_file()
-        elif cmd.startswith('add '):
+        elif cmd.lower().startswith('add '):
             file_path = cmd[4:].strip()
             if file_path:
                 manager.add_file(file_path)
             else:
                 print("Error: Please specify a file path")
-        elif cmd == 'list':
+        elif cmd.lower() == 'list':
             manager.list_files()
-        elif cmd.startswith('exclude '):
+        elif cmd.lower() == 'config':
+            manager.show_config()
+        elif cmd.lower().startswith('exclude '):
             file_path = cmd[8:].strip()
             if file_path:
                 manager.add_exclusion(file_path)
             else:
                 print("Error: Please specify a file path")
-        elif cmd.startswith('include '):
+        elif cmd.lower().startswith('include '):
             file_path = cmd[8:].strip()
             if file_path:
                 manager.remove_exclusion(file_path)
             else:
                 print("Error: Please specify a file path")
-        elif cmd == 'list-exclusions':
+        elif cmd.lower() == 'list-exclusions':
             manager.list_exclusions()
-        elif cmd:
+        elif cmd.lower().startswith('add-type '):
+            parts = cmd[9:].strip().split()
+            if len(parts) >= 2:
+                category = parts[0]
+                extensions = parts[1:]
+                description = input(f"Description for '{category}': ").strip()
+                if description:
+                    manager.add_file_type(category, extensions, description)
+                else:
+                    print("Error: Description is required")
+            else:
+                print("Error: Usage: add-type <category> <extension1> [extension2] ...")
+        elif cmd.strip():
             print(f"Unknown command: '{cmd}'. Type 'help' for a list of commands.")
 
 if __name__ == '__main__':
