@@ -1,0 +1,5 @@
+# Priority files for source_manager
+# These files will always be included in the output
+# One file path per line, relative to project root
+# Lines starting with # are comments and will be ignored
+

@@ -1,0 +1,8 @@
+# Individual file exclusions for source_manager
+# One file path per line, relative to project root
+# Lines starting with # are comments and will be ignored
+
+# Common output files
+source_complete.txt
+*.log
+*.tmp

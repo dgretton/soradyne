@@ -41,11 +41,14 @@ class SourceManager:
         # File collections by category
         self.file_collections = {category: [] for category in self.config['file_types'].keys()}
         
-        # Exclusion management
+        # Exclusion and priority file management
         self.exclusions_dir = self.source_dir / '.source_manager'
         self.exclusions_file = self.exclusions_dir / 'exclusions.txt'
+        self.priority_file = self.exclusions_dir / 'priority.txt'
         self._ensure_exclusions_setup()
+        self._ensure_priority_setup()
         self.individual_exclusions = self._load_exclusions()
+        self.priority_files = self._load_priority_files()
     
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from JSON file or create default."""
@@ -65,7 +68,7 @@ class SourceManager:
             "output_file": "source_complete.txt",
             "file_types": {
                 "source": {
-                    "extensions": [".py", ".js", ".ts", ".rs", ".dart", ".java", ".cpp", ".c", ".h", ".go"],
+                    "extensions": [".py", ".js", ".ts", ".rs", ".dart", ".java", ".cpp", ".c", ".h", ".go", ".cs"],
                     "description": "Source code files"
                 },
                 "config": {
@@ -84,9 +87,9 @@ class SourceManager:
             "excluded_dirs": [
                 ".git", "node_modules", "__pycache__", ".pytest_cache",
                 "target", "build", "dist", ".dart_tool", "coverage",
-                "venv", "env", ".env", "vendor", ".aider"
+                "venv", "env", ".env", "vendor", ".aider", ".vscode",
+                ".idea", "bin", "obj", ".webpack", "out", "Generated"
             ],
-            "priority_files": [],
             "auto_include_patterns": [],
             "banner_config": {
                 "padding_h": 5,
@@ -101,27 +104,35 @@ class SourceManager:
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f, indent=2)
         
-    def collect_files(self):
+    def collect_files(self, debug=False):
         """Collect files based on current configuration and filtering rules only."""
         # Clear existing collections
         for category in self.file_collections:
             self.file_collections[category] = []
         
         # Add priority files first
-        for priority_file in self.config.get('priority_files', []):
+        for priority_file in self.priority_files:
             self._add_priority_file(priority_file)
         
         # Auto-discover files by walking the directory tree
         for root, dirs, files in os.walk(self.source_dir):
-            # Skip excluded directories
+            # Skip excluded directories (only exact directory name matches)
+            original_dirs = dirs[:]
             dirs[:] = [d for d in dirs if d not in self.config['excluded_dirs']]
+            
+            if debug and len(dirs) != len(original_dirs):
+                excluded = [d for d in original_dirs if d not in dirs]
+                rel_root = Path(root).relative_to(self.source_dir)
+                print(f"DEBUG: Excluded directories in {rel_root}: {excluded}")
             
             for file in files:
                 full_path = Path(root) / file
                 rel_path = full_path.relative_to(self.source_dir)
                 
                 # Skip excluded files
-                if str(rel_path) in self.individual_exclusions:
+                if self._is_excluded(str(rel_path)):
+                    if debug:
+                        print(f"DEBUG: Excluded file: {rel_path}")
                     continue
                 
                 # Skip aider files that might be in root directory
@@ -130,10 +141,14 @@ class SourceManager:
                 
                 # Skip test data and metadata files
                 if self._should_skip_file(str(rel_path), file):
+                    if debug:
+                        print(f"DEBUG: Skipped by pattern: {rel_path}")
                     continue
                 
                 # Categorize file by extension
                 self._categorize_and_add_file(str(rel_path), file)
+                if debug and str(rel_path).endswith('.py'):
+                    print(f"DEBUG: Added Python file: {rel_path}")
         
         # Print summary
         total_files = sum(len(collection) for collection in self.file_collections.values())
@@ -163,18 +178,15 @@ class SourceManager:
         # Debug output
         debug_skip = False
         
-        # Skip test data directories and macOS build artifacts
+        # Skip common build and temporary directories
         skip_patterns = [
-            r'^data/',
-            r'^heartrate_data/',
-            r'^large_video_test/',
-            r'^visual_block_test/',
-            r'^renderer_test_output/',
-            r'rimsd_',
-            r'Pods/',
-            r'Target Support Files/',
-            r'macos/',
-            r'\.xcassets/',
+            r'^\.git/',
+            r'^node_modules/',
+            r'^__pycache__/',
+            r'^\.pytest_cache/',
+            r'^target/',
+            r'^build/',
+            r'^dist/',
         ]
         
         for pattern in skip_patterns:
@@ -183,36 +195,8 @@ class SourceManager:
                     print(f"DEBUG: Skipping {rel_path_str} due to pattern: {pattern}")
                 return True
         
-        # Skip all metadata and build artifact JSON files
-        if file_name.endswith('.json'):
-            # Skip metadata files
-            if file_name in ['metadata.json', 'Contents.json']:
-                if debug_skip:
-                    print(f"DEBUG: Skipping {rel_path_str} - metadata JSON file")
-                return True
-            
-            # Skip podspec files
-            if file_name.endswith('.podspec.json'):
-                if debug_skip:
-                    print(f"DEBUG: Skipping {rel_path_str} - podspec JSON file")
-                return True
-            
-            # Skip UUID-named JSON files (test data)
-            uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$'
-            if re.match(uuid_pattern, file_name):
-                if debug_skip:
-                    print(f"DEBUG: Skipping {rel_path_str} - UUID JSON file")
-                return True
         
-        # Skip all header files in Pods directories
-        if file_name.endswith('.h') and 'Pods' in rel_path_str:
-            if debug_skip:
-                print(f"DEBUG: Skipping {rel_path_str} - header file in Pods")
-            return True
         
-        # Debug output for files that are NOT being skipped but probably should be
-        if any(pattern in rel_path_str for pattern in ['data/', 'heartrate_data/', 'Pods/', 'metadata.json']):
-            print(f"DEBUG: NOT skipping {rel_path_str} (file: {file_name}) - check patterns")
         
         return False
     
@@ -232,6 +216,13 @@ class SourceManager:
                 self.file_collections['other'] = []
             if rel_path not in self.file_collections['other']:
                 self.file_collections['other'].append(rel_path)
+            
+            # Also ensure 'other' exists in config for summary generation
+            if 'other' not in self.config['file_types']:
+                self.config['file_types']['other'] = {
+                    'extensions': [],
+                    'description': 'Other files'
+                }
         
     def _ensure_exclusions_setup(self):
         """Ensure the .source_manager directory and exclusions file exist"""
@@ -243,13 +234,22 @@ class SourceManager:
                 f.write("# Individual file exclusions for source_manager\n")
                 f.write("# One file path per line, relative to project root\n")
                 f.write("# Lines starting with # are comments and will be ignored\n\n")
-                f.write("# Common development files to exclude\n")
-                f.write(".aider.chat.history.md\n")
-                f.write(".aider.input.history\n")
-                f.write(".aider.tags.cache.v3\n")
-                f.write(".aider.conf.yml\n")
+                f.write("# Common output files\n")
                 f.write("source_complete.txt\n")
-                f.write("soradyne_complete.txt\n")
+                f.write("*.log\n")
+                f.write("*.tmp\n")
+    
+    def _ensure_priority_setup(self):
+        """Ensure the priority files file exists"""
+        self.exclusions_dir.mkdir(parents=True, exist_ok=True)
+        
+        if not self.priority_file.exists():
+            # Create default priority file
+            with open(self.priority_file, 'w') as f:
+                f.write("# Priority files for source_manager\n")
+                f.write("# These files will always be included in the output\n")
+                f.write("# One file path per line, relative to project root\n")
+                f.write("# Lines starting with # are comments and will be ignored\n\n")
     
     def _load_exclusions(self):
         """Load the list of excluded files"""
@@ -264,6 +264,40 @@ class SourceManager:
                     exclusions.append(line)
             return exclusions
     
+    def _load_priority_files(self):
+        """Load the list of priority files"""
+        if not self.priority_file.exists():
+            return []
+        
+        with open(self.priority_file, 'r') as f:
+            priority_files = []
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    priority_files.append(line)
+            return priority_files
+    
+    def _is_excluded(self, file_path: str) -> bool:
+        """Check if a file path matches any exclusion pattern"""
+        import fnmatch
+        
+        for exclusion in self.individual_exclusions:
+            # Check exact match
+            if file_path == exclusion:
+                return True
+            
+            # Check if it's a glob pattern
+            if '*' in exclusion or '?' in exclusion:
+                if fnmatch.fnmatch(file_path, exclusion):
+                    return True
+            else:
+                # For non-glob patterns, check if the filename matches
+                # This handles cases like "package-lock.json" matching "desktop/electron-app/package-lock.json"
+                if Path(file_path).name == exclusion:
+                    return True
+        
+        return False
+    
     def _save_exclusions(self):
         """Save the current exclusions list to file"""
         with open(self.exclusions_file, 'w') as f:
@@ -272,6 +306,16 @@ class SourceManager:
             f.write("# Lines starting with # are comments and will be ignored\n\n")
             for exclusion in sorted(self.individual_exclusions):
                 f.write(f"{exclusion}\n")
+    
+    def _save_priority_files(self):
+        """Save the current priority files list to file"""
+        with open(self.priority_file, 'w') as f:
+            f.write("# Priority files for source_manager\n")
+            f.write("# These files will always be included in the output\n")
+            f.write("# One file path per line, relative to project root\n")
+            f.write("# Lines starting with # are comments and will be ignored\n\n")
+            for priority_file in sorted(self.priority_files):
+                f.write(f"{priority_file}\n")
     
     def add_exclusion(self, file_path):
         """Add a file to the exclusions list"""
@@ -359,39 +403,24 @@ class SourceManager:
         lines = [f"EXCLUDED FILES ({len(self.individual_exclusions)} total):"]
         lines.append("")
         
-        # Group by category based on path patterns
+        # Group by category based on generic patterns
         categories = {
-            "Examples": [],
-            "Flutter/Dart": [],
-            "Binaries": [],
-            "Bindings": [],
-            "Storage": [],
-            "Network": [],
-            "Video": [],
-            "Album": [],
-            "Flow": [],
+            "Configuration": [],
+            "Documentation": [],
+            "Build/Output": [],
+            "Tests": [],
             "Other": []
         }
         
         for exclusion in sorted(self.individual_exclusions):
-            if exclusion.startswith("examples/"):
-                categories["Examples"].append(exclusion)
-            elif exclusion.startswith("flutter_app/"):
-                categories["Flutter/Dart"].append(exclusion)
-            elif exclusion.startswith("src/bin/"):
-                categories["Binaries"].append(exclusion)
-            elif exclusion.startswith("src/bindings/"):
-                categories["Bindings"].append(exclusion)
-            elif exclusion.startswith("src/storage/"):
-                categories["Storage"].append(exclusion)
-            elif exclusion.startswith("src/network/"):
-                categories["Network"].append(exclusion)
-            elif exclusion.startswith("src/video/"):
-                categories["Video"].append(exclusion)
-            elif exclusion.startswith("src/album/"):
-                categories["Album"].append(exclusion)
-            elif exclusion.startswith("src/flow/"):
-                categories["Flow"].append(exclusion)
+            if any(exclusion.startswith(p) for p in ["test/", "tests/", "spec/"]):
+                categories["Tests"].append(exclusion)
+            elif any(exclusion.endswith(e) for e in [".md", ".txt", ".rst"]):
+                categories["Documentation"].append(exclusion)
+            elif any(exclusion.startswith(p) for p in ["build/", "dist/", "target/"]):
+                categories["Build/Output"].append(exclusion)
+            elif any(exclusion.endswith(e) for e in [".json", ".yaml", ".yml", ".toml"]):
+                categories["Configuration"].append(exclusion)
             else:
                 categories["Other"].append(exclusion)
         
@@ -404,9 +433,9 @@ class SourceManager:
         
         return "\n".join(lines)
         
-    def generate_concatenated_file(self):
+    def generate_concatenated_file(self, debug=False):
         """Generate a new concatenated file from all source files"""
-        self.collect_files()
+        self.collect_files(debug=debug)
         
         with open(self.output_file, 'w') as output:
             total_files = sum(len(collection) for collection in self.file_collections.values())
@@ -480,29 +509,21 @@ class SourceManager:
         print(f"Concatenation complete! Output file: {self.output_file}")
         
     def add_file(self, file_path):
-        """Add a new file to the existing concatenated file"""
+        """Add a new file to the existing concatenated file and save to priority list"""
         full_path = os.path.join(self.source_dir, file_path)
         
         if not os.path.exists(full_path):
             print(f"Error: File '{file_path}' does not exist")
             return False
-            
-        if not os.path.exists(self.output_file):
-            print(f"Error: Output file '{self.output_file}' does not exist. Generate it first.")
-            return False
         
-        with open(self.output_file, 'a') as output:
-            output.write("\n\n// =====================================================================\n")
-            output.write(f"// FILE: {file_path}\n")
-            output.write("// =====================================================================\n\n")
-            
-            try:
-                with open(full_path, 'r', encoding='utf-8') as input_file:
-                    output.write(input_file.read())
-            except UnicodeDecodeError:
-                output.write(f"// [Error reading file: {file_path} - possible binary content]\n")
+        # Add to priority files list to make it persistent
+        if file_path not in self.priority_files:
+            self.priority_files.append(file_path)
+            self._save_priority_files()
+            print(f"Added '{file_path}' to priority files list (will be included in future generations)")
         
-        print(f"Added file '{file_path}' to {self.output_file}")
+        print(f"Added '{file_path}' to priority files. Run 'generate' to include it in the output file.")
+        
         return True
         
     def _currently_included_files(self):
@@ -514,8 +535,13 @@ class SourceManager:
         included_files = []
         with open(self.output_file, 'r', encoding='utf-8') as f:
             for line in f:
+                # Handle different comment styles
                 if line.startswith('// FILE: '):
                     included_files.append(line[9:].strip())
+                elif line.startswith('# FILE: '):
+                    included_files.append(line[8:].strip())
+                elif line.startswith('<!-- FILE: ') and line.endswith(' -->\n'):
+                    included_files.append(line[11:-5].strip())
         
         return included_files
     
@@ -594,6 +620,30 @@ class SourceManager:
         print("Current configuration:")
         print(json.dumps(self.config, indent=2))
     
+    def remove_priority_file(self, file_path):
+        """Remove a file from the priority files list"""
+        if file_path in self.priority_files:
+            self.priority_files.remove(file_path)
+            self._save_priority_files()
+            print(f"Removed '{file_path}' from priority files list")
+            return True
+        else:
+            print(f"'{file_path}' is not in priority files list")
+            return False
+    
+    def list_priority_files(self):
+        """List all priority files"""
+        if not self.priority_files:
+            print("No priority files configured.")
+            return
+        
+        print("Priority files (always included):")
+        for i, file_path in enumerate(self.priority_files, 1):
+            exists = (self.source_dir / file_path).exists()
+            status = "✓" if exists else "✗ (missing)"
+            print(f"{i:3}. {file_path} {status}")
+        print(f"\nTotal: {len(self.priority_files)} priority files")
+    
     def add_file_type(self, category: str, extensions: List[str], description: str):
         """Add a new file type category."""
         self.config['file_types'][category] = {
@@ -640,6 +690,7 @@ Note:
     
     # Generate command
     generate_parser = subparsers.add_parser('generate', help='Generate concatenated source file')
+    generate_parser.add_argument('--debug', action='store_true', help='Enable debug output')
     
     # Add command
     add_parser = subparsers.add_parser('add', help='Add specific file to collection')
@@ -659,6 +710,12 @@ Note:
     include_parser.add_argument('file', help='Path to the file to include')
     
     list_exclusions_parser = subparsers.add_parser('list-exclusions', help='List excluded files')
+    
+    # Priority file management
+    remove_parser = subparsers.add_parser('remove', help='Remove file from priority list')
+    remove_parser.add_argument('file', help='Path to the file to remove from priority list')
+    
+    list_priority_parser = subparsers.add_parser('list-priority', help='List priority files')
     
     # File type management
     add_type_parser = subparsers.add_parser('add-type', help='Add new file type category')
@@ -680,7 +737,8 @@ Note:
     if args.command == 'init':
         manager.init_config()
     elif args.command == 'generate':
-        manager.generate_concatenated_file()
+        debug = getattr(args, 'debug', False)
+        manager.generate_concatenated_file(debug=debug)
     elif args.command == 'add':
         manager.add_file(args.file)
     elif args.command == 'list':
@@ -693,6 +751,10 @@ Note:
         manager.remove_exclusion(args.file)
     elif args.command == 'list-exclusions':
         manager.list_exclusions()
+    elif args.command == 'remove':
+        manager.remove_priority_file(args.file)
+    elif args.command == 'list-priority':
+        manager.list_priority_files()
     elif args.command == 'add-type':
         manager.add_file_type(args.category, args.extensions, args.description)
     elif args.command == 'interactive':
