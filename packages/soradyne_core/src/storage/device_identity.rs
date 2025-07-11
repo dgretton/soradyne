@@ -318,21 +318,21 @@ async fn extract_hardware_id(rimsd_path: &Path) -> Result<Option<String>, FlowEr
 }
 
 async fn extract_filesystem_uuid(rimsd_path: &Path) -> Result<Option<String>, FlowError> {
-    let device_path = get_device_path(rimsd_path).await?;
+    let _device_path = get_device_path(rimsd_path).await?;
     
     #[cfg(target_os = "linux")]
     {
-        extract_filesystem_uuid_linux(&device_path).await
+        extract_filesystem_uuid_linux(&_device_path).await
     }
     
     #[cfg(target_os = "macos")]
     {
-        extract_filesystem_uuid_macos(&device_path).await
+        extract_filesystem_uuid_macos(&_device_path).await
     }
     
     #[cfg(target_os = "windows")]
     {
-        extract_filesystem_uuid_windows(&device_path).await
+        extract_filesystem_uuid_windows(&_device_path).await
     }
     
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -342,11 +342,11 @@ async fn extract_filesystem_uuid(rimsd_path: &Path) -> Result<Option<String>, Fl
 }
 
 async fn extract_bad_blocks(rimsd_path: &Path) -> Result<Vec<u64>, FlowError> {
-    let device_path = get_device_path(rimsd_path).await?;
+    let _device_path = get_device_path(rimsd_path).await?;
     
     #[cfg(target_os = "linux")]
     {
-        extract_bad_blocks_linux(&device_path).await
+        extract_bad_blocks_linux(&_device_path).await
     }
     
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -363,21 +363,21 @@ async fn extract_bad_blocks(rimsd_path: &Path) -> Result<Vec<u64>, FlowError> {
 }
 
 async fn extract_capacity(rimsd_path: &Path) -> Result<u64, FlowError> {
-    let device_path = get_device_path(rimsd_path).await?;
+    let _device_path = get_device_path(rimsd_path).await?;
     
     #[cfg(target_os = "linux")]
     {
-        extract_capacity_linux(&device_path).await
+        extract_capacity_linux(&_device_path).await
     }
     
     #[cfg(target_os = "macos")]
     {
-        extract_capacity_macos(&device_path).await
+        extract_capacity_macos(&_device_path).await
     }
     
     #[cfg(target_os = "windows")]
     {
-        extract_capacity_windows(&device_path).await
+        extract_capacity_windows(&_device_path).await
     }
     
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -584,7 +584,7 @@ async fn extract_hardware_id_macos(device_path: &str) -> Result<Option<String>, 
         .map_err(|e| FlowError::PersistenceError(format!("Failed to run diskutil: {}", e)))?;
     
     let output_str = String::from_utf8_lossy(&output.stdout);
-    let mut vendor: Option<String> = None;
+    let vendor: Option<String> = None;
     let mut model: Option<String> = None;
     
     for line in output_str.lines() {
@@ -818,6 +818,35 @@ mod tests {
         
         assert!(!result.is_same_device);
         assert!(result.confidence < 0.05);
+    }
+    
+    #[tokio::test]
+    async fn test_device_fingerprinting() {
+        use tempfile::TempDir;
+        
+        // Create a temporary directory to simulate an SD card
+        let temp_dir = TempDir::new().unwrap();
+        let rimsd_path = temp_dir.path().join(".rimsd");
+        
+        // Test fingerprinting
+        let fingerprint = fingerprint_device(&rimsd_path).await.unwrap();
+        
+        // Should have a Soradyne device ID (created automatically)
+        assert!(fingerprint.soradyne_device_id.is_some());
+        
+        // Should have some capacity (even if fallback)
+        assert!(fingerprint.capacity_bytes > 0);
+        
+        // Test that fingerprinting the same path gives the same Soradyne ID
+        let fingerprint2 = fingerprint_device(&rimsd_path).await.unwrap();
+        assert_eq!(fingerprint.soradyne_device_id, fingerprint2.soradyne_device_id);
+        
+        // Test device identification
+        let identifier = BayesianDeviceIdentifier::default();
+        let result = identifier.identify_device(&fingerprint, &fingerprint2).unwrap();
+        
+        assert!(result.is_same_device);
+        assert!(result.confidence > 0.95);
     }
     
     #[tokio::test]
