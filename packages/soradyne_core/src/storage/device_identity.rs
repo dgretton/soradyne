@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use serde::{Serialize, Deserialize};
 use sha2::{Sha256, Digest};
-use uuid::Uuid;
 
 use crate::flow::FlowError;
 
