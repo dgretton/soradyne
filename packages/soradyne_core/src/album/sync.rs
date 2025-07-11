@@ -234,4 +234,43 @@ pub mod test_utils {
         
         (sync_manager, temp_dir)
     }
+    
+    pub fn create_test_sync_manager_with_distinct_devices() -> (AlbumSyncManager, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let test_dir = temp_dir.path().to_path_buf();
+        
+        // Create rimsd directories with unique device signatures
+        let mut rimsd_dirs = Vec::new();
+        for i in 0..3 {
+            let device_dir = test_dir.join(format!("rimsd_{}", i));
+            let rimsd_dir = device_dir.join(".rimsd");
+            std::fs::create_dir_all(&rimsd_dir).unwrap();
+            
+            // Create a unique device signature file for each "device"
+            let device_signature = rimsd_dir.join("device_signature.txt");
+            std::fs::write(&device_signature, format!("device-{}-{}", i, uuid::Uuid::new_v4())).unwrap();
+            
+            // Create a mock filesystem UUID file
+            let fs_uuid_file = rimsd_dir.join("fs_uuid.txt");
+            std::fs::write(&fs_uuid_file, format!("fs-uuid-{}-{}", i, uuid::Uuid::new_v4())).unwrap();
+            
+            // Create mock hardware info
+            let hw_info_file = rimsd_dir.join("hardware_info.txt");
+            std::fs::write(&hw_info_file, format!("hw-serial-{}-manufacturer-{}", i, i)).unwrap();
+            
+            rimsd_dirs.push(rimsd_dir);
+        }
+        
+        let metadata_path = test_dir.join("metadata.json");
+        let block_manager = Arc::new(BlockManager::new(
+            rimsd_dirs,
+            metadata_path,
+            2, // threshold
+            3, // total_shards
+        ).unwrap());
+        
+        let sync_manager = AlbumSyncManager::new(block_manager, "test_replica".to_string());
+        
+        (sync_manager, temp_dir)
+    }
 }
