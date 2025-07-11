@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use uuid::Uuid;
 use sha2::{Sha256, Digest};
 
 use crate::flow::FlowError;
@@ -235,25 +234,25 @@ pub async fn fingerprint_device(rimsd_path: &Path) -> Result<BasicFingerprint, F
     ))
 }
 
-async fn extract_hardware_id(rimsd_path: &Path) -> Result<Option<String>, FlowError> {
+async fn extract_hardware_id(_rimsd_path: &Path) -> Result<Option<String>, FlowError> {
     // TODO: Use platform-specific APIs to get SD card hardware serial
     // For now, return None
     Ok(None)
 }
 
-async fn extract_filesystem_uuid(rimsd_path: &Path) -> Result<Option<String>, FlowError> {
+async fn extract_filesystem_uuid(_rimsd_path: &Path) -> Result<Option<String>, FlowError> {
     // TODO: Read filesystem UUID from the device containing rimsd_path
     // For now, return a placeholder
     Ok(Some("placeholder-uuid".to_string()))
 }
 
-async fn extract_bad_blocks(rimsd_path: &Path) -> Result<Vec<u64>, FlowError> {
+async fn extract_bad_blocks(_rimsd_path: &Path) -> Result<Vec<u64>, FlowError> {
     // TODO: Query the device for bad block information
     // For now, return empty list
     Ok(vec![])
 }
 
-async fn extract_capacity(rimsd_path: &Path) -> Result<u64, FlowError> {
+async fn extract_capacity(_rimsd_path: &Path) -> Result<u64, FlowError> {
     // TODO: Get exact device capacity
     // For now, return placeholder
     Ok(32 * 1024 * 1024 * 1024) // 32GB placeholder
