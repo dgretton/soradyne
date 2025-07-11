@@ -8,6 +8,7 @@ use chrono::Utc;
 use serde::{Serialize, Deserialize};
 
 use crate::storage::block::*;
+use crate::storage::device_identity::{BasicFingerprint, BayesianDeviceIdentifier, fingerprint_device};
 
 const BLOCK_SIZE: usize = 32 * 1024 * 1024; // 32MB
 use crate::storage::erasure::ErasureEncoder;
@@ -20,6 +21,8 @@ pub struct BlockManager {
     erasure_encoder: ErasureEncoder,
     threshold: usize,
     total_shards: usize,
+    device_identifier: BayesianDeviceIdentifier,
+    device_fingerprints: Arc<RwLock<HashMap<PathBuf, BasicFingerprint>>>,
 }
 
 #[derive(Debug)]
@@ -125,6 +128,8 @@ impl BlockManager {
             erasure_encoder: ErasureEncoder::new(threshold, total_shards),
             threshold,
             total_shards,
+            device_identifier: BayesianDeviceIdentifier::default(),
+            device_fingerprints: Arc::new(RwLock::new(HashMap::new())),
         })
     }
     
@@ -279,5 +284,61 @@ impl BlockManager {
         }
         
         Ok(addresses)
+    }
+    
+    /// Verify device identity for all rimsd directories
+    pub async fn verify_device_continuity(&self) -> Result<(), FlowError> {
+        for rimsd_dir in &self.rimsd_directories {
+            self.verify_single_device(rimsd_dir).await?;
+        }
+        Ok(())
+    }
+    
+    /// Verify identity of a single device
+    pub async fn verify_single_device(&self, rimsd_dir: &Path) -> Result<(), FlowError> {
+        let current_fingerprint = fingerprint_device(rimsd_dir).await?;
+        
+        let fingerprints = self.device_fingerprints.read().await;
+        if let Some(previous_fingerprint) = fingerprints.get(&rimsd_dir.to_path_buf()) {
+            // Check if this could be a legitimate evolution
+            if !current_fingerprint.is_valid_evolution(previous_fingerprint)? {
+                return Err(FlowError::PersistenceError(
+                    format!("Device identity validation failed for {}: incompatible evolution", 
+                           rimsd_dir.display())
+                ));
+            }
+            
+            // Run Bayesian identification
+            let result = self.device_identifier.identify_device(
+                &current_fingerprint, 
+                previous_fingerprint
+            )?;
+            
+            if !result.is_same_device {
+                return Err(FlowError::PersistenceError(
+                    format!("Device identity mismatch for {}: confidence {:.2}%, evidence: {:?}", 
+                           rimsd_dir.display(), 
+                           result.confidence * 100.0,
+                           result.evidence_summary)
+                ));
+            }
+        }
+        
+        // Update stored fingerprint
+        drop(fingerprints);
+        let mut fingerprints = self.device_fingerprints.write().await;
+        fingerprints.insert(rimsd_dir.to_path_buf(), current_fingerprint);
+        
+        Ok(())
+    }
+    
+    /// Initialize device fingerprints for all rimsd directories
+    pub async fn initialize_device_fingerprints(&self) -> Result<(), FlowError> {
+        for rimsd_dir in &self.rimsd_directories {
+            let fingerprint = fingerprint_device(rimsd_dir).await?;
+            let mut fingerprints = self.device_fingerprints.write().await;
+            fingerprints.insert(rimsd_dir.to_path_buf(), fingerprint);
+        }
+        Ok(())
     }
 }
