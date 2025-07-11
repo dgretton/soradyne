@@ -245,6 +245,10 @@ pub mod test_utils {
             let rimsd_dir = device_dir.join(".rimsd");
             std::fs::create_dir_all(&rimsd_dir).unwrap();
             
+            // Create Soradyne device ID file (most important identifier)
+            let soradyne_device_id_file = rimsd_dir.join("soradyne_device_id.txt");
+            std::fs::write(&soradyne_device_id_file, uuid::Uuid::new_v4().to_string()).unwrap();
+            
             // Create a unique device signature file for each "device"
             let device_signature = rimsd_dir.join("device_signature.txt");
             std::fs::write(&device_signature, format!("device-{}-{}", i, uuid::Uuid::new_v4())).unwrap();
