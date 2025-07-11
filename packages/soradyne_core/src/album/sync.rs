@@ -207,7 +207,6 @@ impl AlbumSyncManager {
 pub mod test_utils {
     use super::*;
     use tempfile::TempDir;
-    use std::path::PathBuf;
     
     pub fn create_test_sync_manager() -> (AlbumSyncManager, TempDir) {
         let temp_dir = TempDir::new().unwrap();
