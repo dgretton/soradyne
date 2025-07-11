@@ -294,21 +294,21 @@ async fn extract_soradyne_device_id(rimsd_path: &Path) -> Result<Option<String>,
 
 async fn extract_hardware_id(rimsd_path: &Path) -> Result<Option<String>, FlowError> {
     // Try to get hardware ID from the device containing the rimsd path
-    let device_path = get_device_path(rimsd_path).await?;
+    let _device_path = get_device_path(rimsd_path).await?;
     
     #[cfg(target_os = "linux")]
     {
-        extract_hardware_id_linux(&device_path).await
+        extract_hardware_id_linux(&_device_path).await
     }
     
     #[cfg(target_os = "macos")]
     {
-        extract_hardware_id_macos(&device_path).await
+        extract_hardware_id_macos(&_device_path).await
     }
     
     #[cfg(target_os = "windows")]
     {
-        extract_hardware_id_windows(&device_path).await
+        extract_hardware_id_windows(&_device_path).await
     }
     
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -584,8 +584,8 @@ async fn extract_hardware_id_macos(device_path: &str) -> Result<Option<String>, 
         .map_err(|e| FlowError::PersistenceError(format!("Failed to run diskutil: {}", e)))?;
     
     let output_str = String::from_utf8_lossy(&output.stdout);
-    let mut vendor = None;
-    let mut model = None;
+    let mut vendor: Option<String> = None;
+    let mut model: Option<String> = None;
     
     for line in output_str.lines() {
         let line = line.trim();
@@ -865,8 +865,9 @@ mod tests {
                             println!("   Bad blocks: {} detected", if fingerprint.bad_block_signature == 0 { 0 } else { 1 });
                             
                             if let Some(soradyne_id) = &fingerprint.soradyne_device_id {
-                                stored_fingerprints.insert(soradyne_id.clone(), fingerprint);
-                                println!("💾 Stored fingerprint for device: {}", soradyne_id);
+                                let device_id = soradyne_id.clone();
+                                stored_fingerprints.insert(device_id.clone(), fingerprint);
+                                println!("💾 Stored fingerprint for device: {}", device_id);
                             } else {
                                 println!("⚠️  Warning: No Soradyne device ID found");
                             }
