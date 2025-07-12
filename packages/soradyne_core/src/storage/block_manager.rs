@@ -192,7 +192,7 @@ impl BlockManager {
     pub fn get_storage_info(&self) -> StorageInfo {
         StorageInfo {
             total_devices: self.rimsd_directories.len(),
-            threshold,
+            threshold: self.threshold,
             total_shards: self.total_shards,
             rimsd_paths: self.rimsd_directories.clone(),
         }
@@ -223,12 +223,14 @@ impl BlockManager {
             }
         }
         
+        let can_reconstruct = available_shards.len() >= self.threshold;
+        
         Ok(BlockDistribution {
             block_id: *block_id,
             total_shards: metadata.shard_locations.len(),
             available_shards,
             missing_shards,
-            can_reconstruct: available_shards.len() >= self.threshold,
+            can_reconstruct,
             original_size: metadata.size,
         })
     }
@@ -256,7 +258,8 @@ impl BlockManager {
             }
         }
         
-        let can_recover = available_shards.len() >= self.threshold;
+        let available_shards_count = available_shards.len();
+        let can_recover = available_shards_count >= self.threshold;
         let recovery_result = if can_recover {
             match self.erasure_encoder.decode(available_shards, metadata.size) {
                 Ok(data) => Some(data),
@@ -269,7 +272,7 @@ impl BlockManager {
         Ok(DemonstrationResult {
             original_shards: metadata.shard_locations.len(),
             simulated_missing: shards_to_simulate_missing,
-            available_shards: available_shards.len(),
+            available_shards: available_shards_count,
             threshold_required: self.threshold,
             recovery_successful: recovery_result.is_some(),
             recovered_data_size: recovery_result.as_ref().map(|d| d.len()).unwrap_or(0),
