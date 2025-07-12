@@ -10,6 +10,42 @@ use serde::{Serialize, Deserialize};
 use crate::storage::block::*;
 use crate::storage::device_identity::{BasicFingerprint, BayesianDeviceIdentifier, fingerprint_device};
 
+#[derive(Debug, Clone)]
+pub struct StorageInfo {
+    pub total_devices: usize,
+    pub threshold: usize,
+    pub total_shards: usize,
+    pub rimsd_paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BlockDistribution {
+    pub block_id: [u8; 32],
+    pub total_shards: usize,
+    pub available_shards: Vec<ShardInfo>,
+    pub missing_shards: Vec<usize>,
+    pub can_reconstruct: bool,
+    pub original_size: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct ShardInfo {
+    pub index: usize,
+    pub device_path: String,
+    pub file_path: String,
+    pub size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct DemonstrationResult {
+    pub original_shards: usize,
+    pub simulated_missing: Vec<usize>,
+    pub available_shards: usize,
+    pub threshold_required: usize,
+    pub recovery_successful: bool,
+    pub recovered_data_size: usize,
+}
+
 const BLOCK_SIZE: usize = 32 * 1024 * 1024; // 32MB
 use crate::storage::erasure::ErasureEncoder;
 use crate::flow::FlowError;
@@ -130,6 +166,113 @@ impl BlockManager {
             total_shards,
             device_identifier: BayesianDeviceIdentifier::default(),
             device_fingerprints: Arc::new(RwLock::new(HashMap::new())),
+        })
+    }
+    
+    /// Create a new BlockManager by discovering Soradyne volumes automatically
+    pub async fn new_with_discovery(
+        metadata_path: PathBuf,
+        threshold: usize,
+        total_shards: usize,
+    ) -> Result<Self, FlowError> {
+        let rimsd_dirs = crate::storage::device_identity::discover_soradyne_volumes().await?;
+        
+        if rimsd_dirs.is_empty() {
+            return Err(FlowError::PersistenceError(
+                "No Soradyne volumes found. Please initialize some SD cards first.".to_string()
+            ));
+        }
+        
+        println!("Found {} Soradyne volumes", rimsd_dirs.len());
+        
+        Self::new(rimsd_dirs, metadata_path, threshold, total_shards)
+    }
+    
+    /// Get information about the current storage configuration
+    pub fn get_storage_info(&self) -> StorageInfo {
+        StorageInfo {
+            total_devices: self.rimsd_directories.len(),
+            threshold,
+            total_shards: self.total_shards,
+            rimsd_paths: self.rimsd_directories.clone(),
+        }
+    }
+    
+    /// Get detailed information about block distribution
+    pub async fn get_block_distribution(&self, block_id: &[u8; 32]) -> Result<BlockDistribution, FlowError> {
+        let metadata = self.metadata_store.read().await.get_block(block_id)?;
+        
+        let mut available_shards = Vec::new();
+        let mut missing_shards = Vec::new();
+        
+        for location in &metadata.shard_locations {
+            let shard_path = PathBuf::from(&location.rimsd_path)
+                .join(&location.relative_path);
+            
+            if shard_path.exists() {
+                available_shards.push(ShardInfo {
+                    index: location.shard_index,
+                    device_path: location.rimsd_path.clone(),
+                    file_path: shard_path.to_string_lossy().to_string(),
+                    size: tokio::fs::metadata(&shard_path).await
+                        .map(|m| m.len())
+                        .unwrap_or(0),
+                });
+            } else {
+                missing_shards.push(location.shard_index);
+            }
+        }
+        
+        Ok(BlockDistribution {
+            block_id: *block_id,
+            total_shards: metadata.shard_locations.len(),
+            available_shards,
+            missing_shards,
+            can_reconstruct: available_shards.len() >= self.threshold,
+            original_size: metadata.size,
+        })
+    }
+    
+    /// Demonstrate erasure coding by intentionally "removing" some shards
+    pub async fn demonstrate_erasure_recovery(&self, block_id: &[u8; 32], shards_to_simulate_missing: Vec<usize>) -> Result<DemonstrationResult, FlowError> {
+        let metadata = self.metadata_store.read().await.get_block(block_id)?;
+        
+        // Collect available shards, excluding the ones we're simulating as missing
+        let mut available_shards = HashMap::new();
+        
+        for location in &metadata.shard_locations {
+            if shards_to_simulate_missing.contains(&location.shard_index) {
+                continue; // Simulate this shard as missing
+            }
+            
+            let shard_path = PathBuf::from(&location.rimsd_path)
+                .join(&location.relative_path);
+            
+            if shard_path.exists() {
+                let shard_data = tokio::fs::read(&shard_path).await.map_err(|e|
+                    FlowError::PersistenceError(format!("Failed to read shard: {}", e))
+                )?;
+                available_shards.insert(location.shard_index, shard_data);
+            }
+        }
+        
+        let can_recover = available_shards.len() >= self.threshold;
+        let recovery_result = if can_recover {
+            match self.erasure_encoder.decode(available_shards, metadata.size) {
+                Ok(data) => Some(data),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        
+        Ok(DemonstrationResult {
+            original_shards: metadata.shard_locations.len(),
+            simulated_missing: shards_to_simulate_missing,
+            available_shards: available_shards.len(),
+            threshold_required: self.threshold,
+            recovery_successful: recovery_result.is_some(),
+            recovered_data_size: recovery_result.as_ref().map(|d| d.len()).unwrap_or(0),
         })
     }
     

@@ -7,6 +7,10 @@ license = "MIT"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[example]]
+name = "block_storage_demo"
+path = "examples/block_storage_demo.rs"
+
 [dependencies]
 # Core functionality
 tokio = { version = "1.28", features = ["full"] }

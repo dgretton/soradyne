@@ -7,6 +7,6 @@ pub mod device_identity;
 
 pub use local_file::LocalFileStorage;
 pub use local_file::NoOpAuthenticator;
-pub use block_manager::BlockManager;
+pub use block_manager::{BlockManager, StorageInfo, BlockDistribution, ShardInfo, DemonstrationResult};
 pub use block_file::BlockFile;
-pub use device_identity::{BasicFingerprint, BayesianDeviceIdentifier, fingerprint_device};
+pub use device_identity::{BasicFingerprint, BayesianDeviceIdentifier, fingerprint_device, discover_soradyne_volumes};

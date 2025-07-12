@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::fs;
 use serde::{Serialize, Deserialize};
 use sha2::{Sha256, Digest};
 
@@ -797,6 +798,85 @@ async fn extract_capacity_fallback(rimsd_path: &Path) -> Result<u64, FlowError> 
     // This is not the true device capacity, but filesystem available space
     // It's better than nothing for fingerprinting purposes
     Ok(metadata.len())
+}
+
+/// Discover all Soradyne-initialized volumes on the system
+pub async fn discover_soradyne_volumes() -> Result<Vec<PathBuf>, FlowError> {
+    let mut rimsd_dirs = Vec::new();
+    
+    // Get all mounted volumes/drives
+    let mount_points = get_system_mount_points().await?;
+    
+    for mount_point in mount_points {
+        let potential_rimsd = mount_point.join(".rimsd");
+        
+        if potential_rimsd.exists() && potential_rimsd.is_dir() {
+            // Verify it's a valid Soradyne volume by checking for key files
+            if is_valid_soradyne_volume(&potential_rimsd).await? {
+                rimsd_dirs.push(potential_rimsd);
+                println!("Found Soradyne volume: {:?}", mount_point);
+            }
+        }
+    }
+    
+    Ok(rimsd_dirs)
+}
+
+async fn get_system_mount_points() -> Result<Vec<PathBuf>, FlowError> {
+    let mut mount_points = Vec::new();
+    
+    #[cfg(target_os = "macos")]
+    {
+        // Check /Volumes for mounted drives
+        if let Ok(entries) = fs::read_dir("/Volumes") {
+            for entry in entries.flatten() {
+                mount_points.push(entry.path());
+            }
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        // Check /media and /mnt for mounted drives
+        for base_dir in &["/media", "/mnt"] {
+            if let Ok(entries) = fs::read_dir(base_dir) {
+                for entry in entries.flatten() {
+                    mount_points.push(entry.path());
+                }
+            }
+        }
+        
+        // Also check /run/media for user mounts
+        if let Ok(entries) = fs::read_dir("/run/media") {
+            for user_dir in entries.flatten() {
+                if let Ok(user_entries) = fs::read_dir(user_dir.path()) {
+                    for entry in user_entries.flatten() {
+                        mount_points.push(entry.path());
+                    }
+                }
+            }
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        // Check all drive letters
+        for letter in 'A'..='Z' {
+            let drive_path = PathBuf::from(format!("{}:\\", letter));
+            if drive_path.exists() {
+                mount_points.push(drive_path);
+            }
+        }
+    }
+    
+    Ok(mount_points)
+}
+
+async fn is_valid_soradyne_volume(rimsd_path: &PathBuf) -> Result<bool, FlowError> {
+    // Check for essential Soradyne files
+    let soradyne_device_id = rimsd_path.join("soradyne_device_id.txt");
+    
+    Ok(soradyne_device_id.exists())
 }
 
 #[cfg(test)]
