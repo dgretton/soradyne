@@ -179,15 +179,20 @@ impl BayesianDeviceIdentifier {
         
         // Hardware ID evidence
         if let (Some(curr_hw), Some(prev_hw)) = (&current.hardware_id, &previous.hardware_id) {
-            let matches = curr_hw == prev_hw;
-            let model = &self.evidence_models["hardware_id"];
-            
-            if matches {
-                log_odds += (model.prob_same / model.prob_different).ln();
-                evidence_summary.push("Hardware ID matches".to_string());
+            // Skip default/placeholder hardware IDs
+            if is_meaningful_hardware_id(curr_hw) && is_meaningful_hardware_id(prev_hw) {
+                let matches = curr_hw == prev_hw;
+                let model = &self.evidence_models["hardware_id"];
+                
+                if matches {
+                    log_odds += (model.prob_same / model.prob_different).ln();
+                    evidence_summary.push("Hardware ID matches".to_string());
+                } else {
+                    log_odds += ((1.0 - model.prob_same) / (1.0 - model.prob_different)).ln();
+                    evidence_summary.push("Hardware ID differs".to_string());
+                }
             } else {
-                log_odds += ((1.0 - model.prob_same) / (1.0 - model.prob_different)).ln();
-                evidence_summary.push("Hardware ID differs".to_string());
+                evidence_summary.push("Hardware ID is placeholder/default".to_string());
             }
         } else {
             evidence_summary.push("Hardware ID unavailable".to_string());
@@ -195,30 +200,40 @@ impl BayesianDeviceIdentifier {
         
         // Filesystem UUID evidence
         if let (Some(curr_fs), Some(prev_fs)) = (&current.filesystem_uuid, &previous.filesystem_uuid) {
-            let matches = curr_fs == prev_fs;
-            let model = &self.evidence_models["filesystem_uuid"];
-            
-            if matches {
-                log_odds += (model.prob_same / model.prob_different).ln();
-                evidence_summary.push("Filesystem UUID matches".to_string());
+            // Skip default/placeholder UUIDs
+            if is_meaningful_uuid(curr_fs) && is_meaningful_uuid(prev_fs) {
+                let matches = curr_fs == prev_fs;
+                let model = &self.evidence_models["filesystem_uuid"];
+                
+                if matches {
+                    log_odds += (model.prob_same / model.prob_different).ln();
+                    evidence_summary.push("Filesystem UUID matches".to_string());
+                } else {
+                    log_odds += ((1.0 - model.prob_same) / (1.0 - model.prob_different)).ln();
+                    evidence_summary.push("Filesystem UUID differs".to_string());
+                }
             } else {
-                log_odds += ((1.0 - model.prob_same) / (1.0 - model.prob_different)).ln();
-                evidence_summary.push("Filesystem UUID differs".to_string());
+                evidence_summary.push("Filesystem UUID is placeholder/default".to_string());
             }
         } else {
             evidence_summary.push("Filesystem UUID unavailable".to_string());
         }
         
         // Bad block signature evidence
-        let matches = current.bad_block_signature == previous.bad_block_signature;
-        let model = &self.evidence_models["bad_block_signature"];
-        
-        if matches {
-            log_odds += (model.prob_same / model.prob_different).ln();
-            evidence_summary.push("Bad block pattern matches".to_string());
+        // Only use if we have meaningful bad block data (not just empty/default)
+        if current.bad_block_signature != 0 || previous.bad_block_signature != 0 {
+            let matches = current.bad_block_signature == previous.bad_block_signature;
+            let model = &self.evidence_models["bad_block_signature"];
+            
+            if matches {
+                log_odds += (model.prob_same / model.prob_different).ln();
+                evidence_summary.push("Bad block pattern matches".to_string());
+            } else {
+                log_odds += ((1.0 - model.prob_same) / (1.0 - model.prob_different)).ln();
+                evidence_summary.push("Bad block pattern differs".to_string());
+            }
         } else {
-            log_odds += ((1.0 - model.prob_same) / (1.0 - model.prob_different)).ln();
-            evidence_summary.push("Bad block pattern differs".to_string());
+            evidence_summary.push("Bad block data unavailable/empty".to_string());
         }
         
         // Capacity evidence
@@ -245,6 +260,37 @@ impl BayesianDeviceIdentifier {
             evidence_summary,
         })
     }
+}
+
+/// Check if a UUID is meaningful (not a default/placeholder)
+fn is_meaningful_uuid(uuid: &str) -> bool {
+    // Common placeholder UUIDs
+    let placeholders = [
+        "00000000-0000-0000-0000-000000000000",
+        "11111111-1111-1111-1111-111111111111",
+        "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF",
+        "placeholder-uuid",
+        "",
+    ];
+    
+    !placeholders.contains(&uuid)
+}
+
+/// Check if a hardware ID is meaningful (not a default/placeholder)
+fn is_meaningful_hardware_id(hw_id: &str) -> bool {
+    // Common placeholder hardware IDs
+    let placeholders = [
+        "unknown",
+        "default",
+        "placeholder",
+        "test-hw-id",
+        "0000000000000000",
+        "1111111111111111",
+        "",
+    ];
+    
+    !placeholders.contains(&hw_id) && hw_id.len() > 3
 }
 
 /// Extract device fingerprint from a rimsd directory path
