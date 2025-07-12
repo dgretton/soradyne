@@ -115,8 +115,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             
             "l" => {
                 println!("📋 Listing all blocks...");
-                // This would require adding a method to list all blocks
-                println!("   (Block listing not implemented yet)");
+                let blocks = block_manager.list_blocks().await;
+                
+                if blocks.is_empty() {
+                    println!("   📭 No blocks found");
+                } else {
+                    println!("   Found {} blocks:", blocks.len());
+                    for (block_id, metadata) in blocks.iter() {
+                        let id_str = hex::encode(&block_id[..4]);
+                        println!("     {} - {} bytes - {}", 
+                            id_str,
+                            metadata.size,
+                            metadata.created_at.format("%Y-%m-%d %H:%M:%S UTC"));
+                    }
+                    println!("\n   💡 Use block ID (first 8 chars) with 'r', 'd', or 't' commands");
+                }
             }
             
             "d" => {
