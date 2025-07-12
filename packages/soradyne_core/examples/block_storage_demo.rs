@@ -234,19 +234,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn find_block_by_prefix(block_manager: &BlockManager, prefix: &str) -> Option<[u8; 32]> {
-    // This is a simplified implementation - in practice you'd want to maintain
-    // an index of block IDs or iterate through the metadata store
+    // Get all blocks and find one that starts with the given prefix
+    let blocks = block_manager.list_blocks().await;
     
-    // For demo purposes, try to decode the prefix as hex and pad it
-    if let Ok(partial_bytes) = hex::decode(prefix) {
-        if partial_bytes.len() <= 32 {
-            let mut block_id = [0u8; 32];
-            block_id[..partial_bytes.len()].copy_from_slice(&partial_bytes);
-            
-            // Try to read this block to see if it exists
-            if block_manager.read_block(&block_id).await.is_ok() {
-                return Some(block_id);
-            }
+    for (block_id, _metadata) in blocks {
+        let block_hex = hex::encode(block_id);
+        if block_hex.starts_with(prefix) {
+            return Some(block_id);
         }
     }
     
