@@ -103,4 +103,9 @@ name = "renderer_test"
 path = "examples/renderer_test.rs"
 required-features = []
 
+[[bin]]
+name = "sd_card_test"
+path = "src/bin/sd_card_test.rs"
+required-features = []
+
 
