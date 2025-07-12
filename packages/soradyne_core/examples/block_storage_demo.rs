@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::io::{self, Write};
 use tokio;
-use soradyne_core::storage::{BlockManager, discover_soradyne_volumes};
+use soradyne::storage::{BlockManager, discover_soradyne_volumes};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
