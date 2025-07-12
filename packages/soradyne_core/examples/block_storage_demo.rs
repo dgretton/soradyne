@@ -75,16 +75,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match block_manager.write_direct_block(data).await {
                     Ok(block_id) => {
                         let id_str = hex::encode(&block_id[..4]);
-                        println!("✅ Block written successfully!");
+                        println!("\n✅ Block written successfully!");
                         println!("   Block ID: {} (use '{}' for commands)", hex::encode(block_id), id_str);
-                        
-                        // Show distribution immediately
-                        if let Ok(distribution) = block_manager.get_block_distribution(&block_id).await {
-                            println!("   Distributed across {} devices:", distribution.available_shards.len());
-                            for shard in &distribution.available_shards {
-                                println!("     Shard {} → {}", shard.index, shard.device_path);
-                            }
-                        }
                     }
                     Err(e) => println!("❌ Failed to write block: {}", e),
                 }
@@ -98,12 +90,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 
                 let id_prefix = parts[1];
                 if let Some(block_id) = find_block_by_prefix(&block_manager, id_prefix).await {
-                    println!("📖 Reading block {}...", hex::encode(&block_id[..4]));
+                    println!("\n📖 Reading block {}...", hex::encode(&block_id[..4]));
                     
                     match block_manager.read_block(&block_id).await {
                         Ok(data) => {
                             let text = String::from_utf8_lossy(&data);
-                            println!("✅ Block content: \"{}\"", text);
+                            println!("\n✅ Block content: \"{}\"", text);
                             println!("   Size: {} bytes", data.len());
                         }
                         Err(e) => println!("❌ Failed to read block: {}", e),

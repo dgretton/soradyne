@@ -306,10 +306,14 @@ impl BlockManager {
         let shards = self.erasure_encoder.encode(data)?;
         
         // Distribute shards across rimsd directories
+        println!("📦 Distributing {} shards across {} devices:", shards.len(), self.rimsd_directories.len());
         let mut shard_locations = Vec::new();
         for (i, shard) in shards.iter().enumerate() {
             let rimsd_dir = &self.rimsd_directories[i % self.rimsd_directories.len()].as_path();
             let shard_path = self.shard_path(rimsd_dir, &id, i);
+            
+            println!("   📝 Writing shard {} ({} bytes) → {}", 
+                i, shard.len(), shard_path.display());
             
             // Write shard to disk
             if let Some(parent) = shard_path.parent() {
@@ -321,6 +325,8 @@ impl BlockManager {
                 FlowError::PersistenceError(format!("Failed to write shard: {}", e))
             )?;
             
+            println!("   ✅ Shard {} written successfully", i);
+            
             shard_locations.push(ShardLocation {
                 shard_index: i,
                 device_id: self.get_device_id(),
@@ -331,6 +337,7 @@ impl BlockManager {
                     .to_string(),
             });
         }
+        println!("🎯 All shards distributed successfully!");
         
         // Update metadata
         let mut metadata = metadata;
@@ -355,30 +362,54 @@ impl BlockManager {
     }
     
     async fn read_direct_block(&self, metadata: &BlockMetadata) -> Result<Vec<u8>, FlowError> {
+        println!("📖 Reading block with {} total shards (need {} minimum):", 
+            metadata.shard_locations.len(), self.threshold);
+        
         // Collect available shards
         let mut shards = HashMap::new();
+        let mut missing_shards = Vec::new();
         
         for location in &metadata.shard_locations {
             let shard_path = PathBuf::from(&location.rimsd_path)
                 .join(&location.relative_path);
             
             if shard_path.exists() {
-                let shard_data = tokio::fs::read(&shard_path).await.map_err(|e|
-                    FlowError::PersistenceError(format!("Failed to read shard: {}", e))
-                )?;
-                shards.insert(location.shard_index, shard_data);
+                match tokio::fs::read(&shard_path).await {
+                    Ok(shard_data) => {
+                        println!("   ✅ Read shard {} ({} bytes) ← {}", 
+                            location.shard_index, shard_data.len(), shard_path.display());
+                        shards.insert(location.shard_index, shard_data);
+                    }
+                    Err(e) => {
+                        println!("   ❌ Failed to read shard {} from {}: {}", 
+                            location.shard_index, shard_path.display(), e);
+                        missing_shards.push(location.shard_index);
+                    }
+                }
+            } else {
+                println!("   ⚠️  Shard {} missing: {}", 
+                    location.shard_index, shard_path.display());
+                missing_shards.push(location.shard_index);
             }
         }
+        
+        println!("📊 Shard status: {} available, {} missing", shards.len(), missing_shards.len());
         
         // Check if we have enough shards
         if shards.len() < self.threshold {
             return Err(FlowError::PersistenceError(
-                format!("Not enough shards available: {} < {}", shards.len(), self.threshold)
+                format!("Not enough shards available: {} < {} (missing: {:?})", 
+                    shards.len(), self.threshold, missing_shards)
             ));
         }
         
+        println!("🔧 Reconstructing data from {} shards using erasure coding...", shards.len());
+        
         // Reconstruct data from shards
-        self.erasure_encoder.decode(shards, metadata.size)
+        let result = self.erasure_encoder.decode(shards, metadata.size)?;
+        println!("✅ Successfully reconstructed {} bytes of data", result.len());
+        
+        Ok(result)
     }
     
     async fn read_indirect_block(&self, metadata: &BlockMetadata) -> Result<Vec<u8>, FlowError> {
