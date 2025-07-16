@@ -276,7 +276,9 @@ impl ShamirErasureEncoder {
     }
     
     fn split_secret(&self, secret: &[u8; 32]) -> Result<Vec<KeyShare>, FlowError> {
-        // Simplified but working Shamir secret sharing
+        use crate::storage::galois::GF256;
+        
+        let gf = GF256::new();
         let mut shares = Vec::new();
         let mut rng = rand::rng();
         
@@ -291,17 +293,13 @@ impl ShamirErasureEncoder {
             
             // Evaluate polynomial at point x for each byte
             for byte_idx in 0..32 {
-                let mut value = secret[byte_idx]; // f(0) = secret
-                let mut x_power = x;
-                
-                // Add polynomial terms: a1*x + a2*x^2 + ...
+                // Build polynomial for this byte: [secret_byte, coeff1, coeff2, ...]
+                let mut poly = vec![secret[byte_idx]];
                 for coeff_idx in 0..(self.threshold - 1) {
-                    let coeff = coefficients[coeff_idx * 32 + byte_idx];
-                    value = self.gf_add(value, self.gf_multiply(coeff, x_power));
-                    x_power = self.gf_multiply(x_power, x);
+                    poly.push(coefficients[coeff_idx * 32 + byte_idx]);
                 }
                 
-                share_value[byte_idx] = value;
+                share_value[byte_idx] = gf.eval_polynomial(&poly, x);
             }
             
             shares.push(KeyShare {
@@ -314,111 +312,34 @@ impl ShamirErasureEncoder {
     }
     
     fn reconstruct_secret(&self, shares: &[KeyShare]) -> Result<[u8; 32], FlowError> {
+        use crate::storage::galois::GF256;
+        
         if shares.len() < self.threshold {
             return Err(FlowError::PersistenceError(
                 format!("Not enough key shares: {} < {}", shares.len(), self.threshold)
             ));
         }
         
+        let gf = GF256::new();
         let mut secret = [0u8; 32];
         
-        // Use Lagrange interpolation to find f(0) = secret
+        // Use Lagrange interpolation to find f(0) = secret for each byte
         for byte_idx in 0..32 {
-            let mut result = 0u8;
+            // Collect points (x_i, y_i) for this byte
+            let points: Vec<(u8, u8)> = shares[..self.threshold]
+                .iter()
+                .map(|share| (share.index, share.value[byte_idx]))
+                .collect();
             
-            for i in 0..self.threshold {
-                let xi = shares[i].index;
-                let yi = shares[i].value[byte_idx];
-                
-                // Calculate Lagrange basis polynomial L_i(0)
-                let mut numerator = 1u8;
-                let mut denominator = 1u8;
-                
-                for j in 0..self.threshold {
-                    if i != j {
-                        let xj = shares[j].index;
-                        // For L_i(0): numerator *= (0 - xj) = -xj = xj (in GF(256))
-                        // denominator *= (xi - xj)
-                        numerator = self.gf_multiply(numerator, xj);
-                        denominator = self.gf_multiply(denominator, self.gf_subtract(xi, xj));
-                    }
-                }
-                
-                // Calculate yi * L_i(0) = yi * (numerator / denominator)
-                let lagrange_coeff = self.gf_multiply(numerator, self.gf_inverse(denominator));
-                let term = self.gf_multiply(yi, lagrange_coeff);
-                result = self.gf_add(result, term);
-            }
-            
-            secret[byte_idx] = result;
+            secret[byte_idx] = gf.lagrange_interpolate_at_zero(&points)
+                .map_err(|e| FlowError::PersistenceError(
+                    format!("Lagrange interpolation failed for byte {}: {}", byte_idx, e)
+                ))?;
         }
         
         Ok(secret)
     }
     
-    // Galois Field GF(256) operations
-    fn gf_add(&self, a: u8, b: u8) -> u8 {
-        a ^ b // Addition in GF(256) is XOR
-    }
-    
-    fn gf_subtract(&self, a: u8, b: u8) -> u8 {
-        a ^ b // Subtraction in GF(256) is also XOR
-    }
-    
-    fn gf_multiply(&self, a: u8, b: u8) -> u8 {
-        if a == 0 || b == 0 {
-            return 0;
-        }
-        
-        // Use log/antilog tables for multiplication in GF(256)
-        // This is a simplified implementation
-        let mut result = 0u8;
-        let mut a = a;
-        let mut b = b;
-        
-        while b != 0 {
-            if b & 1 != 0 {
-                result ^= a;
-            }
-            let carry = a & 0x80;
-            a <<= 1;
-            if carry != 0 {
-                a ^= 0x1b; // Irreducible polynomial for GF(256)
-            }
-            b >>= 1;
-        }
-        
-        result
-    }
-    
-    fn gf_inverse(&self, a: u8) -> u8 {
-        if a == 0 {
-            return 0; // 0 has no inverse
-        }
-        
-        // Use extended Euclidean algorithm
-        let mut old_r = a as u16;
-        let mut r = 0x11b_u16; // x^8 + x^4 + x^3 + x + 1
-        let mut old_s = 1_u16;
-        let mut s = 0_u16;
-        
-        while r != 0 {
-            let quotient = old_r / r;
-            let temp_r = r;
-            r = old_r - quotient * r;
-            old_r = temp_r;
-            
-            let temp_s = s;
-            s = old_s ^ self.gf_multiply_u16(quotient as u8, s as u8) as u16;
-            old_s = temp_s;
-        }
-        
-        old_s as u8
-    }
-    
-    fn gf_multiply_u16(&self, a: u8, b: u8) -> u8 {
-        self.gf_multiply(a, b)
-    }
     
     /// Calculate storage overhead factor
     pub fn storage_overhead(&self) -> f64 {
