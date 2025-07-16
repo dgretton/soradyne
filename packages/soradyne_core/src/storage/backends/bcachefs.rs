@@ -13,13 +13,14 @@ use crate::storage::dissolution::{
 use crate::flow::FlowError;
 
 /// bcachefs-based dissolution storage backend
+#[derive(Clone)]
 pub struct BcacheFSBackend {
     config: DissolutionConfig,
     mount_point: PathBuf,
 }
 
 impl BcacheFSBackend {
-    pub async fn new(config: DissolutionConfig) -> Result<Self, FlowError> {
+    pub async fn new(_config: DissolutionConfig) -> Result<Self, FlowError> {
         #[cfg(not(target_os = "linux"))]
         {
             return Err(FlowError::PersistenceError(
@@ -38,7 +39,7 @@ impl BcacheFSBackend {
             let mount_point = PathBuf::from("/tmp/bcachefs_dissolution"); // TODO: Make configurable
             
             Ok(Self {
-                config,
+                config: _config,
                 mount_point,
             })
         }

@@ -15,6 +15,7 @@ use crate::flow::FlowError;
 use async_trait::async_trait;
 
 /// Concrete enum for dissolution storage backends
+#[derive(Clone)]
 pub enum DissolutionBackend {
     ManualErasure(ManualErasureBackend),
     #[cfg(target_os = "linux")]
