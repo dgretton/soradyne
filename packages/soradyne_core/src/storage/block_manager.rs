@@ -241,6 +241,11 @@ impl BlockManager {
         store.blocks.iter().map(|(id, meta)| (*id, meta.clone())).collect()
     }
     
+    /// Demonstrate erasure coding by intentionally "removing" some shards
+    pub async fn demonstrate_erasure_recovery(&self, block_id: &[u8; 32], shards_to_simulate_missing: Vec<usize>) -> Result<DemonstrationResult, FlowError> {
+        self.demonstrate_fault_tolerance(block_id, shards_to_simulate_missing).await
+    }
+    
     /// Demonstrate fault tolerance by intentionally "removing" some shards
     pub async fn demonstrate_fault_tolerance(&self, block_id: &[u8; 32], shards_to_simulate_missing: Vec<usize>) -> Result<DemonstrationResult, FlowError> {
         let metadata = self.metadata_store.read().await.get_block(block_id)?;
