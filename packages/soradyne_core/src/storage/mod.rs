@@ -27,7 +27,7 @@ pub use dissolution::{
     DissolutionStorage, DissolutionConfig, DissolutionFile, BlockId,
     BlockInfo, StorageStats, DissolutionDemo
 };
-pub use backends::{DissolutionStorageFactory, ManualErasureBackend};
+pub use backends::{DissolutionStorageFactory, SdynErasureBackend};
 
 #[cfg(target_os = "linux")]
 pub use backends::BcacheFSBackend;
