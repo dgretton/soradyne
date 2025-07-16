@@ -9,17 +9,18 @@ use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit, AeadInPlace};
 use sha2::{Sha256, Digest};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use serde::{Serialize, Deserialize};
 
 // Re-export for compatibility
 pub use ShamirErasureEncoder as ErasureEncoder;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyShare {
     pub index: u8,
     pub value: Vec<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ShardWithKey {
     pub shard_data: Vec<u8>,
     pub key_share: KeyShare,
@@ -638,8 +639,8 @@ mod tests {
         
         // Decode with all shards
         let mut shard_map = HashMap::new();
-        for (i, shard) in shards.iter().enumerate() {
-            shard_map.insert(i, shard.clone());
+        for (i, shard) in shards.into_iter().enumerate() {
+            shard_map.insert(i, shard);
         }
         
         let mut decoder = encoder.decode_with_streaming(shard_map, &block_id, original_data.len()).unwrap();
@@ -675,8 +676,8 @@ mod tests {
         let shards = encoder.encode(&original_data, &block_id).unwrap();
         
         let mut shard_map = HashMap::new();
-        for (i, shard) in shards.iter().enumerate() {
-            shard_map.insert(i, shard.clone());
+        for (i, shard) in shards.into_iter().enumerate() {
+            shard_map.insert(i, shard);
         }
         
         let mut decoder = encoder.decode_with_streaming(shard_map, &block_id, original_data.len()).unwrap();
