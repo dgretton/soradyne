@@ -47,14 +47,14 @@ pub struct DemonstrationResult {
 }
 
 const BLOCK_SIZE: usize = 32 * 1024 * 1024; // 32MB
-use crate::storage::erasure::ErasureEncoder;
+use crate::storage::erasure::ShamirErasureEncoder;
 use crate::flow::FlowError;
 
 #[derive(Debug)]
 pub struct BlockManager {
     rimsd_directories: Vec<PathBuf>,
     metadata_store: Arc<RwLock<BlockMetadataStore>>,
-    erasure_encoder: ErasureEncoder,
+    erasure_encoder: ShamirErasureEncoder,
     threshold: usize,
     total_shards: usize,
     device_identifier: BayesianDeviceIdentifier,
@@ -158,7 +158,7 @@ impl BlockManager {
         
         let metadata_store = BlockMetadataStore::load_or_create(metadata_path)?;
         
-        let erasure_encoder = ErasureEncoder::new(threshold, total_shards)?;
+        let erasure_encoder = ShamirErasureEncoder::new(threshold, total_shards)?;
         
         Ok(Self {
             rimsd_directories,
@@ -300,6 +300,8 @@ impl BlockManager {
         }
         
         let id = self.generate_block_id();
+        let nonce = ShamirErasureEncoder::derive_nonce(&id);
+        
         let metadata = BlockMetadata {
             id,
             directness: 0,
@@ -307,32 +309,49 @@ impl BlockManager {
             created_at: Utc::now(),
             modified_at: Utc::now(),
             shard_locations: Vec::new(),
+            encryption_version: 1, // New Shamir+RS format
+            nonce,
         };
         
-        // Erasure encode the data
-        let shards = self.erasure_encoder.encode(data)?;
+        // Shamir + Reed-Solomon encode the data
+        let shards_with_keys = self.erasure_encoder.encode(data, &id)?;
         
         // Distribute shards across rimsd directories
-        println!("📦 Distributing {} shards across {} devices:", shards.len(), self.rimsd_directories.len());
+        println!("📦 Distributing {} encrypted shards across {} devices:", shards_with_keys.len(), self.rimsd_directories.len());
         let mut shard_locations = Vec::new();
-        for (i, shard) in shards.iter().enumerate() {
+        
+        for (i, shard_with_key) in shards_with_keys.iter().enumerate() {
             let rimsd_dir = &self.rimsd_directories[i % self.rimsd_directories.len()].as_path();
             let shard_path = self.shard_path(rimsd_dir, &id, i);
+            let key_share_path = self.key_share_path(rimsd_dir, &id, i);
             
-            println!("   📝 Writing shard {} ({} bytes) → {}", 
-                i, shard.len(), shard_path.display());
+            println!("   📝 Writing shard {} ({} bytes) + key share → {}", 
+                i, shard_with_key.shard_data.len(), shard_path.display());
             
-            // Write shard to disk
+            // Write shard data to disk
             if let Some(parent) = shard_path.parent() {
                 tokio::fs::create_dir_all(parent).await.map_err(|e|
                     FlowError::PersistenceError(format!("Failed to create shard directory: {}", e))
                 )?;
             }
-            tokio::fs::write(&shard_path, shard).await.map_err(|e|
+            tokio::fs::write(&shard_path, &shard_with_key.shard_data).await.map_err(|e|
                 FlowError::PersistenceError(format!("Failed to write shard: {}", e))
             )?;
             
-            println!("   ✅ Shard {} written successfully", i);
+            // Write key share to disk
+            if let Some(parent) = key_share_path.parent() {
+                tokio::fs::create_dir_all(parent).await.map_err(|e|
+                    FlowError::PersistenceError(format!("Failed to create key share directory: {}", e))
+                )?;
+            }
+            let key_share_data = serde_json::to_vec(&shard_with_key.key_share).map_err(|e|
+                FlowError::PersistenceError(format!("Failed to serialize key share: {}", e))
+            )?;
+            tokio::fs::write(&key_share_path, &key_share_data).await.map_err(|e|
+                FlowError::PersistenceError(format!("Failed to write key share: {}", e))
+            )?;
+            
+            println!("   ✅ Shard {} and key share written successfully", i);
             
             shard_locations.push(ShardLocation {
                 shard_index: i,
@@ -342,9 +361,13 @@ impl BlockManager {
                     .unwrap()
                     .to_string_lossy()
                     .to_string(),
+                key_share_path: Some(key_share_path.strip_prefix(rimsd_dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()),
             });
         }
-        println!("🎯 All shards distributed successfully!");
+        println!("🎯 All encrypted shards and key shares distributed successfully!");
         
         // Update metadata
         let mut metadata = metadata;
@@ -372,7 +395,88 @@ impl BlockManager {
         println!("📖 Reading block with {} total shards (need {} minimum):", 
             metadata.shard_locations.len(), self.threshold);
         
-        // Collect available shards
+        // Check encryption version for backward compatibility
+        if metadata.encryption_version == 0 {
+            return self.read_legacy_block(metadata).await;
+        }
+        
+        // Collect available shards and key shares
+        let mut shards_with_keys = HashMap::new();
+        let mut missing_shards = Vec::new();
+        
+        for location in &metadata.shard_locations {
+            let shard_path = PathBuf::from(&location.rimsd_path)
+                .join(&location.relative_path);
+            
+            let key_share_path = if let Some(key_path) = &location.key_share_path {
+                PathBuf::from(&location.rimsd_path).join(key_path)
+            } else {
+                // Fallback to legacy format
+                return self.read_legacy_block(metadata).await;
+            };
+            
+            if shard_path.exists() && key_share_path.exists() {
+                match (tokio::fs::read(&shard_path).await, tokio::fs::read(&key_share_path).await) {
+                    (Ok(shard_data), Ok(key_share_data)) => {
+                        match serde_json::from_slice(&key_share_data) {
+                            Ok(key_share) => {
+                                println!("   ✅ Read shard {} ({} bytes) + key share ← {}", 
+                                    location.shard_index, shard_data.len(), shard_path.display());
+                                
+                                shards_with_keys.insert(location.shard_index, crate::storage::erasure::ShardWithKey {
+                                    shard_data,
+                                    key_share,
+                                });
+                            }
+                            Err(e) => {
+                                println!("   ❌ Failed to parse key share {}: {}", location.shard_index, e);
+                                missing_shards.push(location.shard_index);
+                            }
+                        }
+                    }
+                    (Err(e), _) => {
+                        println!("   ❌ Failed to read shard {} from {}: {}", 
+                            location.shard_index, shard_path.display(), e);
+                        missing_shards.push(location.shard_index);
+                    }
+                    (_, Err(e)) => {
+                        println!("   ❌ Failed to read key share {} from {}: {}", 
+                            location.shard_index, key_share_path.display(), e);
+                        missing_shards.push(location.shard_index);
+                    }
+                }
+            } else {
+                println!("   ⚠️  Shard {} or key share missing: {} / {}", 
+                    location.shard_index, shard_path.display(), key_share_path.display());
+                missing_shards.push(location.shard_index);
+            }
+        }
+        
+        println!("📊 Shard status: {} available, {} missing", shards_with_keys.len(), missing_shards.len());
+        
+        // Check if we have enough shards
+        if shards_with_keys.len() < self.threshold {
+            return Err(FlowError::PersistenceError(
+                format!("Not enough shards available: {} < {} (missing: {:?})", 
+                    shards_with_keys.len(), self.threshold, missing_shards)
+            ));
+        }
+        
+        println!("🔧 Reconstructing data from {} shards using Shamir + Reed-Solomon...", shards_with_keys.len());
+        
+        // Create streaming decoder and reconstruct
+        let mut decoder = self.erasure_encoder.decode_with_streaming(shards_with_keys, &metadata.id, metadata.size)?;
+        let result = decoder.reconstruct_all().await?;
+        
+        println!("✅ Successfully reconstructed {} bytes of encrypted data", result.len());
+        
+        Ok(result)
+    }
+    
+    /// Read legacy RS-only blocks for backward compatibility
+    async fn read_legacy_block(&self, metadata: &BlockMetadata) -> Result<Vec<u8>, FlowError> {
+        println!("📖 Reading legacy RS-only block...");
+        
         let mut shards = HashMap::new();
         let mut missing_shards = Vec::new();
         
@@ -383,38 +487,32 @@ impl BlockManager {
             if shard_path.exists() {
                 match tokio::fs::read(&shard_path).await {
                     Ok(shard_data) => {
-                        println!("   ✅ Read shard {} ({} bytes) ← {}", 
+                        println!("   ✅ Read legacy shard {} ({} bytes) ← {}", 
                             location.shard_index, shard_data.len(), shard_path.display());
                         shards.insert(location.shard_index, shard_data);
                     }
                     Err(e) => {
-                        println!("   ❌ Failed to read shard {} from {}: {}", 
+                        println!("   ❌ Failed to read legacy shard {} from {}: {}", 
                             location.shard_index, shard_path.display(), e);
                         missing_shards.push(location.shard_index);
                     }
                 }
             } else {
-                println!("   ⚠️  Shard {} missing: {}", 
+                println!("   ⚠️  Legacy shard {} missing: {}", 
                     location.shard_index, shard_path.display());
                 missing_shards.push(location.shard_index);
             }
         }
         
-        println!("📊 Shard status: {} available, {} missing", shards.len(), missing_shards.len());
-        
-        // Check if we have enough shards
         if shards.len() < self.threshold {
             return Err(FlowError::PersistenceError(
-                format!("Not enough shards available: {} < {} (missing: {:?})", 
-                    shards.len(), self.threshold, missing_shards)
+                format!("Not enough legacy shards available: {} < {}", shards.len(), self.threshold)
             ));
         }
         
-        println!("🔧 Reconstructing data from {} shards using erasure coding...", shards.len());
-        
-        // Reconstruct data from shards
+        // Use legacy decode method
         let result = self.erasure_encoder.decode(shards, metadata.size)?;
-        println!("✅ Successfully reconstructed {} bytes of data", result.len());
+        println!("✅ Successfully reconstructed {} bytes from legacy block", result.len());
         
         Ok(result)
     }
@@ -452,6 +550,15 @@ impl BlockManager {
             .join(&hex_id[..2])
             .join(&hex_id[2..4])
             .join(format!("{}.{}.shard", hex_id, shard_index))
+    }
+    
+    fn key_share_path(&self, rimsd_dir: &Path, block_id: &[u8; 32], shard_index: usize) -> PathBuf {
+        // Store key shares alongside shards
+        let hex_id = hex::encode(block_id);
+        rimsd_dir
+            .join(&hex_id[..2])
+            .join(&hex_id[2..4])
+            .join(format!("{}.{}.keyshare", hex_id, shard_index))
     }
     
     fn get_device_id(&self) -> Uuid {

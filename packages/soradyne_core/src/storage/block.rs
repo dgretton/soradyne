@@ -5,6 +5,7 @@ use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
 pub const BLOCK_SIZE: usize = 32 * 1024 * 1024; // 32MB
+pub const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks for streaming
 pub const BLOCK_ID_SIZE: usize = 32;
 
 pub type BlockId = [u8; BLOCK_ID_SIZE];
@@ -17,6 +18,8 @@ pub struct BlockMetadata {
     pub created_at: DateTime<Utc>,
     pub modified_at: DateTime<Utc>,
     pub shard_locations: Vec<ShardLocation>,
+    pub encryption_version: u8, // 0 = legacy RS-only, 1 = Shamir+RS
+    pub nonce: [u8; 12], // AES-GCM nonce derived from block ID
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -25,6 +28,7 @@ pub struct ShardLocation {
     pub device_id: Uuid,
     pub rimsd_path: String,
     pub relative_path: String,
+    pub key_share_path: Option<String>, // Path to Shamir key share (for v1+ blocks)
 }
 
 #[derive(Debug)]
