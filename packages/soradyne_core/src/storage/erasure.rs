@@ -110,17 +110,8 @@ impl ErasureEncoder {
             reconstruction_shards[index] = Some(shard_data);
         }
         
-        // Use Reed-Solomon to reconstruct missing shards
-        let mut shards_for_reconstruction: Vec<Vec<u8>> = Vec::with_capacity(self.total_shards);
-        for maybe_shard in reconstruction_shards {
-            match maybe_shard {
-                Some(shard) => shards_for_reconstruction.push(shard),
-                None => shards_for_reconstruction.push(vec![0u8; shard_size]), // Placeholder for missing shard
-            }
-        }
-        
-        // Perform reconstruction
-        self.reed_solomon.reconstruct(&mut shards_for_reconstruction)
+        // Perform reconstruction using Option<Vec<u8>> as expected by reed-solomon-erasure
+        self.reed_solomon.reconstruct(&mut reconstruction_shards)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Reed-Solomon reconstruction failed: {}", e)
             ))?;
@@ -128,7 +119,13 @@ impl ErasureEncoder {
         // Concatenate the data shards (first threshold shards)
         let mut result = Vec::with_capacity(expected_size);
         for i in 0..self.threshold {
-            result.extend_from_slice(&shards_for_reconstruction[i]);
+            if let Some(ref shard) = reconstruction_shards[i] {
+                result.extend_from_slice(shard);
+            } else {
+                return Err(FlowError::PersistenceError(
+                    "Failed to reconstruct data shard".to_string()
+                ));
+            }
         }
         
         // Truncate to actual data size (remove padding)
