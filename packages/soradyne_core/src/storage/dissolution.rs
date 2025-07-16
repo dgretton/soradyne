@@ -155,14 +155,14 @@ pub trait DissolutionStorage: Send + Sync {
 
 /// High-level file interface that works with any dissolution backend
 pub struct DissolutionFile {
-    storage: Box<dyn DissolutionStorage>,
+    storage: crate::storage::backends::DissolutionBackend,
     root_block: Option<BlockId>,
     size: usize,
 }
 
 impl DissolutionFile {
     /// Create a new file
-    pub fn new(storage: Box<dyn DissolutionStorage>) -> Self {
+    pub fn new(storage: crate::storage::backends::DissolutionBackend) -> Self {
         Self {
             storage,
             root_block: None,
@@ -171,7 +171,7 @@ impl DissolutionFile {
     }
     
     /// Open existing file from root block
-    pub fn from_existing(storage: Box<dyn DissolutionStorage>, root_block: BlockId, size: usize) -> Self {
+    pub fn from_existing(storage: crate::storage::backends::DissolutionBackend, root_block: BlockId, size: usize) -> Self {
         Self {
             storage,
             root_block: Some(root_block),

@@ -10,16 +10,130 @@ pub use manual_erasure::ManualErasureBackend;
 pub use bcachefs::BcacheFSBackend;
 
 use std::path::PathBuf;
-use crate::storage::dissolution::{DissolutionStorage, DissolutionConfig, BackendConfig};
+use crate::storage::dissolution::{DissolutionStorage, DissolutionConfig, BackendConfig, BlockId, BlockInfo, StorageStats, DissolutionDemo};
 use crate::flow::FlowError;
-use std::sync::Arc;
+use async_trait::async_trait;
+
+/// Concrete enum for dissolution storage backends
+pub enum DissolutionBackend {
+    ManualErasure(ManualErasureBackend),
+    #[cfg(target_os = "linux")]
+    BcacheFS(BcacheFSBackend),
+}
+
+#[async_trait]
+impl DissolutionStorage for DissolutionBackend {
+    async fn store(&self, data: &[u8]) -> Result<BlockId, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.store(data).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.store(data).await,
+        }
+    }
+    
+    async fn retrieve(&self, block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.retrieve(block_id).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.retrieve(block_id).await,
+        }
+    }
+    
+    async fn exists(&self, block_id: &BlockId) -> Result<bool, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.exists(block_id).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.exists(block_id).await,
+        }
+    }
+    
+    async fn block_info(&self, block_id: &BlockId) -> Result<BlockInfo, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.block_info(block_id).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.block_info(block_id).await,
+        }
+    }
+    
+    async fn delete(&self, block_id: &BlockId) -> Result<(), FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.delete(block_id).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.delete(block_id).await,
+        }
+    }
+    
+    async fn list_blocks(&self) -> Result<Vec<BlockId>, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.list_blocks().await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.list_blocks().await,
+        }
+    }
+    
+    async fn storage_stats(&self) -> Result<StorageStats, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.storage_stats().await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.storage_stats().await,
+        }
+    }
+    
+    async fn demonstrate_dissolution(&self, block_id: &BlockId, simulate_missing: Vec<usize>) -> Result<DissolutionDemo, FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.demonstrate_dissolution(block_id, simulate_missing).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.demonstrate_dissolution(block_id, simulate_missing).await,
+        }
+    }
+    
+    async fn maintenance(&self) -> Result<(), FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.maintenance().await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.maintenance().await,
+        }
+    }
+    
+    fn config(&self) -> &DissolutionConfig {
+        match self {
+            Self::ManualErasure(backend) => backend.config(),
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.config(),
+        }
+    }
+    
+    async fn update_config(&mut self, config: DissolutionConfig) -> Result<(), FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.update_config(config).await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.update_config(config).await,
+        }
+    }
+    
+    async fn verify_device_continuity(&self) -> Result<(), FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.verify_device_continuity().await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.verify_device_continuity().await,
+        }
+    }
+    
+    async fn initialize_device_fingerprints(&self) -> Result<(), FlowError> {
+        match self {
+            Self::ManualErasure(backend) => backend.initialize_device_fingerprints().await,
+            #[cfg(target_os = "linux")]
+            Self::BcacheFS(backend) => backend.initialize_device_fingerprints().await,
+        }
+    }
+}
 
 /// Factory for creating dissolution storage backends
 pub struct DissolutionStorageFactory;
 
 impl DissolutionStorageFactory {
     /// Create a storage backend from configuration
-    pub async fn create(config: DissolutionConfig) -> Result<Box<dyn DissolutionStorage>, FlowError> {
+    pub async fn create(config: DissolutionConfig) -> Result<DissolutionBackend, FlowError> {
         match &config.backend_config {
             BackendConfig::ManualErasure { rimsd_paths, metadata_path } => {
                 let backend = ManualErasureBackend::new(
@@ -27,13 +141,13 @@ impl DissolutionStorageFactory {
                     metadata_path.clone(),
                     config.clone(),
                 ).await?;
-                Ok(Box::new(backend))
+                Ok(DissolutionBackend::ManualErasure(backend))
             },
             BackendConfig::BcacheFS { .. } => {
                 #[cfg(target_os = "linux")]
                 {
                     let backend = bcachefs::BcacheFSBackend::new(config.clone()).await?;
-                    Ok(Box::new(backend))
+                    Ok(DissolutionBackend::BcacheFS(backend))
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
