@@ -158,10 +158,12 @@ impl BlockManager {
         
         let metadata_store = BlockMetadataStore::load_or_create(metadata_path)?;
         
+        let erasure_encoder = ErasureEncoder::new(threshold, total_shards)?;
+        
         Ok(Self {
             rimsd_directories,
             metadata_store: Arc::new(RwLock::new(metadata_store)),
-            erasure_encoder: ErasureEncoder::new(threshold, total_shards),
+            erasure_encoder,
             threshold,
             total_shards,
             device_identifier: BayesianDeviceIdentifier::default(),
