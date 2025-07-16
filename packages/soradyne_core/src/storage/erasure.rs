@@ -671,6 +671,59 @@ impl StreamingDecoder {
 mod tests {
     use super::*;
     
+    #[test]
+    fn test_key_sharing_basic() {
+        let encoder = ShamirErasureEncoder::new(3, 5).unwrap();
+        let original_key = [42u8; 32]; // Test key
+        
+        // Split the key into shares
+        let shares = encoder.split_secret(&original_key).unwrap();
+        assert_eq!(shares.len(), 5);
+        
+        // Reconstruct with exactly threshold shares
+        let reconstructed_key = encoder.reconstruct_secret(&shares[..3]).unwrap();
+        assert_eq!(reconstructed_key, original_key);
+        
+        // Test with different subset of shares
+        let subset_shares = [shares[0].clone(), shares[2].clone(), shares[4].clone()];
+        let reconstructed_key2 = encoder.reconstruct_secret(&subset_shares).unwrap();
+        assert_eq!(reconstructed_key2, original_key);
+    }
+    
+    #[test]
+    fn test_key_sharing_insufficient_shares() {
+        let encoder = ShamirErasureEncoder::new(3, 5).unwrap();
+        let original_key = [123u8; 32];
+        
+        let shares = encoder.split_secret(&original_key).unwrap();
+        
+        // Try to reconstruct with insufficient shares (only 2, need 3)
+        let result = encoder.reconstruct_secret(&shares[..2]);
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_key_sharing_all_different_keys() {
+        let encoder = ShamirErasureEncoder::new(3, 5).unwrap();
+        
+        // Test with several different keys
+        let test_keys = [
+            [0u8; 32],
+            [255u8; 32],
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+             17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+        ];
+        
+        for (i, &original_key) in test_keys.iter().enumerate() {
+            println!("Testing key {}: {:?}", i, &original_key[..8]);
+            
+            let shares = encoder.split_secret(&original_key).unwrap();
+            let reconstructed = encoder.reconstruct_secret(&shares[..3]).unwrap();
+            
+            assert_eq!(reconstructed, original_key, "Failed for key {}", i);
+        }
+    }
+    
     #[tokio::test]
     async fn test_encode_decode_basic() {
         let encoder = ShamirErasureEncoder::new(3, 5).unwrap();
