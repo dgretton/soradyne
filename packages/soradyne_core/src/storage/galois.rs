@@ -33,7 +33,15 @@ impl GF256 {
         let mut value = 1u8;
         for i in 0..255 {
             self.antilog_table[i] = value;
-            self.log_table[value as usize] = i as u8;
+            
+            // Only set log_table entry if it hasn't been set yet
+            // This prevents overwriting log[1] = 0 when value cycles back to 1
+            if self.log_table[value as usize] == 0 && value != 1 {
+                self.log_table[value as usize] = i as u8;
+            } else if value == 1 && i == 0 {
+                // Special case: ensure log[1] = 0 is set correctly on first iteration
+                self.log_table[1] = 0;
+            }
             
             // Multiply by 2 (the primitive element) in GF(256)
             let high_bit = value & 0x80;
