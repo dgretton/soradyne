@@ -8,6 +8,7 @@ pub mod block_file;
 pub mod block_manager;
 pub mod device_identity;
 pub mod erasure;
+pub mod galois;
 pub mod local_file;
 
 // New abstraction layer
@@ -31,11 +32,3 @@ pub use backends::{DissolutionStorageFactory, SdynErasureBackend};
 
 #[cfg(target_os = "linux")]
 pub use backends::BcacheFSBackend;
-pub mod block;
-pub mod block_manager;
-pub mod erasure;
-pub mod galois;
-pub mod local_file;
-pub mod device_identity;
-pub mod dissolution;
-pub mod backends;
