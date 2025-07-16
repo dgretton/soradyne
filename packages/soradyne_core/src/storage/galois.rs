@@ -25,19 +25,21 @@ impl GF256 {
     
     /// Build logarithm and antilog tables for fast multiplication
     fn build_tables(&mut self) {
-        // Generator polynomial: x^8 + x^4 + x^3 + x + 1 = 0x11b
-        const GENERATOR: u16 = 0x11b;
+        // Use the irreducible polynomial x^8 + x^4 + x^3 + x + 1 = 0x11b
+        // But for reduction, we only need the lower 8 bits: 0x1b
+        const REDUCTION_POLY: u8 = 0x1b;
         
         // Build antilog table (powers of the primitive element 2)
-        let mut value = 1u16;
+        let mut value = 1u8;
         for i in 0..255 {
-            self.antilog_table[i] = value as u8;
+            self.antilog_table[i] = value;
             self.log_table[value as usize] = i as u8;
             
-            // Multiply by 2 (the primitive element)
+            // Multiply by 2 (the primitive element) in GF(256)
+            let high_bit = value & 0x80;
             value <<= 1;
-            if value & 0x100 != 0 {
-                value ^= GENERATOR;
+            if high_bit != 0 {
+                value ^= REDUCTION_POLY;
             }
         }
         
