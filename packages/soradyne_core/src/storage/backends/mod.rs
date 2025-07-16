@@ -19,7 +19,7 @@ pub struct DissolutionStorageFactory;
 
 impl DissolutionStorageFactory {
     /// Create a storage backend from configuration
-    pub async fn create(config: DissolutionConfig) -> Result<Arc<dyn DissolutionStorage>, FlowError> {
+    pub async fn create(config: DissolutionConfig) -> Result<Box<dyn DissolutionStorage>, FlowError> {
         match &config.backend_config {
             BackendConfig::ManualErasure { rimsd_paths, metadata_path } => {
                 let backend = ManualErasureBackend::new(
@@ -27,13 +27,13 @@ impl DissolutionStorageFactory {
                     metadata_path.clone(),
                     config.clone(),
                 ).await?;
-                Ok(Arc::new(backend))
+                Ok(Box::new(backend))
             },
             BackendConfig::BcacheFS { .. } => {
                 #[cfg(target_os = "linux")]
                 {
                     let backend = bcachefs::BcacheFSBackend::new(config.clone()).await?;
-                    Ok(Arc::new(backend))
+                    Ok(Box::new(backend))
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
