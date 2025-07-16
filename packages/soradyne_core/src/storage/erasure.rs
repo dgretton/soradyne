@@ -91,6 +91,18 @@ impl ShamirErasureEncoder {
         key
     }
     
+    /// Derive a chunk-specific nonce from block ID and chunk index
+    fn derive_chunk_nonce(block_id: &BlockId, chunk_index: usize) -> [u8; 12] {
+        let mut hasher = Sha256::new();
+        hasher.update(b"SORADYNE_CHUNK_NONCE_V1");
+        hasher.update(block_id);
+        hasher.update(&chunk_index.to_le_bytes());
+        let hash = hasher.finalize();
+        let mut nonce = [0u8; 12];
+        nonce.copy_from_slice(&hash[..12]);
+        nonce
+    }
+    
     /// Encode data with Shamir encryption scheme
     pub fn encode(&self, data: &[u8], block_id: &BlockId) -> Result<Vec<ShardWithKey>, FlowError> {
         if data.is_empty() {
@@ -240,12 +252,14 @@ impl ShamirErasureEncoder {
     
     fn encrypt_data_chunked(&self, data: &[u8], master_key: &[u8; 32], block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
         let mut result = Vec::new();
-        let nonce_bytes = Self::derive_nonce(block_id);
         
         for (chunk_index, chunk) in data.chunks(CHUNK_SIZE).enumerate() {
             let chunk_key = Self::derive_chunk_key(master_key, chunk_index, block_id);
             let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&chunk_key));
-            let nonce = Nonce::from_slice(&nonce_bytes);
+            
+            // Derive unique nonce for each chunk
+            let chunk_nonce = Self::derive_chunk_nonce(block_id, chunk_index);
+            let nonce = Nonce::from_slice(&chunk_nonce);
             
             let mut ciphertext = chunk.to_vec();
             let tag = cipher.encrypt_in_place_detached(nonce, b"", &mut ciphertext)
@@ -500,63 +514,54 @@ impl StreamingDecoder {
         threshold: usize,
         total_shards: usize,
     ) -> Result<Vec<u8>, FlowError> {
-        // Calculate chunk boundaries in the RS-encoded data
+        // For simplicity, let's reconstruct the entire encrypted data first
+        // This is less efficient but more reliable for the initial implementation
+        
         let shard_size = rs_shards.values().next()
             .ok_or_else(|| FlowError::PersistenceError("No shards available".to_string()))?
             .len();
         
-        let total_encrypted_size = shard_size * threshold;
-        let chunk_start = chunk_index * (CHUNK_SIZE + 16); // +16 for AES-GCM tag
-        let chunk_end = ((chunk_index + 1) * (CHUNK_SIZE + 16)).min(total_encrypted_size);
-        
-        if chunk_start >= total_encrypted_size {
-            return Ok(Vec::new());
-        }
-        
-        // Extract chunk data from shards
-        let mut chunk_shards: Vec<Option<Vec<u8>>> = vec![None; total_shards];
+        // Reconstruct all shards
+        let mut reconstruction_shards: Vec<Option<Vec<u8>>> = vec![None; total_shards];
         
         for (index, shard_data) in rs_shards {
-            if *index >= total_shards {
-                continue;
-            }
-            
-            let shard_chunk_start = chunk_start / threshold;
-            let shard_chunk_end = ((chunk_end + threshold - 1) / threshold).min(shard_data.len());
-            
-            if shard_chunk_start < shard_data.len() {
-                chunk_shards[*index] = Some(shard_data[shard_chunk_start..shard_chunk_end].to_vec());
+            if *index < total_shards {
+                reconstruction_shards[*index] = Some(shard_data.clone());
             }
         }
         
-        // Reconstruct chunk using Reed-Solomon
+        // Reconstruct using Reed-Solomon
         let reed_solomon = ReedSolomon::new(threshold, total_shards - threshold)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Failed to create Reed-Solomon decoder: {}", e)
             ))?;
         
-        reed_solomon.reconstruct(&mut chunk_shards)
+        reed_solomon.reconstruct(&mut reconstruction_shards)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Reed-Solomon reconstruction failed: {}", e)
             ))?;
         
-        // Concatenate reconstructed data shards
-        let mut encrypted_chunk = Vec::new();
+        // Concatenate the data shards to get the full encrypted data
+        let mut full_encrypted_data = Vec::new();
         for i in 0..threshold {
-            if let Some(ref shard) = chunk_shards[i] {
-                encrypted_chunk.extend_from_slice(shard);
+            if let Some(ref shard) = reconstruction_shards[i] {
+                full_encrypted_data.extend_from_slice(shard);
             }
         }
         
-        // Extract the specific chunk we want
-        let chunk_data = if chunk_start + (CHUNK_SIZE + 16) <= encrypted_chunk.len() {
-            encrypted_chunk[chunk_start % (shard_size * threshold)..chunk_end % (shard_size * threshold)].to_vec()
-        } else {
-            encrypted_chunk[chunk_start % (shard_size * threshold)..].to_vec()
-        };
+        // Extract the specific chunk (each chunk is CHUNK_SIZE + 16 bytes for tag)
+        let chunk_size_with_tag = CHUNK_SIZE + 16;
+        let chunk_start = chunk_index * chunk_size_with_tag;
+        let chunk_end = (chunk_start + chunk_size_with_tag).min(full_encrypted_data.len());
+        
+        if chunk_start >= full_encrypted_data.len() {
+            return Ok(Vec::new());
+        }
+        
+        let encrypted_chunk = &full_encrypted_data[chunk_start..chunk_end];
         
         // Decrypt the chunk
-        Self::decrypt_chunk(&chunk_data, &master_key, chunk_index, &block_id)
+        Self::decrypt_chunk(encrypted_chunk, &master_key, chunk_index, &block_id)
     }
     
     fn decrypt_chunk(encrypted_chunk: &[u8], master_key: &[u8; 32], chunk_index: usize, block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
@@ -566,8 +571,10 @@ impl StreamingDecoder {
         
         let chunk_key = ShamirErasureEncoder::derive_chunk_key(master_key, chunk_index, block_id);
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&chunk_key));
-        let nonce_bytes = ShamirErasureEncoder::derive_nonce(block_id);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        
+        // Use the same chunk-specific nonce that was used for encryption
+        let chunk_nonce = ShamirErasureEncoder::derive_chunk_nonce(block_id, chunk_index);
+        let nonce = Nonce::from_slice(&chunk_nonce);
         
         // Extract tag and ciphertext
         let (tag, ciphertext) = encrypted_chunk.split_at(16);
