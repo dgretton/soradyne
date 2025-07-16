@@ -43,7 +43,11 @@ impl GF256 {
             }
         }
         
+        // Complete the cycle - antilog[255] should equal antilog[0] = 1
+        self.antilog_table[255] = self.antilog_table[0];
+        
         // Special case: log(0) is undefined, but we set it to 0 for convenience
+        // This won't be used in practice since we check for zero in multiply/divide
         self.log_table[0] = 0;
     }
     
