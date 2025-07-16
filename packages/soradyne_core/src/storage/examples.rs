@@ -9,8 +9,8 @@ use crate::flow::FlowError;
 
 /// Example: Basic dissolution storage usage
 pub async fn basic_dissolution_example() -> Result<(), FlowError> {
-    // Create configuration for manual erasure backend
-    let config = DissolutionStorageFactory::create_manual_erasure_config(
+    // Create configuration for sdyn erasure backend
+    let config = DissolutionStorageFactory::create_sdyn_erasure_config(
         3, // threshold: need 3 shards to reconstruct
         5, // total_shards: create 5 shards total
         PathBuf::from("/tmp/dissolution_metadata.json"),
@@ -39,7 +39,7 @@ pub async fn basic_dissolution_example() -> Result<(), FlowError> {
 
 /// Example: Demonstrate fault tolerance
 pub async fn fault_tolerance_demo() -> Result<(), FlowError> {
-    let config = DissolutionStorageFactory::create_manual_erasure_config(
+    let config = DissolutionStorageFactory::create_sdyn_erasure_config(
         3, 5, PathBuf::from("/tmp/dissolution_metadata.json")
     ).await?;
     
@@ -66,7 +66,7 @@ pub async fn fault_tolerance_demo() -> Result<(), FlowError> {
 
 /// Example: High-level file interface
 pub async fn file_interface_example() -> Result<(), FlowError> {
-    let config = DissolutionStorageFactory::create_manual_erasure_config(
+    let config = DissolutionStorageFactory::create_sdyn_erasure_config(
         2, 3, PathBuf::from("/tmp/dissolution_metadata.json")
     ).await?;
     
@@ -113,8 +113,8 @@ pub async fn backend_detection_example() -> Result<(), FlowError> {
     ).await?;
     
     match &config.backend_config {
-        BackendConfig::ManualErasure { rimsd_paths, .. } => {
-            println!("Using manual erasure backend with {} devices", rimsd_paths.len());
+        BackendConfig::SdynErasure { rimsd_paths, .. } => {
+            println!("Using sdyn erasure backend with {} devices", rimsd_paths.len());
         }
         BackendConfig::BcacheFS { device_paths, .. } => {
             println!("Using bcachefs backend with {} devices", device_paths.len());
@@ -159,7 +159,7 @@ mod tests {
     async fn test_backend_detection() {
         let backends = DissolutionStorageFactory::detect_available_backends().await;
         assert!(!backends.is_empty());
-        assert!(backends.contains(&"manual_erasure".to_string()));
+        assert!(backends.contains(&"sdyn_erasure".to_string()));
     }
     
     #[tokio::test]

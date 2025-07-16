@@ -1,7 +1,7 @@
-//! Manual erasure coding backend implementation
+//! Sdyn erasure coding backend implementation
 //! 
 //! This backend uses the existing BlockManager to provide dissolution storage
-//! through manual erasure coding and shard distribution across rimsd directories.
+//! through sdyn erasure coding and shard distribution across rimsd directories.
 
 use async_trait::async_trait;
 use std::path::PathBuf;
@@ -14,14 +14,14 @@ use crate::storage::dissolution::{
 use crate::storage::block_manager::BlockManager;
 use crate::flow::FlowError;
 
-/// Implementation using manual erasure coding via BlockManager
+/// Implementation using sdyn erasure coding via BlockManager
 #[derive(Clone)]
-pub struct ManualErasureBackend {
+pub struct SdynErasureBackend {
     block_manager: Arc<BlockManager>,
     config: DissolutionConfig,
 }
 
-impl ManualErasureBackend {
+impl SdynErasureBackend {
     pub async fn new(
         rimsd_paths: Vec<PathBuf>,
         metadata_path: PathBuf,
@@ -65,7 +65,7 @@ impl ManualErasureBackend {
 }
 
 #[async_trait]
-impl DissolutionStorage for ManualErasureBackend {
+impl DissolutionStorage for SdynErasureBackend {
     async fn store(&self, data: &[u8]) -> Result<BlockId, FlowError> {
         if data.len() > self.config.max_direct_block_size {
             return Err(FlowError::PersistenceError(
@@ -228,7 +228,7 @@ impl DissolutionStorage for ManualErasureBackend {
         // For now, don't allow config changes after creation
         // This would require rebuilding the BlockManager
         Err(FlowError::PersistenceError(
-            "Configuration updates not supported for manual erasure backend".to_string()
+            "Configuration updates not supported for sdyn erasure backend".to_string()
         ))
     }
     

@@ -1,9 +1,9 @@
 //! Storage backend implementations
 
-pub mod manual_erasure;
+pub mod sdyn_erasure;
 pub mod bcachefs;
 
-pub use manual_erasure::ManualErasureBackend;
+pub use sdyn_erasure::SdynErasureBackend;
 
 // Only expose bcachefs on Linux
 #[cfg(target_os = "linux")]
@@ -17,7 +17,7 @@ use async_trait::async_trait;
 /// Concrete enum for dissolution storage backends
 #[derive(Clone)]
 pub enum DissolutionBackend {
-    ManualErasure(ManualErasureBackend),
+    SdynErasure(SdynErasureBackend),
     #[cfg(target_os = "linux")]
     BcacheFS(BcacheFSBackend),
 }
@@ -26,7 +26,7 @@ pub enum DissolutionBackend {
 impl DissolutionStorage for DissolutionBackend {
     async fn store(&self, data: &[u8]) -> Result<BlockId, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.store(data).await,
+            Self::SdynErasure(backend) => backend.store(data).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.store(data).await,
         }
@@ -34,7 +34,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn retrieve(&self, block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.retrieve(block_id).await,
+            Self::SdynErasure(backend) => backend.retrieve(block_id).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.retrieve(block_id).await,
         }
@@ -42,7 +42,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn exists(&self, block_id: &BlockId) -> Result<bool, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.exists(block_id).await,
+            Self::SdynErasure(backend) => backend.exists(block_id).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.exists(block_id).await,
         }
@@ -50,7 +50,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn block_info(&self, block_id: &BlockId) -> Result<BlockInfo, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.block_info(block_id).await,
+            Self::SdynErasure(backend) => backend.block_info(block_id).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.block_info(block_id).await,
         }
@@ -58,7 +58,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn delete(&self, block_id: &BlockId) -> Result<(), FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.delete(block_id).await,
+            Self::SdynErasure(backend) => backend.delete(block_id).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.delete(block_id).await,
         }
@@ -66,7 +66,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn list_blocks(&self) -> Result<Vec<BlockId>, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.list_blocks().await,
+            Self::SdynErasure(backend) => backend.list_blocks().await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.list_blocks().await,
         }
@@ -74,7 +74,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn storage_stats(&self) -> Result<StorageStats, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.storage_stats().await,
+            Self::SdynErasure(backend) => backend.storage_stats().await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.storage_stats().await,
         }
@@ -82,7 +82,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn demonstrate_dissolution(&self, block_id: &BlockId, simulate_missing: Vec<usize>) -> Result<DissolutionDemo, FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.demonstrate_dissolution(block_id, simulate_missing).await,
+            Self::SdynErasure(backend) => backend.demonstrate_dissolution(block_id, simulate_missing).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.demonstrate_dissolution(block_id, simulate_missing).await,
         }
@@ -90,7 +90,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn maintenance(&self) -> Result<(), FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.maintenance().await,
+            Self::SdynErasure(backend) => backend.maintenance().await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.maintenance().await,
         }
@@ -98,7 +98,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     fn config(&self) -> &DissolutionConfig {
         match self {
-            Self::ManualErasure(backend) => backend.config(),
+            Self::SdynErasure(backend) => backend.config(),
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.config(),
         }
@@ -106,7 +106,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn update_config(&mut self, config: DissolutionConfig) -> Result<(), FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.update_config(config).await,
+            Self::SdynErasure(backend) => backend.update_config(config).await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.update_config(config).await,
         }
@@ -114,7 +114,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn verify_device_continuity(&self) -> Result<(), FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.verify_device_continuity().await,
+            Self::SdynErasure(backend) => backend.verify_device_continuity().await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.verify_device_continuity().await,
         }
@@ -122,7 +122,7 @@ impl DissolutionStorage for DissolutionBackend {
     
     async fn initialize_device_fingerprints(&self) -> Result<(), FlowError> {
         match self {
-            Self::ManualErasure(backend) => backend.initialize_device_fingerprints().await,
+            Self::SdynErasure(backend) => backend.initialize_device_fingerprints().await,
             #[cfg(target_os = "linux")]
             Self::BcacheFS(backend) => backend.initialize_device_fingerprints().await,
         }
@@ -136,13 +136,13 @@ impl DissolutionStorageFactory {
     /// Create a storage backend from configuration
     pub async fn create(config: DissolutionConfig) -> Result<DissolutionBackend, FlowError> {
         match &config.backend_config {
-            BackendConfig::ManualErasure { rimsd_paths, metadata_path } => {
-                let backend = ManualErasureBackend::new(
+            BackendConfig::SdynErasure { rimsd_paths, metadata_path } => {
+                let backend = SdynErasureBackend::new(
                     rimsd_paths.clone(),
                     metadata_path.clone(),
                     config.clone(),
                 ).await?;
-                Ok(DissolutionBackend::ManualErasure(backend))
+                Ok(DissolutionBackend::SdynErasure(backend))
             },
             BackendConfig::BcacheFS { .. } => {
                 #[cfg(target_os = "linux")]
@@ -173,7 +173,7 @@ impl DissolutionStorageFactory {
     
     /// Detect available backends on the system
     pub async fn detect_available_backends() -> Vec<String> {
-        let mut backends = vec!["manual_erasure".to_string()];
+        let mut backends = vec!["sdyn_erasure".to_string()];
         
         // Check if bcachefs is available (Linux only)
         #[cfg(target_os = "linux")]
@@ -201,8 +201,8 @@ impl DissolutionStorageFactory {
         backends
     }
     
-    /// Create a configuration for manual erasure backend with auto-discovery
-    pub async fn create_manual_erasure_config(
+    /// Create a configuration for sdyn erasure backend with auto-discovery
+    pub async fn create_sdyn_erasure_config(
         threshold: usize,
         total_shards: usize,
         metadata_path: PathBuf,
@@ -221,7 +221,7 @@ impl DissolutionStorageFactory {
             threshold,
             total_shards,
             max_direct_block_size: 32 * 1024 * 1024, // 32MB
-            backend_config: BackendConfig::ManualErasure {
+            backend_config: BackendConfig::SdynErasure {
                 rimsd_paths,
                 metadata_path,
             },
@@ -236,12 +236,12 @@ impl DissolutionStorageFactory {
     ) -> Result<DissolutionConfig, FlowError> {
         let available = Self::detect_available_backends().await;
         
-        // Prefer bcachefs on Linux if available, otherwise use manual erasure
+        // Prefer bcachefs on Linux if available, otherwise use sdyn erasure
         if available.contains(&"bcachefs".to_string()) {
             // TODO: Implement bcachefs config creation
-            Self::create_manual_erasure_config(threshold, total_shards, metadata_path).await
+            Self::create_sdyn_erasure_config(threshold, total_shards, metadata_path).await
         } else {
-            Self::create_manual_erasure_config(threshold, total_shards, metadata_path).await
+            Self::create_sdyn_erasure_config(threshold, total_shards, metadata_path).await
         }
     }
 }

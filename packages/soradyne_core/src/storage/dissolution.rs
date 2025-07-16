@@ -27,8 +27,8 @@ pub struct DissolutionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackendConfig {
-    /// Manual erasure coding with custom shard distribution
-    ManualErasure {
+    /// Sdyn erasure coding with custom shard distribution
+    SdynErasure {
         /// Paths to rimsd directories for shard storage
         rimsd_paths: Vec<PathBuf>,
         /// Path for metadata storage
