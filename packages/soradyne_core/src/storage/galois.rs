@@ -8,8 +8,8 @@
 pub struct GF256 {
     /// Precomputed logarithm table for fast multiplication
     log_table: [u8; 256],
-    /// Precomputed antilog table for fast multiplication
-    antilog_table: [u8; 256],
+    /// Precomputed antilog table for fast multiplication (extended for wraparound)
+    antilog_table: [u8; 512],
 }
 
 impl GF256 {
@@ -17,7 +17,7 @@ impl GF256 {
     pub fn new() -> Self {
         let mut gf = Self {
             log_table: [0; 256],
-            antilog_table: [0; 256],
+            antilog_table: [0; 512],
         };
         gf.build_tables();
         gf
@@ -25,38 +25,43 @@ impl GF256 {
     
     /// Build logarithm and antilog tables for fast multiplication
     fn build_tables(&mut self) {
-        // Use the irreducible polynomial x^8 + x^4 + x^3 + x + 1 = 0x11b
-        // But for reduction, we only need the lower 8 bits: 0x1b
-        const REDUCTION_POLY: u8 = 0x1b;
+        const PRIMITIVE: u8 = 0x03;  // Correct primitive element
+        const POLY: u16 = 0x11b;     // Full polynomial for multiplication
         
-        // Build antilog table (powers of the primitive element 2)
-        let mut value = 1u8;
+        let mut value: u16 = 1;
         for i in 0..255 {
-            self.antilog_table[i] = value;
-            
-            // Only set log_table entry if it hasn't been set yet
-            // This prevents overwriting log[1] = 0 when value cycles back to 1
-            if self.log_table[value as usize] == 0 && value != 1 {
-                self.log_table[value as usize] = i as u8;
-            } else if value == 1 && i == 0 {
-                // Special case: ensure log[1] = 0 is set correctly on first iteration
-                self.log_table[1] = 0;
-            }
-            
-            // Multiply by 2 (the primitive element) in GF(256)
-            let high_bit = value & 0x80;
-            value <<= 1;
-            if high_bit != 0 {
-                value ^= REDUCTION_POLY;
-            }
+            self.antilog_table[i] = value as u8;
+            self.log_table[value as usize] = i as u8;
+            value = Self::multiply_no_table(value as u8, PRIMITIVE, POLY) as u16;
         }
         
-        // Complete the cycle - antilog[255] should equal antilog[0] = 1
-        self.antilog_table[255] = self.antilog_table[0];
+        // Copy for wraparound - this allows safe indexing beyond 255
+        for i in 255..512 {
+            self.antilog_table[i] = self.antilog_table[i - 255];
+        }
         
         // Special case: log(0) is undefined, but we set it to 0 for convenience
-        // This won't be used in practice since we check for zero in multiply/divide
         self.log_table[0] = 0;
+    }
+    
+    /// Multiply two elements without using lookup tables (for table construction)
+    fn multiply_no_table(a: u8, b: u8, poly: u16) -> u8 {
+        let mut result: u16 = 0;
+        let mut a = a as u16;
+        let mut b = b as u16;
+        
+        for _ in 0..8 {
+            if b & 1 != 0 {
+                result ^= a;
+            }
+            let carry = a & 0x80;
+            a <<= 1;
+            if carry != 0 {
+                a ^= poly;
+            }
+            b >>= 1;
+        }
+        (result & 0xFF) as u8
     }
     
     /// Addition in GF(256) - same as XOR
@@ -75,11 +80,10 @@ impl GF256 {
             return 0;
         }
         
-        let log_a = self.log_table[a as usize] as u16;
-        let log_b = self.log_table[b as usize] as u16;
-        let log_result = (log_a + log_b) % 255;
+        let log_a = self.log_table[a as usize] as usize;
+        let log_b = self.log_table[b as usize] as usize;
         
-        self.antilog_table[log_result as usize]
+        self.antilog_table[(log_a + log_b) % 255]
     }
     
     /// Division in GF(256) - multiplication by multiplicative inverse
@@ -91,8 +95,8 @@ impl GF256 {
             return Ok(0);
         }
         
-        let log_a = self.log_table[a as usize] as u16;
-        let log_b = self.log_table[b as usize] as u16;
+        let log_a = self.log_table[a as usize] as i16;
+        let log_b = self.log_table[b as usize] as i16;
         let log_result = (255 + log_a - log_b) % 255;
         
         Ok(self.antilog_table[log_result as usize])
@@ -104,10 +108,10 @@ impl GF256 {
             return Err("Zero has no multiplicative inverse");
         }
         
-        let log_a = self.log_table[a as usize] as u16;
+        let log_a = self.log_table[a as usize] as usize;
         let log_inverse = (255 - log_a) % 255;
         
-        Ok(self.antilog_table[log_inverse as usize])
+        Ok(self.antilog_table[log_inverse])
     }
     
     /// Power operation in GF(256)
@@ -119,10 +123,10 @@ impl GF256 {
             return 1;
         }
         
-        let log_base = self.log_table[base as usize] as u16;
-        let log_result = (log_base * exponent as u16) % 255;
+        let log_base = self.log_table[base as usize] as usize;
+        let log_result = (log_base * exponent as usize) % 255;
         
-        self.antilog_table[log_result as usize]
+        self.antilog_table[log_result]
     }
     
     /// Evaluate polynomial at given point
