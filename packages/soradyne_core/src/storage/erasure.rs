@@ -98,8 +98,8 @@ impl ShamirErasureEncoder {
         }
         
         // 1. Generate a new master secret key (32 bytes for AES-256)
-        let mut rng = rand::thread_rng();
-        let master_key: [u8; 32] = rng.gen();
+        let mut rng = rand::rng();
+        let master_key: [u8; 32] = rng.random();
         
         // 2. Encrypt the block data chunk by chunk
         let encrypted_data = self.encrypt_data_chunked(data, &master_key, block_id)?;
@@ -264,7 +264,7 @@ impl ShamirErasureEncoder {
     fn split_secret(&self, secret: &[u8; 32]) -> Result<Vec<KeyShare>, FlowError> {
         // Simple Shamir implementation - in production, use a proper library
         let mut shares = Vec::new();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         
         // For now, use a simple XOR-based secret sharing as placeholder
         // TODO: Replace with proper Shamir implementation
