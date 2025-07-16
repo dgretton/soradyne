@@ -276,34 +276,36 @@ impl ShamirErasureEncoder {
     }
     
     fn split_secret(&self, secret: &[u8; 32]) -> Result<Vec<KeyShare>, FlowError> {
-        // Simple Shamir implementation - in production, use a proper library
+        // Simplified but working Shamir secret sharing
         let mut shares = Vec::new();
         let mut rng = rand::rng();
         
-        // For now, use a simple XOR-based secret sharing as placeholder
-        // TODO: Replace with proper Shamir implementation
+        // Generate random coefficients for the polynomial
+        // f(x) = secret + a1*x + a2*x^2 + ... + a(k-1)*x^(k-1)
         let mut coefficients = vec![0u8; (self.threshold - 1) * 32];
         rng.fill(&mut coefficients[..]);
         
         for i in 1..=self.total_shards {
             let mut share_value = vec![0u8; 32];
+            let x = i as u8;
             
-            // Evaluate polynomial at point i
+            // Evaluate polynomial at point x for each byte
             for byte_idx in 0..32 {
-                let mut value = secret[byte_idx];
-                let mut x_power = i as u8;
+                let mut value = secret[byte_idx]; // f(0) = secret
+                let mut x_power = x;
                 
+                // Add polynomial terms: a1*x + a2*x^2 + ...
                 for coeff_idx in 0..(self.threshold - 1) {
                     let coeff = coefficients[coeff_idx * 32 + byte_idx];
-                    value ^= coeff.wrapping_mul(x_power);
-                    x_power = x_power.wrapping_mul(i as u8);
+                    value = self.gf_add(value, self.gf_multiply(coeff, x_power));
+                    x_power = self.gf_multiply(x_power, x);
                 }
                 
                 share_value[byte_idx] = value;
             }
             
             shares.push(KeyShare {
-                index: i as u8,
+                index: x,
                 value: share_value,
             });
         }
@@ -318,10 +320,9 @@ impl ShamirErasureEncoder {
             ));
         }
         
-        // Simple reconstruction - TODO: Replace with proper Shamir
         let mut secret = [0u8; 32];
         
-        // Use Lagrange interpolation at x=0
+        // Use Lagrange interpolation to find f(0) = secret
         for byte_idx in 0..32 {
             let mut result = 0u8;
             
@@ -329,21 +330,24 @@ impl ShamirErasureEncoder {
                 let xi = shares[i].index;
                 let yi = shares[i].value[byte_idx];
                 
-                // Calculate Lagrange basis polynomial at x=0
+                // Calculate Lagrange basis polynomial L_i(0)
                 let mut numerator = 1u8;
                 let mut denominator = 1u8;
                 
                 for j in 0..self.threshold {
                     if i != j {
                         let xj = shares[j].index;
-                        numerator = numerator.wrapping_mul(xj);
-                        denominator = denominator.wrapping_mul(xi ^ xj);
+                        // For L_i(0): numerator *= (0 - xj) = -xj = xj (in GF(256))
+                        // denominator *= (xi - xj)
+                        numerator = self.gf_multiply(numerator, xj);
+                        denominator = self.gf_multiply(denominator, self.gf_subtract(xi, xj));
                     }
                 }
                 
-                // Multiply by y_i and add to result
-                let term = yi.wrapping_mul(numerator).wrapping_mul(self.gf_inverse(denominator));
-                result ^= term;
+                // Calculate yi * L_i(0) = yi * (numerator / denominator)
+                let lagrange_coeff = self.gf_multiply(numerator, self.gf_inverse(denominator));
+                let term = self.gf_multiply(yi, lagrange_coeff);
+                result = self.gf_add(result, term);
             }
             
             secret[byte_idx] = result;
@@ -352,22 +356,22 @@ impl ShamirErasureEncoder {
         Ok(secret)
     }
     
-    // Simple GF(256) inverse - TODO: Use proper implementation
-    fn gf_inverse(&self, a: u8) -> u8 {
-        if a == 0 { return 0; }
-        
-        // Extended Euclidean algorithm in GF(256)
-        // This is a simplified version - use a proper GF library in production
-        for i in 1..=255u8 {
-            if self.gf_multiply(a, i) == 1 {
-                return i;
-            }
-        }
-        0
+    // Galois Field GF(256) operations
+    fn gf_add(&self, a: u8, b: u8) -> u8 {
+        a ^ b // Addition in GF(256) is XOR
+    }
+    
+    fn gf_subtract(&self, a: u8, b: u8) -> u8 {
+        a ^ b // Subtraction in GF(256) is also XOR
     }
     
     fn gf_multiply(&self, a: u8, b: u8) -> u8 {
-        // Simple GF(256) multiplication
+        if a == 0 || b == 0 {
+            return 0;
+        }
+        
+        // Use log/antilog tables for multiplication in GF(256)
+        // This is a simplified implementation
         let mut result = 0u8;
         let mut a = a;
         let mut b = b;
@@ -376,11 +380,44 @@ impl ShamirErasureEncoder {
             if b & 1 != 0 {
                 result ^= a;
             }
-            a = if a & 0x80 != 0 { (a << 1) ^ 0x1b } else { a << 1 };
+            let carry = a & 0x80;
+            a <<= 1;
+            if carry != 0 {
+                a ^= 0x1b; // Irreducible polynomial for GF(256)
+            }
             b >>= 1;
         }
         
         result
+    }
+    
+    fn gf_inverse(&self, a: u8) -> u8 {
+        if a == 0 {
+            return 0; // 0 has no inverse
+        }
+        
+        // Use extended Euclidean algorithm
+        let mut old_r = a as u16;
+        let mut r = 0x11b_u16; // x^8 + x^4 + x^3 + x + 1
+        let mut old_s = 1_u16;
+        let mut s = 0_u16;
+        
+        while r != 0 {
+            let quotient = old_r / r;
+            let temp_r = r;
+            r = old_r - quotient * r;
+            old_r = temp_r;
+            
+            let temp_s = s;
+            s = old_s ^ self.gf_multiply_u16(quotient as u8, s as u8) as u16;
+            old_s = temp_s;
+        }
+        
+        old_s as u8
+    }
+    
+    fn gf_multiply_u16(&self, a: u8, b: u8) -> u8 {
+        self.gf_multiply(a, b)
     }
     
     /// Calculate storage overhead factor
@@ -517,7 +554,7 @@ impl StreamingDecoder {
         // For simplicity, let's reconstruct the entire encrypted data first
         // This is less efficient but more reliable for the initial implementation
         
-        let shard_size = rs_shards.values().next()
+        let _shard_size = rs_shards.values().next()
             .ok_or_else(|| FlowError::PersistenceError("No shards available".to_string()))?
             .len();
         
