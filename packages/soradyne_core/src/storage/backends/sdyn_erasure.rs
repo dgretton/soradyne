@@ -1,7 +1,7 @@
-//! Sdyn erasure coding backend implementation
+//! Soradyne erasure coding backend implementation
 //! 
 //! This backend uses the existing BlockManager to provide dissolution storage
-//! through sdyn erasure coding and shard distribution across rimsd directories.
+//! through soradyne erasure coding and shard distribution across rimsd directories.
 
 use async_trait::async_trait;
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ use crate::storage::dissolution::{
 use crate::storage::block_manager::BlockManager;
 use crate::flow::FlowError;
 
-/// Implementation using sdyn erasure coding via BlockManager
+/// Implementation using soradyne erasure coding via BlockManager
 #[derive(Clone)]
 pub struct SdynErasureBackend {
     block_manager: Arc<BlockManager>,
@@ -228,7 +228,7 @@ impl DissolutionStorage for SdynErasureBackend {
         // For now, don't allow config changes after creation
         // This would require rebuilding the BlockManager
         Err(FlowError::PersistenceError(
-            "Configuration updates not supported for sdyn erasure backend".to_string()
+            "Configuration updates not supported for soradyne erasure backend".to_string()
         ))
     }
     

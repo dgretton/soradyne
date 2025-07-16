@@ -9,7 +9,7 @@ use crate::flow::FlowError;
 
 /// Example: Basic dissolution storage usage
 pub async fn basic_dissolution_example() -> Result<(), FlowError> {
-    // Create configuration for sdyn erasure backend
+    // Create configuration for soradyne erasure backend
     let config = DissolutionStorageFactory::create_sdyn_erasure_config(
         3, // threshold: need 3 shards to reconstruct
         5, // total_shards: create 5 shards total
@@ -114,7 +114,7 @@ pub async fn backend_detection_example() -> Result<(), FlowError> {
     
     match &config.backend_config {
         BackendConfig::SdynErasure { rimsd_paths, .. } => {
-            println!("Using sdyn erasure backend with {} devices", rimsd_paths.len());
+            println!("Using soradyne erasure backend with {} devices", rimsd_paths.len());
         }
         BackendConfig::BcacheFS { device_paths, .. } => {
             println!("Using bcachefs backend with {} devices", device_paths.len());

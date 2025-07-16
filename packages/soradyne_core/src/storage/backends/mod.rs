@@ -201,7 +201,7 @@ impl DissolutionStorageFactory {
         backends
     }
     
-    /// Create a configuration for sdyn erasure backend with auto-discovery
+    /// Create a configuration for soradyne erasure backend with auto-discovery
     pub async fn create_sdyn_erasure_config(
         threshold: usize,
         total_shards: usize,
@@ -236,7 +236,7 @@ impl DissolutionStorageFactory {
     ) -> Result<DissolutionConfig, FlowError> {
         let available = Self::detect_available_backends().await;
         
-        // Prefer bcachefs on Linux if available, otherwise use sdyn erasure
+        // Prefer bcachefs on Linux if available, otherwise use soradyne erasure
         if available.contains(&"bcachefs".to_string()) {
             // TODO: Implement bcachefs config creation
             Self::create_sdyn_erasure_config(threshold, total_shards, metadata_path).await
