@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 use crate::storage::{
-    DissolutionStorageFactory, DissolutionConfig, DissolutionFile,
-    dissolution::BackendConfig
+    DissolutionStorageFactory, DissolutionFile,
+    dissolution::{BackendConfig, DissolutionStorage}
 };
 use crate::flow::FlowError;
 

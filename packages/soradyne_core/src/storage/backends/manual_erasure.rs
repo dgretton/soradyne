@@ -6,7 +6,6 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use crate::storage::dissolution::{
     DissolutionStorage, DissolutionConfig, BlockId, BlockInfo, StorageStats, 
@@ -16,6 +15,7 @@ use crate::storage::block_manager::BlockManager;
 use crate::flow::FlowError;
 
 /// Implementation using manual erasure coding via BlockManager
+#[derive(Clone)]
 pub struct ManualErasureBackend {
     block_manager: Arc<BlockManager>,
     config: DissolutionConfig,
@@ -149,7 +149,7 @@ impl DissolutionStorage for ManualErasureBackend {
         }
         
         // TODO: Implement device health checking
-        let device_health = storage_info.rimsd_paths.iter().map(|path| {
+        let device_health: Vec<_> = storage_info.rimsd_paths.iter().map(|path| {
             DeviceHealth {
                 device_id: path.to_string_lossy().to_string(),
                 path: path.clone(),
