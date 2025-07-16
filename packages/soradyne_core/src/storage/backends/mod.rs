@@ -9,6 +9,7 @@ pub use manual_erasure::ManualErasureBackend;
 #[cfg(target_os = "linux")]
 pub use bcachefs::BcacheFSBackend;
 
+use std::path::PathBuf;
 use crate::storage::dissolution::{DissolutionStorage, DissolutionConfig, BackendConfig};
 use crate::flow::FlowError;
 use std::sync::Arc;

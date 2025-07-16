@@ -1,15 +1,3 @@
-pub mod local_file;
-pub mod block;
-pub mod erasure;
-pub mod block_manager;
-pub mod block_file;
-pub mod device_identity;
-
-pub use local_file::LocalFileStorage;
-pub use local_file::NoOpAuthenticator;
-pub use block_manager::{BlockManager, StorageInfo, BlockDistribution, ShardInfo, DemonstrationResult};
-pub use block_file::BlockFile;
-pub use device_identity::{BasicFingerprint, BayesianDeviceIdentifier, fingerprint_device, discover_soradyne_volumes};
 //! Storage subsystem for Soradyne
 //! 
 //! This module provides dissolution storage capabilities with multiple backend
@@ -25,8 +13,16 @@ pub mod local_file;
 // New abstraction layer
 pub mod dissolution;
 pub mod backends;
+pub mod examples;
 
-// Re-export key types for convenience
+// Legacy exports
+pub use local_file::LocalFileStorage;
+pub use local_file::NoOpAuthenticator;
+pub use block_manager::{BlockManager, StorageInfo, BlockDistribution, ShardInfo, DemonstrationResult};
+pub use block_file::BlockFile;
+pub use device_identity::{BasicFingerprint, BayesianDeviceIdentifier, fingerprint_device, discover_soradyne_volumes};
+
+// New abstraction exports
 pub use dissolution::{
     DissolutionStorage, DissolutionConfig, DissolutionFile, BlockId,
     BlockInfo, StorageStats, DissolutionDemo
