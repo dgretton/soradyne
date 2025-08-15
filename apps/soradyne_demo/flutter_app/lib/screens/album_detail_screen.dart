@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import '../services/album_service.dart';
@@ -20,6 +21,8 @@ class AlbumDetailScreen extends StatefulWidget {
 }
 
 class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
+  bool _isDragOver = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,111 +71,120 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
           if (items.isEmpty) {
             return Center(
-              child: DragTarget<Object>(
-                onWillAcceptWithDetails: (details) {
-                  print('Drag will accept check: ${details.data} (type: ${details.data.runtimeType})');
-                  // Accept any data - we'll handle conversion in onAccept
-                  return details.data != null;
+              child: DropTarget(
+                onDragDone: (detail) {
+                  print('Files dropped: ${detail.files.map((f) => f.path).toList()}');
+                  _handleDroppedFiles(detail.files.map((f) => File(f.path)).toList());
                 },
-                onAcceptWithDetails: (details) {
-                  print('Data dropped: ${details.data} (type: ${details.data.runtimeType})');
-                  _handleDroppedData(details.data);
+                onDragEntered: (detail) {
+                  print('Drag entered with ${detail.files.length} files');
+                  setState(() {
+                    _isDragOver = true;
+                  });
                 },
-                builder: (context, candidateData, rejectedData) {
-                  final isDragOver = candidateData.isNotEmpty;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: isDragOver ? Colors.blue.withOpacity(0.1) : Colors.transparent,
-                      border: Border.all(
-                        color: isDragOver ? Colors.blue : Colors.grey.shade300,
-                        width: 2,
-                        style: BorderStyle.solid,
+                onDragExited: (detail) {
+                  print('Drag exited');
+                  setState(() {
+                    _isDragOver = false;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: _isDragOver ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                    border: Border.all(
+                      color: _isDragOver ? Colors.blue : Colors.grey.shade300,
+                      width: 2,
+                      style: BorderStyle.solid,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(40),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isDragOver ? Icons.cloud_upload : Icons.photo_outlined,
+                        size: 64,
+                        color: _isDragOver ? Colors.blue : Colors.grey,
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isDragOver ? Icons.cloud_upload : Icons.photo_outlined,
-                          size: 64,
-                          color: isDragOver ? Colors.blue : Colors.grey,
+                      const SizedBox(height: 16),
+                      Text(
+                        _isDragOver ? 'Drop files here!' : 'No media yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: _isDragOver ? Colors.blue : Colors.grey,
+                          fontWeight: _isDragOver ? FontWeight.bold : FontWeight.normal,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          isDragOver ? 'Drop files here!' : 'No media yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: isDragOver ? Colors.blue : Colors.grey,
-                            fontWeight: isDragOver ? FontWeight.bold : FontWeight.normal,
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isDragOver 
+                          ? 'Release to upload photos, videos, or audio'
+                          : 'Supports JPG, PNG, MP4, MOV, MP3, WAV, and more',
+                        style: TextStyle(
+                          color: _isDragOver ? Colors.blue : Colors.grey,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isDragOver 
-                            ? 'Release to upload photos, videos, or audio'
-                            : 'Supports JPG, PNG, MP4, MOV, MP3, WAV, and more',
-                          style: TextStyle(
-                            color: isDragOver ? Colors.blue : Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            print('Add Media button pressed');
-                            _pickAndUploadImage();
-                          },
-                          icon: const Icon(Icons.add_a_photo),
-                          label: const Text('Add Media'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          print('Add Media button pressed');
+                          _pickAndUploadImage();
+                        },
+                        icon: const Icon(Icons.add_a_photo),
+                        label: const Text('Add Media'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           }
 
-          return DragTarget<Object>(
-            onWillAcceptWithDetails: (details) {
-              print('Grid drag will accept check: ${details.data} (type: ${details.data.runtimeType})');
-              return details.data != null;
+          return DropTarget(
+            onDragDone: (detail) {
+              print('Files dropped on grid: ${detail.files.map((f) => f.path).toList()}');
+              _handleDroppedFiles(detail.files.map((f) => File(f.path)).toList());
             },
-            onAcceptWithDetails: (details) {
-              print('Data dropped on grid: ${details.data} (type: ${details.data.runtimeType})');
-              _handleDroppedData(details.data);
+            onDragEntered: (detail) {
+              print('Grid drag entered with ${detail.files.length} files');
+              setState(() {
+                _isDragOver = true;
+              });
             },
-            builder: (context, candidateData, rejectedData) {
-              final isDragOver = candidateData.isNotEmpty;
-              return Container(
-                decoration: isDragOver ? BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  border: Border.all(color: Colors.blue, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ) : null,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
-                    ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return _MediaThumbnail(
-                        item: item,
-                        albumId: widget.album.id,
-                        onTap: () => _openMediaViewer(context, items, index),
-                      );
-                    },
+            onDragExited: (detail) {
+              print('Grid drag exited');
+              setState(() {
+                _isDragOver = false;
+              });
+            },
+            child: Container(
+              decoration: _isDragOver ? BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                border: Border.all(color: Colors.blue, width: 2),
+                borderRadius: BorderRadius.circular(8),
+              ) : null,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
                   ),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return _MediaThumbnail(
+                      item: item,
+                      albumId: widget.album.id,
+                      onTap: () => _openMediaViewer(context, items, index),
+                    );
+                  },
                 ),
-              );
-            },
+              ),
+            ),
           );
         },
       ),
@@ -372,51 +384,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     }
   }
 
-  void _handleDroppedData(Object data) async {
-    print('Handling dropped data: $data (type: ${data.runtimeType})');
-    
-    List<File> files = [];
-    
-    // Convert different data types to File objects
-    if (data is List<File>) {
-      files = data;
-    } else if (data is List<String>) {
-      // File paths as strings
-      files = data.map((path) => File(path)).toList();
-    } else if (data is String) {
-      // Single file path
-      files = [File(data)];
-    } else if (data is List) {
-      // Try to convert list items to files
-      for (final item in data) {
-        if (item is String) {
-          files.add(File(item));
-        } else if (item is File) {
-          files.add(item);
-        } else {
-          print('Unknown item type in dropped list: ${item.runtimeType}');
-        }
-      }
-    } else {
-      print('Unsupported drop data type: ${data.runtimeType}');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unsupported file drop format'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-    
-    if (files.isEmpty) {
-      print('No valid files found in dropped data');
-      return;
-    }
-    
-    _handleDroppedFiles(files);
-  }
 
   void _handleDroppedFiles(List<File> files) async {
     print('Handling ${files.length} dropped files');
