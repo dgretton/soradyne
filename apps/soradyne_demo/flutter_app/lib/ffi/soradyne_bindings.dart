@@ -1,6 +1,7 @@
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
+import 'package:path/path.dart' as path;
 
 // Define the C function signatures
 typedef SoradyneInitC = Int32 Function();
@@ -58,7 +59,16 @@ class SoradyneBindings {
     // Load the dynamic library
     if (Platform.isMacOS) {
       // For macOS, the library should be bundled with the app
-      _lib = DynamicLibrary.open('libsoradyne.dylib');
+      try {
+        // Try loading from the app bundle's MacOS directory first
+        final executablePath = Platform.resolvedExecutable;
+        final appDir = path.dirname(executablePath);
+        final dylibPath = path.join(appDir, 'libsoradyne.dylib');
+        _lib = DynamicLibrary.open(dylibPath);
+      } catch (e) {
+        // Fallback to loading by name
+        _lib = DynamicLibrary.open('libsoradyne.dylib');
+      }
     } else if (Platform.isLinux) {
       _lib = DynamicLibrary.open('libsoradyne.so');
     } else if (Platform.isWindows) {
