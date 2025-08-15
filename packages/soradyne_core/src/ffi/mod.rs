@@ -661,14 +661,64 @@ pub extern "C" fn soradyne_free_media_data(data_ptr: *mut u8, size: usize) {
 // FFI function to get storage status
 #[no_mangle]
 pub extern "C" fn soradyne_get_storage_status() -> *mut c_char {
-    // For now, return mock data until full SD card discovery is implemented
-    let status_json = serde_json::json!({
-        "available_devices": 4,
-        "required_threshold": 3,
-        "can_read_data": true,
-        "missing_devices": 0,
-        "device_paths": ["/tmp/rimsd_0", "/tmp/rimsd_1", "/tmp/rimsd_2", "/tmp/rimsd_3"],
+    // Create a runtime to handle the async discovery
+    let rt = match Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            println!("Failed to create runtime for storage status: {}", e);
+            let error_status = serde_json::json!({
+                "available_devices": 0,
+                "required_threshold": 3,
+                "can_read_data": false,
+                "missing_devices": 3,
+                "device_paths": [],
+                "error": "Failed to create runtime"
+            });
+            return CString::new(error_status.to_string()).unwrap().into_raw();
+        }
+    };
+    
+    // Discover SD cards
+    let discovery_result = rt.block_on(async {
+        crate::storage::device_identity::discover_soradyne_volumes().await
     });
+    
+    let status_json = match discovery_result {
+        Ok(volumes) => {
+            let available_devices = volumes.len();
+            let required_threshold = 3;
+            let can_read_data = available_devices >= required_threshold;
+            let missing_devices = if available_devices < required_threshold {
+                required_threshold - available_devices
+            } else {
+                0
+            };
+            
+            let device_paths: Vec<String> = volumes
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect();
+            
+            serde_json::json!({
+                "available_devices": available_devices,
+                "required_threshold": required_threshold,
+                "can_read_data": can_read_data,
+                "missing_devices": missing_devices,
+                "device_paths": device_paths,
+            })
+        }
+        Err(e) => {
+            println!("SD card discovery failed: {}", e);
+            serde_json::json!({
+                "available_devices": 0,
+                "required_threshold": 3,
+                "can_read_data": false,
+                "missing_devices": 3,
+                "device_paths": [],
+                "error": format!("Discovery failed: {}", e)
+            })
+        }
+    };
     
     let status_str = status_json.to_string();
     CString::new(status_str).unwrap().into_raw()
@@ -677,9 +727,40 @@ pub extern "C" fn soradyne_get_storage_status() -> *mut c_char {
 // FFI function to refresh storage
 #[no_mangle]
 pub extern "C" fn soradyne_refresh_storage() -> i32 {
-    // For now, always return success
-    println!("Storage refreshed: 4 devices found");
-    1 // 1 = ready
+    // Create a runtime to handle the async discovery
+    let rt = match Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            println!("Failed to create runtime for storage refresh: {}", e);
+            return -1;
+        }
+    };
+    
+    // Discover SD cards
+    let discovery_result = rt.block_on(async {
+        crate::storage::device_identity::discover_soradyne_volumes().await
+    });
+    
+    match discovery_result {
+        Ok(volumes) => {
+            let available_devices = volumes.len();
+            let required_threshold = 3;
+            let can_read_data = available_devices >= required_threshold;
+            
+            println!("Storage refreshed: {} devices found (need {} for operation)", 
+                     available_devices, required_threshold);
+            
+            if can_read_data {
+                1 // Ready
+            } else {
+                0 // Not ready
+            }
+        }
+        Err(e) => {
+            println!("Storage refresh failed: {}", e);
+            -1 // Error
+        }
+    }
 }
 
 // FFI function to cleanup
