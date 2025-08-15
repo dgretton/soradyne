@@ -37,6 +37,12 @@ typedef SoradyneGetMediaHigh = int Function(Pointer<Utf8>, Pointer<Utf8>, Pointe
 typedef SoradyneFreeMediaDataC = Void Function(Pointer<Uint8>, Size);
 typedef SoradyneFreeMediaData = void Function(Pointer<Uint8>, int);
 
+typedef SoradyneGetStorageStatusC = Pointer<Utf8> Function();
+typedef SoradyneGetStorageStatus = Pointer<Utf8> Function();
+
+typedef SoradyneRefreshStorageC = Int32 Function();
+typedef SoradyneRefreshStorage = int Function();
+
 typedef SoradyneCleanupC = Void Function();
 typedef SoradyneCleanup = void Function();
 
@@ -53,6 +59,8 @@ class SoradyneBindings {
   late final SoradyneGetMediaHigh _getMediaHigh;
   late final SoradyneFreeMediaData _freeMediaData;
   late final SoradyneFreeString _freeString;
+  late final SoradyneGetStorageStatus _getStorageStatus;
+  late final SoradyneRefreshStorage _refreshStorage;
   late final SoradyneCleanup _cleanup;
 
   SoradyneBindings() {
@@ -98,6 +106,8 @@ class SoradyneBindings {
     _getMediaHigh = _lib.lookupFunction<SoradyneGetMediaHighC, SoradyneGetMediaHigh>('soradyne_get_media_high');
     _freeMediaData = _lib.lookupFunction<SoradyneFreeMediaDataC, SoradyneFreeMediaData>('soradyne_free_media_data');
     _freeString = _lib.lookupFunction<SoradyneFreeStringC, SoradyneFreeString>('soradyne_free_string');
+    _getStorageStatus = _lib.lookupFunction<SoradyneGetStorageStatusC, SoradyneGetStorageStatus>('soradyne_get_storage_status');
+    _refreshStorage = _lib.lookupFunction<SoradyneRefreshStorageC, SoradyneRefreshStorage>('soradyne_refresh_storage');
     _cleanup = _lib.lookupFunction<SoradyneCleanupC, SoradyneCleanup>('soradyne_cleanup');
   }
 
@@ -193,6 +203,17 @@ class SoradyneBindings {
       malloc.free(dataPtrPtr);
       malloc.free(sizePtr);
     }
+  }
+
+  String getStorageStatus() {
+    final ptr = _getStorageStatus();
+    final result = ptr.toDartString();
+    _freeString(ptr);
+    return result;
+  }
+
+  int refreshStorage() {
+    return _refreshStorage();
   }
 
   void cleanup() {
