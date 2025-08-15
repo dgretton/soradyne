@@ -70,30 +70,54 @@ pub struct AlbumSystem {
 
 impl AlbumSystem {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        println!("Creating AlbumSystem...");
+        
         // Create data directory
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         let data_dir = PathBuf::from(home_dir).join(".soradyne_albums");
-        std::fs::create_dir_all(&data_dir)?;
+        println!("Data directory: {:?}", data_dir);
+        
+        std::fs::create_dir_all(&data_dir).map_err(|e| {
+            println!("Failed to create data directory: {}", e);
+            e
+        })?;
+        println!("Created data directory successfully");
         
         // Create rimsd directories
         let mut rimsd_dirs = Vec::new();
         for i in 0..4 {
             let device_dir = data_dir.join(format!("rimsd_{}", i));
             let rimsd_dir = device_dir.join(".rimsd");
-            std::fs::create_dir_all(&rimsd_dir)?;
+            println!("Creating rimsd directory: {:?}", rimsd_dir);
+            std::fs::create_dir_all(&rimsd_dir).map_err(|e| {
+                println!("Failed to create rimsd directory {}: {}", i, e);
+                e
+            })?;
             rimsd_dirs.push(rimsd_dir);
         }
+        println!("Created {} rimsd directories", rimsd_dirs.len());
         
         let metadata_path = data_dir.join("metadata.json");
+        println!("Metadata path: {:?}", metadata_path);
         
+        println!("Creating BlockManager...");
         let block_manager = Arc::new(BlockManager::new(
             rimsd_dirs,
             metadata_path,
             3, // threshold
             4, // total_shards
-        )?);
+        ).map_err(|e| {
+            println!("Failed to create BlockManager: {}", e);
+            e
+        })?);
+        println!("BlockManager created successfully");
         
-        let runtime = Arc::new(Runtime::new()?);
+        println!("Creating Tokio runtime...");
+        let runtime = Arc::new(Runtime::new().map_err(|e| {
+            println!("Failed to create Tokio runtime: {}", e);
+            e
+        })?);
+        println!("Tokio runtime created successfully");
         
         let mut system = Self {
             albums: HashMap::new(),
@@ -103,9 +127,15 @@ impl AlbumSystem {
             albums_index_block_id: None,
         };
         
+        println!("Loading existing albums from block storage...");
         // Load existing albums from block storage
-        system.load_albums_from_blocks()?;
+        system.load_albums_from_blocks().map_err(|e| {
+            println!("Failed to load albums from blocks: {}", e);
+            e
+        })?;
+        println!("Albums loaded successfully");
         
+        println!("AlbumSystem initialization complete");
         Ok(system)
     }
     
@@ -232,14 +262,21 @@ impl AlbumSystem {
 // FFI function to initialize the album system
 #[no_mangle]
 pub extern "C" fn soradyne_init() -> i32 {
+    println!("Starting Soradyne initialization...");
     match AlbumSystem::new() {
         Ok(system) => {
+            println!("AlbumSystem created successfully");
             unsafe {
                 ALBUM_SYSTEM = Some(Arc::new(Mutex::new(system)));
             }
+            println!("Soradyne initialization completed successfully");
             0 // Success
         }
-        Err(_) => -1 // Error
+        Err(e) => {
+            println!("Soradyne initialization failed: {}", e);
+            eprintln!("Soradyne initialization failed: {}", e);
+            -1 // Error
+        }
     }
 }
 
