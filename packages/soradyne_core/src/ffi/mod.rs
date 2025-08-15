@@ -498,6 +498,17 @@ pub extern "C" fn soradyne_upload_media(album_id_ptr: *const c_char, file_path_p
                                 let crdt = album.get_or_create(&media_id);
                                 if crdt.apply_local(op).is_ok() {
                                     println!("Successfully uploaded media: {}", media_id);
+                                    
+                                    // Save albums to persistent storage immediately after adding media
+                                    let rt = Runtime::new().unwrap();
+                                    if let Err(e) = rt.block_on(async {
+                                        system.save_albums_to_blocks().await
+                                    }) {
+                                        println!("Failed to save albums after media upload: {}", e);
+                                    } else {
+                                        println!("Albums saved successfully after media upload");
+                                    }
+                                    
                                     return 0; // Success
                                 } else {
                                     println!("Failed to apply CRDT operation");
