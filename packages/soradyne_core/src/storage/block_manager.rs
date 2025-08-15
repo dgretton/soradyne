@@ -462,13 +462,40 @@ impl BlockManager {
             ));
         }
         
+        println!("🔍 Reconstruction Diagnostics:");
+        println!("   Total shards: {}", shards_with_keys.len());
+        println!("   Block ID: {}", hex::encode(&metadata.id));
+        println!("   Expected size: {}", metadata.size);
+        println!("   Encryption version: {}", metadata.encryption_version);
+        
+        // Log shard details
+        for (i, (shard_index, shard_with_key)) in shards_with_keys.iter().enumerate() {
+            println!("   Shard {}: {} bytes, Key Share: {} bytes", 
+                shard_index, 
+                shard_with_key.shard_data.len(), 
+                serde_json::to_vec(&shard_with_key.key_share).map(|v| v.len()).unwrap_or(0)
+            );
+        }
+
         println!("🔧 Reconstructing data from {} shards using Shamir + Reed-Solomon...", shards_with_keys.len());
         
+        // Validate shard sizes are consistent
+        let shard_sizes: Vec<usize> = shards_with_keys.values().map(|shard| shard.shard_data.len()).collect();
+        if let (Some(min_size), Some(max_size)) = (shard_sizes.iter().min(), shard_sizes.iter().max()) {
+            if min_size != max_size {
+                println!("❌ Inconsistent shard sizes: min={}, max={}, all={:?}", min_size, max_size, shard_sizes);
+                return Err(FlowError::PersistenceError("Inconsistent shard sizes".to_string()));
+            }
+        }
+
         // Create streaming decoder and reconstruct
-        let mut decoder = self.erasure_encoder.decode_with_streaming(shards_with_keys, &metadata.id, metadata.size).map_err(|e| {
-            println!("❌ Failed to create streaming decoder: {}", e);
-            e
-        })?;
+        let mut decoder = self.erasure_encoder
+            .decode_with_streaming(shards_with_keys, &metadata.id, metadata.size)
+            .map_err(|e| {
+                println!("❌ Failed to create streaming decoder: {}", e);
+                e
+            })?;
+
         let result = decoder.reconstruct_all().await.map_err(|e| {
             println!("❌ Failed to reconstruct data: {}", e);
             e
