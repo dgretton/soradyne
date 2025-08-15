@@ -127,6 +127,7 @@ impl AlbumSystem {
         // This would scan the SD cards for album metadata blocks
         
         if false { // Disable local loading
+            let index_file = self.data_dir.join("albums_index.txt");
             println!("Albums index file exists, reading...");
             let index_content = std::fs::read_to_string(&index_file)?;
             println!("Index content: {}", index_content.trim());
