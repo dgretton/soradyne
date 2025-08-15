@@ -522,7 +522,7 @@ impl StreamingDecoder {
             
             let task = tokio::spawn(async move {
                 if let Ok(chunk_data) = Self::reconstruct_chunk_static(
-                    &rs_shards, master_key, block_id, chunk_index, threshold, total_shards
+                    &rs_shards, master_key, block_id, chunk_index, threshold, total_shards, expected_size
                 ).await {
                     let mut cache = cache.lock().await;
                     cache.insert(chunk_index, chunk_data);
@@ -541,6 +541,7 @@ impl StreamingDecoder {
             chunk_index,
             self.threshold,
             self.total_shards,
+            self.expected_size,
         ).await
     }
     
@@ -551,6 +552,7 @@ impl StreamingDecoder {
         chunk_index: usize,
         threshold: usize,
         total_shards: usize,
+        expected_size: usize,
     ) -> Result<Vec<u8>, FlowError> {
         // For simplicity, let's reconstruct the entire encrypted data first
         // This is less efficient but more reliable for the initial implementation
