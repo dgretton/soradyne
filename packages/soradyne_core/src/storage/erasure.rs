@@ -555,9 +555,6 @@ impl StreamingDecoder {
         total_shards: usize,
         expected_size: usize,
     ) -> Result<Vec<u8>, FlowError> {
-        // For simplicity, let's reconstruct the entire encrypted data first
-        // This is less efficient but more reliable for the initial implementation
-        
         let _shard_size = rs_shards.values().next()
             .ok_or_else(|| FlowError::PersistenceError("No shards available".to_string()))?
             .len();
@@ -590,35 +587,61 @@ impl StreamingDecoder {
             }
         }
         
-        // Calculate the actual encrypted size (without Reed-Solomon padding)
-        // For chunk 0, we know the exact size should be original_data_size + 16 (tag)
+        // CRITICAL FIX: Calculate the actual encrypted size and remove Reed-Solomon padding
         let num_chunks = (expected_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        let last_chunk_size = if expected_size % CHUNK_SIZE == 0 { CHUNK_SIZE } else { expected_size % CHUNK_SIZE };
-        
         let mut total_encrypted_size = 0;
+        
         for i in 0..num_chunks {
-            let chunk_data_size = if i == num_chunks - 1 { last_chunk_size } else { CHUNK_SIZE };
+            let chunk_start = i * CHUNK_SIZE;
+            let chunk_end = ((i + 1) * CHUNK_SIZE).min(expected_size);
+            let chunk_data_size = chunk_end - chunk_start;
             total_encrypted_size += chunk_data_size + 16; // +16 for AES-GCM tag
         }
         
-        println!("🔧 Calculated encrypted size: {} bytes (from {} chunks)", total_encrypted_size, num_chunks);
+        println!("🔧 Original data: {} bytes, {} chunks", expected_size, num_chunks);
+        println!("🔧 Expected encrypted size: {} bytes", total_encrypted_size);
         println!("🔧 Reed-Solomon reconstructed: {} bytes", full_encrypted_data.len());
         
         // Truncate to remove Reed-Solomon padding
         full_encrypted_data.truncate(total_encrypted_size);
-        
         println!("🔧 After truncation: {} bytes", full_encrypted_data.len());
         
-        // Extract the specific chunk (each chunk is CHUNK_SIZE + 16 bytes for tag)
-        let chunk_size_with_tag = CHUNK_SIZE + 16;
-        let chunk_start = chunk_index * chunk_size_with_tag;
-        let chunk_end = (chunk_start + chunk_size_with_tag).min(full_encrypted_data.len());
+        // CRITICAL FIX: Calculate chunk boundaries correctly
+        let mut current_pos = 0;
+        let mut current_chunk_idx = 0;
         
-        if chunk_start >= full_encrypted_data.len() {
+        // Skip to our target chunk
+        while current_chunk_idx < chunk_index && current_pos < full_encrypted_data.len() {
+            let chunk_start_in_original = current_chunk_idx * CHUNK_SIZE;
+            let chunk_end_in_original = ((current_chunk_idx + 1) * CHUNK_SIZE).min(expected_size);
+            let chunk_data_size = chunk_end_in_original - chunk_start_in_original;
+            let chunk_with_tag_size = chunk_data_size + 16;
+            
+            current_pos += chunk_with_tag_size;
+            current_chunk_idx += 1;
+        }
+        
+        if current_pos >= full_encrypted_data.len() {
+            println!("🔧 Chunk {} not found: pos={}, total_size={}", chunk_index, current_pos, full_encrypted_data.len());
             return Ok(Vec::new());
         }
         
-        let encrypted_chunk = &full_encrypted_data[chunk_start..chunk_end];
+        // Calculate the size of our target chunk
+        let chunk_start_in_original = chunk_index * CHUNK_SIZE;
+        let chunk_end_in_original = ((chunk_index + 1) * CHUNK_SIZE).min(expected_size);
+        let chunk_data_size = chunk_end_in_original - chunk_start_in_original;
+        let chunk_with_tag_size = chunk_data_size + 16;
+        
+        let chunk_end_pos = (current_pos + chunk_with_tag_size).min(full_encrypted_data.len());
+        let encrypted_chunk = &full_encrypted_data[current_pos..chunk_end_pos];
+        
+        println!("🔧 Extracting chunk {}: pos={}-{}, size={}, data_size={}", 
+                 chunk_index, current_pos, chunk_end_pos, encrypted_chunk.len(), chunk_data_size);
+        
+        if encrypted_chunk.len() < 16 {
+            println!("🔧 Chunk {} too small after extraction: {} bytes", chunk_index, encrypted_chunk.len());
+            return Ok(Vec::new());
+        }
         
         // Decrypt the chunk
         Self::decrypt_chunk(encrypted_chunk, &master_key, chunk_index, &block_id)
@@ -647,17 +670,22 @@ impl StreamingDecoder {
         // Extract tag and ciphertext
         let (tag, ciphertext) = encrypted_chunk.split_at(16);
         println!("🔓 Chunk {} tag: {:02x?}", chunk_index, &tag[..8]);
-        println!("🔓 Chunk {} ciphertext[0..8]: {:02x?}", chunk_index, &ciphertext[..8.min(ciphertext.len())]);
+        println!("🔓 Chunk {} ciphertext: {} bytes, [0..8]={:02x?}", 
+                 chunk_index, ciphertext.len(), &ciphertext[..8.min(ciphertext.len())]);
         
         let mut plaintext = ciphertext.to_vec();
         
         match cipher.decrypt_in_place_detached(nonce, b"", &mut plaintext, tag.into()) {
             Ok(()) => {
-                println!("🔓 Chunk {} decrypted successfully: plaintext[0..8]={:02x?}", chunk_index, &plaintext[..8.min(plaintext.len())]);
+                println!("🔓 Chunk {} decrypted successfully: {} bytes", chunk_index, plaintext.len());
                 Ok(plaintext)
             }
             Err(e) => {
                 println!("🔓 Chunk {} decryption failed: {}", chunk_index, e);
+                println!("🔓   Expected ciphertext size: {}", ciphertext.len());
+                println!("🔓   Tag: {:02x?}", tag);
+                println!("🔓   Nonce: {:02x?}", chunk_nonce);
+                println!("🔓   Key: {:02x?}", &chunk_key[..8]);
                 Err(FlowError::PersistenceError(
                     format!("Decryption failed for chunk {}: {}", chunk_index, e)
                 ))
