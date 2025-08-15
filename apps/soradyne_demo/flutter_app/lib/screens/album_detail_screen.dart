@@ -77,7 +77,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   _handleDroppedFiles(detail.files.map((f) => File(f.path)).toList());
                 },
                 onDragEntered: (detail) {
-                  print('Drag entered with ${detail.files.length} files');
+                  print('Drag entered');
                   setState(() {
                     _isDragOver = true;
                   });
@@ -148,7 +148,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               _handleDroppedFiles(detail.files.map((f) => File(f.path)).toList());
             },
             onDragEntered: (detail) {
-              print('Grid drag entered with ${detail.files.length} files');
+              print('Grid drag entered');
               setState(() {
                 _isDragOver = true;
               });
