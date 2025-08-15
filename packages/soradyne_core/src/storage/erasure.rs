@@ -189,11 +189,31 @@ impl ShamirErasureEncoder {
     
     /// Traditional Reed-Solomon encoding (for internal use)
     fn encode_rs(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
+        println!("🔧 Reed-Solomon encoding {} bytes with threshold={}, total_shards={}", 
+                 data.len(), self.threshold, self.total_shards);
+        
         let shard_size = (data.len() + self.threshold - 1) / self.threshold;
         let padded_size = shard_size * self.threshold;
         
+        println!("🔧 Shard size: {}, padded size: {}", shard_size, padded_size);
+        
         let mut padded_data = data.to_vec();
         padded_data.resize(padded_size, 0);
+        
+        // Store the original length at the beginning for proper truncation
+        let mut length_prefixed_data = Vec::new();
+        length_prefixed_data.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        length_prefixed_data.extend_from_slice(&padded_data);
+        
+        // Recalculate with length prefix
+        let total_size = length_prefixed_data.len();
+        let shard_size = (total_size + self.threshold - 1) / self.threshold;
+        let padded_size = shard_size * self.threshold;
+        
+        length_prefixed_data.resize(padded_size, 0);
+        
+        println!("🔧 With length prefix: total_size={}, shard_size={}, padded_size={}", 
+                 total_size, shard_size, padded_size);
         
         let mut shards: Vec<Vec<u8>> = Vec::with_capacity(self.total_shards);
         
@@ -201,7 +221,7 @@ impl ShamirErasureEncoder {
         for i in 0..self.threshold {
             let start = i * shard_size;
             let end = start + shard_size;
-            shards.push(padded_data[start..end].to_vec());
+            shards.push(length_prefixed_data[start..end].to_vec());
         }
         
         // Create empty parity shards
@@ -215,6 +235,9 @@ impl ShamirErasureEncoder {
             .map_err(|e| FlowError::PersistenceError(
                 format!("Reed-Solomon encoding failed: {}", e)
             ))?;
+        
+        println!("🔧 Reed-Solomon encoding complete: {} shards of {} bytes each", 
+                 shards.len(), shard_size);
         
         Ok(shards)
     }
