@@ -587,8 +587,8 @@ impl StreamingDecoder {
             }
         }
         
-        // Truncate to remove Reed-Solomon padding
-        full_encrypted_data.truncate(expected_size);
+        // Note: For encrypted blocks, we don't truncate here since the encrypted data
+        // has its own structure (tag + ciphertext per chunk)
         
         // Extract the specific chunk (each chunk is CHUNK_SIZE + 16 bytes for tag)
         let chunk_size_with_tag = CHUNK_SIZE + 16;
