@@ -68,15 +68,15 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
           if (items.isEmpty) {
             return Center(
-              child: DragTarget<List<File>>(
+              child: DragTarget<dynamic>(
                 onWillAcceptWithDetails: (details) {
-                  print('Drag will accept check: ${details.data}');
-                  return details.data != null && details.data is List<File>;
+                  print('Drag will accept check: ${details.data} (type: ${details.data.runtimeType})');
+                  // Accept any data - we'll handle conversion in onAccept
+                  return details.data != null;
                 },
                 onAcceptWithDetails: (details) {
-                  final files = details.data as List<File>;
-                  print('Files dropped: ${files.map((f) => f.path).toList()}');
-                  _handleDroppedFiles(files);
+                  print('Data dropped: ${details.data} (type: ${details.data.runtimeType})');
+                  _handleDroppedData(details.data);
                 },
                 builder: (context, candidateData, rejectedData) {
                   final isDragOver = candidateData.isNotEmpty;
@@ -135,15 +135,14 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             );
           }
 
-          return DragTarget<List<File>>(
+          return DragTarget<dynamic>(
             onWillAcceptWithDetails: (details) {
-              print('Grid drag will accept check: ${details.data}');
-              return details.data != null && details.data is List<File>;
+              print('Grid drag will accept check: ${details.data} (type: ${details.data.runtimeType})');
+              return details.data != null;
             },
             onAcceptWithDetails: (details) {
-              final files = details.data as List<File>;
-              print('Files dropped on grid: ${files.map((f) => f.path).toList()}');
-              _handleDroppedFiles(files);
+              print('Data dropped on grid: ${details.data} (type: ${details.data.runtimeType})');
+              _handleDroppedData(details.data);
             },
             builder: (context, candidateData, rejectedData) {
               final isDragOver = candidateData.isNotEmpty;
@@ -371,6 +370,52 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         );
       }
     }
+  }
+
+  void _handleDroppedData(dynamic data) async {
+    print('Handling dropped data: $data (type: ${data.runtimeType})');
+    
+    List<File> files = [];
+    
+    // Convert different data types to File objects
+    if (data is List<File>) {
+      files = data;
+    } else if (data is List<String>) {
+      // File paths as strings
+      files = data.map((path) => File(path)).toList();
+    } else if (data is String) {
+      // Single file path
+      files = [File(data)];
+    } else if (data is List) {
+      // Try to convert list items to files
+      for (final item in data) {
+        if (item is String) {
+          files.add(File(item));
+        } else if (item is File) {
+          files.add(item);
+        } else {
+          print('Unknown item type in dropped list: ${item.runtimeType}');
+        }
+      }
+    } else {
+      print('Unsupported drop data type: ${data.runtimeType}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unsupported file drop format'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    
+    if (files.isEmpty) {
+      print('No valid files found in dropped data');
+      return;
+    }
+    
+    _handleDroppedFiles(files);
   }
 
   void _handleDroppedFiles(List<File> files) async {
