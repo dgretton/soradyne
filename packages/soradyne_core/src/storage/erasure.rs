@@ -279,7 +279,7 @@ impl ShamirErasureEncoder {
         
         // Extract the original length from the first 4 bytes
         let mut full_encrypted_data = Vec::new();
-        for i in 0..threshold {
+        for i in 0..self.threshold {
             if let Some(ref shard) = reconstruction_shards[i] {
                 full_encrypted_data.extend_from_slice(shard);
             } else {
