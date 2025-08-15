@@ -71,8 +71,22 @@ impl AlbumSystem {
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         println!("Creating AlbumSystem...");
         
-        let metadata_path = PathBuf::from("/tmp/soradyne_metadata.json");
+        // Use a writable location for metadata - app's container directory
+        let metadata_path = if cfg!(target_os = "macos") {
+            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()))
+                .join("Library/Containers/com.example.soradyneApp/Data/.soradyne_metadata.json")
+        } else {
+            PathBuf::from("/tmp/soradyne_metadata.json")
+        };
         println!("Metadata path: {:?}", metadata_path);
+        
+        // Ensure the parent directory exists
+        if let Some(parent) = metadata_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                println!("Failed to create metadata directory: {}", e);
+                e
+            })?;
+        }
         
         println!("🔍 Discovering SD cards...");
         let rimsd_dirs = crate::storage::device_identity::discover_soradyne_volumes().await
