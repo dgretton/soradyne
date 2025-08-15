@@ -595,11 +595,27 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                         }) {
                                             println!("Successfully read {} bytes from block storage for media {}", media_data.len(), media_id);
                                             
-                                            // Use shared video processing logic - detect media type from actual data
-                                            let resized_data = if is_video_file(&media_data) {
+                                            // Get the filename from the operation payload for better type detection
+                                            let filename = op.payload.get("filename")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("");
+                                            
+                                            println!("Processing media file: {}", filename);
+                                            
+                                            // Use filename extension for primary detection, fallback to content detection
+                                            let resized_data = if filename.to_lowercase().ends_with(".mp4") ||
+                                                                 filename.to_lowercase().ends_with(".mov") ||
+                                                                 filename.to_lowercase().ends_with(".avi") ||
+                                                                 filename.to_lowercase().ends_with(".mkv") ||
+                                                                 is_video_file(&media_data) {
                                                 println!("Detected video file, generating video thumbnail at size {}", max_size);
                                                 generate_video_at_size(&media_data, max_size)
-                                            } else if is_audio_file(&media_data) {
+                                            } else if filename.to_lowercase().ends_with(".mp3") ||
+                                                     filename.to_lowercase().ends_with(".wav") ||
+                                                     filename.to_lowercase().ends_with(".flac") ||
+                                                     filename.to_lowercase().ends_with(".aac") ||
+                                                     filename.to_lowercase().ends_with(".ogg") ||
+                                                     is_audio_file(&media_data) {
                                                 println!("Detected audio file, generating audio placeholder at size {}", max_size);
                                                 create_audio_placeholder_at_size(max_size)
                                             } else {
