@@ -23,5 +23,3 @@ pub struct StorageStatus {
     pub device_paths: Vec<String>,
 }
 
-// Re-export for FFI module
-pub use StorageStatus;
