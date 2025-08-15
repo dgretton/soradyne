@@ -71,18 +71,7 @@ impl AlbumSystem {
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         println!("Creating AlbumSystem...");
         
-        // Create data directory
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let data_dir = PathBuf::from(home_dir).join(".soradyne_albums");
-        println!("Data directory: {:?}", data_dir);
-        
-        std::fs::create_dir_all(&data_dir).map_err(|e| {
-            println!("Failed to create data directory: {}", e);
-            e
-        })?;
-        println!("Created data directory successfully");
-        
-        let metadata_path = data_dir.join("metadata.json");
+        let metadata_path = PathBuf::from("/tmp/soradyne_metadata.json");
         println!("Metadata path: {:?}", metadata_path);
         
         println!("🔍 Discovering SD cards...");
@@ -112,7 +101,7 @@ impl AlbumSystem {
         let mut system = Self {
             albums: HashMap::new(),
             block_manager,
-            data_dir,
+            data_dir: PathBuf::from("/tmp"), // Temporary directory since we're using SD cards
             albums_index_block_id: None,
         };
         
@@ -129,15 +118,15 @@ impl AlbumSystem {
     }
     
     async fn load_albums_from_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Try to load the albums index from a known location
-        let index_file = self.data_dir.join("albums_index.txt");
+        // For SD card only mode, we don't load from local files
+        // Albums will be discovered from SD card metadata in the future
+        println!("🔍 SD card only mode - skipping local album index loading");
+        println!("Albums will be discovered from SD card metadata (not yet implemented)");
         
-        println!("Looking for albums index at: {:?}", index_file);
-        println!("Data directory contents: {:?}", std::fs::read_dir(&self.data_dir).map(|entries| 
-            entries.map(|e| e.map(|entry| entry.file_name())).collect::<Result<Vec<_>, _>>()
-        ));
+        // TODO: Implement SD card album discovery
+        // This would scan the SD cards for album metadata blocks
         
-        if index_file.exists() {
+        if false { // Disable local loading
             println!("Albums index file exists, reading...");
             let index_content = std::fs::read_to_string(&index_file)?;
             println!("Index content: {}", index_content.trim());
