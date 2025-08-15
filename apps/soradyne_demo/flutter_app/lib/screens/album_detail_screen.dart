@@ -68,7 +68,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
           if (items.isEmpty) {
             return Center(
-              child: DragTarget<Object?>(
+              child: DragTarget<Object>(
                 onWillAcceptWithDetails: (details) {
                   print('Drag will accept check: ${details.data} (type: ${details.data.runtimeType})');
                   // Accept any data - we'll handle conversion in onAccept
@@ -135,7 +135,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             );
           }
 
-          return DragTarget<Object?>(
+          return DragTarget<Object>(
             onWillAcceptWithDetails: (details) {
               print('Grid drag will accept check: ${details.data} (type: ${details.data.runtimeType})');
               return details.data != null;
@@ -372,7 +372,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     }
   }
 
-  void _handleDroppedData(Object? data) async {
+  void _handleDroppedData(Object data) async {
     print('Handling dropped data: $data (type: ${data.runtimeType})');
     
     List<File> files = [];
