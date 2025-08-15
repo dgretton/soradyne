@@ -26,12 +26,27 @@ class _StorageStatusWidgetState extends State<StorageStatusWidget> {
 
   void _updateStatus() {
     try {
-      final statusJson = context.read<AlbumService>().bindings.getStorageStatus();
-      setState(() {
-        _status = json.decode(statusJson);
-      });
+      final albumService = context.read<AlbumService>();
+      if (albumService.bindings != null) {
+        final statusJson = albumService.bindings.getStorageStatus();
+        setState(() {
+          _status = json.decode(statusJson);
+        });
+      } else {
+        print('AlbumService bindings not initialized yet');
+      }
     } catch (e) {
       print('Error getting storage status: $e');
+      // Set default status on error
+      setState(() {
+        _status = {
+          'available_devices': 0,
+          'required_threshold': 3,
+          'can_read_data': false,
+          'missing_devices': 3,
+          'device_paths': [],
+        };
+      });
     }
   }
 
@@ -68,8 +83,15 @@ class _StorageStatusWidgetState extends State<StorageStatusWidget> {
             if (!canRead)
               ElevatedButton(
                 onPressed: () {
-                  context.read<AlbumService>().bindings.refreshStorage();
-                  _updateStatus();
+                  try {
+                    final albumService = context.read<AlbumService>();
+                    if (albumService.bindings != null) {
+                      albumService.bindings.refreshStorage();
+                      _updateStatus();
+                    }
+                  } catch (e) {
+                    print('Error refreshing storage: $e');
+                  }
                 },
                 child: Text('Refresh'),
               ),
