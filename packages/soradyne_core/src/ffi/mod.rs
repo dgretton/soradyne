@@ -132,16 +132,19 @@ impl AlbumSystem {
     }
     
     async fn load_albums_from_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // For SD card only mode, we don't load from local files
-        // Albums will be discovered from SD card metadata in the future
-        println!("🔍 SD card only mode - skipping local album index loading");
-        println!("Albums will be discovered from SD card metadata (not yet implemented)");
+        // Try to load from local storage first (for existing albums)
+        let local_data_dir = if cfg!(target_os = "macos") {
+            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
+                .join("Library/Containers/com.example.soradyneApp/Data/.soradyne_albums")
+        } else {
+            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
+                .join(".soradyne_albums")
+        };
         
-        // TODO: Implement SD card album discovery
-        // This would scan the SD cards for album metadata blocks
+        let index_file = local_data_dir.join("albums_index.txt");
+        println!("Looking for albums index at: {:?}", index_file);
         
-        if false { // Disable local loading
-            let index_file = self.data_dir.join("albums_index.txt");
+        if index_file.exists() {
             println!("Albums index file exists, reading...");
             let index_content = std::fs::read_to_string(&index_file)?;
             println!("Index content: {}", index_content.trim());
@@ -204,6 +207,8 @@ impl AlbumSystem {
             }
         } else {
             println!("Albums index file does not exist");
+            // TODO: In the future, scan SD cards for album metadata blocks
+            println!("🔍 Future: Will scan SD cards for existing album metadata");
         }
         
         Ok(())
@@ -232,8 +237,19 @@ impl AlbumSystem {
         let index_data = index_json.as_bytes();
         let index_block_id = self.block_manager.write_direct_block(index_data).await?;
         
-        // Store the index block ID in a simple file for bootstrapping
-        let index_file = self.data_dir.join("albums_index.txt");
+        // Store the index block ID in the local directory for bootstrapping
+        let local_data_dir = if cfg!(target_os = "macos") {
+            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
+                .join("Library/Containers/com.example.soradyneApp/Data/.soradyne_albums")
+        } else {
+            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
+                .join(".soradyne_albums")
+        };
+        
+        // Ensure the directory exists
+        std::fs::create_dir_all(&local_data_dir)?;
+        
+        let index_file = local_data_dir.join("albums_index.txt");
         std::fs::write(&index_file, hex::encode(index_block_id))?;
         
         self.albums_index_block_id = Some(index_block_id);
