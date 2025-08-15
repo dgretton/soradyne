@@ -143,7 +143,14 @@ impl ShamirErasureEncoder {
         }
         
         // Extract key shares and reconstruct the master encryption key
-        let key_shares: Vec<KeyShare> = shards.values().map(|s| s.key_share.clone()).collect();
+        // IMPORTANT: Sort by Shamir index to ensure correct Lagrange interpolation
+        let mut key_shares: Vec<KeyShare> = shards.values()
+            .map(|s| s.key_share.clone())
+            .collect();
+        
+        // Sort by Shamir index to ensure deterministic reconstruction
+        key_shares.sort_by_key(|share| share.index);
+        
         let master_key = self.reconstruct_secret(&key_shares[..self.threshold])?;
         
         // Prepare for streaming RS reconstruction
