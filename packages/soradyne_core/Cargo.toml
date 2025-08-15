@@ -56,6 +56,10 @@ async-trait = "0.1.88"
 # Erasure coding
 reed-solomon-erasure = "6.0"
 
+# Cryptography
+rand = "0.8"
+aes-gcm = "0.10"
+
 # Platform-specific dependencies for device fingerprinting
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
