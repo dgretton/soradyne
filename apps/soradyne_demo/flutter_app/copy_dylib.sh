@@ -2,7 +2,7 @@
 # Copy the Rust library to the app bundle after build
 
 # Source path for the dylib
-DYLIB_SOURCE="../../packages/soradyne_core/target/release/libsoradyne.dylib"
+DYLIB_SOURCE="../../../packages/soradyne_core/target/release/libsoradyne.dylib"
 
 # Destination paths for both Debug and Release builds
 DEBUG_APP_BUNDLE="build/macos/Build/Products/Debug/soradyne_app.app/Contents/MacOS/"
