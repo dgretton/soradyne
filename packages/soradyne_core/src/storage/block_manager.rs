@@ -465,8 +465,14 @@ impl BlockManager {
         println!("🔧 Reconstructing data from {} shards using Shamir + Reed-Solomon...", shards_with_keys.len());
         
         // Create streaming decoder and reconstruct
-        let mut decoder = self.erasure_encoder.decode_with_streaming(shards_with_keys, &metadata.id, metadata.size)?;
-        let result = decoder.reconstruct_all().await?;
+        let mut decoder = self.erasure_encoder.decode_with_streaming(shards_with_keys, &metadata.id, metadata.size).map_err(|e| {
+            println!("❌ Failed to create streaming decoder: {}", e);
+            e
+        })?;
+        let result = decoder.reconstruct_all().await.map_err(|e| {
+            println!("❌ Failed to reconstruct data: {}", e);
+            e
+        })?;
         
         println!("✅ Successfully reconstructed {} bytes of encrypted data", result.len());
         
