@@ -277,10 +277,11 @@ impl ShamirErasureEncoder {
                 format!("Reed-Solomon reconstruction failed: {}", e)
             ))?;
         
-        let mut result = Vec::with_capacity(expected_size);
-        for i in 0..self.threshold {
+        // Extract the original length from the first 4 bytes
+        let mut full_encrypted_data = Vec::new();
+        for i in 0..threshold {
             if let Some(ref shard) = reconstruction_shards[i] {
-                result.extend_from_slice(shard);
+                full_encrypted_data.extend_from_slice(shard);
             } else {
                 return Err(FlowError::PersistenceError(
                     "Failed to reconstruct data shard".to_string()
@@ -288,7 +289,29 @@ impl ShamirErasureEncoder {
             }
         }
         
-        result.truncate(expected_size);
+        if full_encrypted_data.len() < 4 {
+            return Err(FlowError::PersistenceError(
+                "Reconstructed data too small to contain length prefix".to_string()
+            ));
+        }
+        
+        let original_length = u32::from_le_bytes([
+            full_encrypted_data[0],
+            full_encrypted_data[1], 
+            full_encrypted_data[2],
+            full_encrypted_data[3]
+        ]) as usize;
+        
+        println!("🔧 Extracted original length: {} bytes", original_length);
+        
+        // Remove the length prefix
+        let result = full_encrypted_data[4..].to_vec();
+        
+        // Truncate to original length
+        let mut result = result;
+        result.truncate(original_length);
+        
+        println!("🔧 After truncation: {} bytes", result.len());
         Ok(result)
     }
     
