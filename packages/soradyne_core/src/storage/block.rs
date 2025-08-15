@@ -18,7 +18,9 @@ pub struct BlockMetadata {
     pub created_at: DateTime<Utc>,
     pub modified_at: DateTime<Utc>,
     pub shard_locations: Vec<ShardLocation>,
+    #[serde(default)]
     pub encryption_version: u8, // 0 = legacy RS-only, 1 = Shamir+RS
+    #[serde(default)]
     pub nonce: [u8; 12], // AES-GCM nonce derived from block ID
 }
 
@@ -28,6 +30,7 @@ pub struct ShardLocation {
     pub device_id: Uuid,
     pub rimsd_path: String,
     pub relative_path: String,
+    #[serde(default)]
     pub key_share_path: Option<String>, // Path to Shamir key share (for v1+ blocks)
 }
 
