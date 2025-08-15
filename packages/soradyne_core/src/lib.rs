@@ -8,3 +8,20 @@ pub mod storage;
 pub mod album;
 pub mod video;
 pub mod ffi;
+
+use crate::storage::device_identity::discover_soradyne_volumes;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tokio::time::{interval, Duration};
+use tokio::sync::RwLock;
+
+#[derive(Debug, Clone)]
+pub struct StorageStatus {
+    pub available_devices: usize,
+    pub required_threshold: usize,
+    pub can_read_data: bool,
+    pub missing_devices: usize,
+    pub device_paths: Vec<String>,
+}
+
+// Re-export for FFI module
+pub use StorageStatus;
