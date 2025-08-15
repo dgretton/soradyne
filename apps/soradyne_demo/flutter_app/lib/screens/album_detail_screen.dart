@@ -367,6 +367,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       
       if (success) {
+        // Refresh album items after successful upload
+        context.read<AlbumService>().loadAlbumItems(widget.album.id);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Media uploaded successfully!'),
@@ -417,6 +420,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         
         if (success) {
+          // Refresh album items after successful upload
+          context.read<AlbumService>().loadAlbumItems(widget.album.id);
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${file.path.split('/').last} uploaded successfully!'),
