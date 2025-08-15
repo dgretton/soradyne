@@ -518,6 +518,7 @@ impl StreamingDecoder {
             let block_id = self.block_id;
             let threshold = self.threshold;
             let total_shards = self.total_shards;
+            let expected_size = self.expected_size;
             let cache = Arc::clone(&self.chunk_cache);
             
             let task = tokio::spawn(async move {
