@@ -110,8 +110,8 @@ impl ShamirErasureEncoder {
         }
         
         // 1. Generate a new master secret key (32 bytes for AES-256)
-        let mut rng = rand::rng();
-        let master_key: [u8; 32] = rng.random();
+        let mut rng = rand::thread_rng();
+        let master_key: [u8; 32] = rng.gen();
         
         // 2. Encrypt the block data chunk by chunk
         let encrypted_data = self.encrypt_data_chunked(data, &master_key, block_id)?;
@@ -287,7 +287,7 @@ impl ShamirErasureEncoder {
         
         let gf = GF256::new();
         let mut shares = Vec::new();
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         
         // Generate random coefficients for the polynomial
         // f(x) = secret + a1*x + a2*x^2 + ... + a(k-1)*x^(k-1)
