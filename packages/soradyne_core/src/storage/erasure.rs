@@ -142,14 +142,26 @@ impl ShamirErasureEncoder {
             ));
         }
         
+        println!("🔧 Setting up decoding with {} shards", shards.len());
+        
         // Extract key shares and reconstruct the master encryption key
         // IMPORTANT: Sort by Shamir index to ensure correct Lagrange interpolation
         let mut key_shares: Vec<KeyShare> = shards.values()
             .map(|s| s.key_share.clone())
             .collect();
         
+        println!("🔧 Key shares before sorting:");
+        for (i, share) in key_shares.iter().enumerate() {
+            println!("   Share {}: index={}", i, share.index);
+        }
+        
         // Sort by Shamir index to ensure deterministic reconstruction
         key_shares.sort_by_key(|share| share.index);
+        
+        println!("🔧 Key shares after sorting:");
+        for (i, share) in key_shares.iter().enumerate() {
+            println!("   Share {}: index={}", i, share.index);
+        }
         
         let master_key = self.reconstruct_secret(&key_shares[..self.threshold])?;
         
@@ -258,15 +270,21 @@ impl ShamirErasureEncoder {
     }
     
     fn encrypt_data_chunked(&self, data: &[u8], master_key: &[u8; 32], block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
+        println!("🔐 Encrypting {} bytes with master key[0..8]: {:02x?}", data.len(), &master_key[..8]);
+        
         let mut result = Vec::new();
         
         for (chunk_index, chunk) in data.chunks(CHUNK_SIZE).enumerate() {
             let chunk_key = Self::derive_chunk_key(master_key, chunk_index, block_id);
+            println!("🔐 Chunk {}: size={}, key[0..8]={:02x?}", chunk_index, chunk.len(), &chunk_key[..8]);
+            
             let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&chunk_key));
             
             // Derive unique nonce for each chunk
             let chunk_nonce = Self::derive_chunk_nonce(block_id, chunk_index);
             let nonce = Nonce::from_slice(&chunk_nonce);
+            
+            println!("🔐 Chunk {} nonce: {:02x?}", chunk_index, &chunk_nonce);
             
             let mut ciphertext = chunk.to_vec();
             let tag = cipher.encrypt_in_place_detached(nonce, b"", &mut ciphertext)
@@ -274,11 +292,15 @@ impl ShamirErasureEncoder {
                     format!("Encryption failed for chunk {}: {}", chunk_index, e)
                 ))?;
             
+            println!("🔐 Chunk {} encrypted: tag={:02x?}, ciphertext[0..8]={:02x?}", 
+                     chunk_index, &tag[..8], &ciphertext[..8.min(ciphertext.len())]);
+            
             // Store tag + ciphertext for this chunk
             result.extend_from_slice(&tag);
             result.extend_from_slice(&ciphertext);
         }
         
+        println!("🔐 Total encrypted size: {} bytes", result.len());
         Ok(result)
     }
     
@@ -327,6 +349,11 @@ impl ShamirErasureEncoder {
             ));
         }
         
+        println!("🔑 Reconstructing secret from {} shares (threshold: {})", shares.len(), self.threshold);
+        for (i, share) in shares.iter().enumerate() {
+            println!("   Share {}: index={}, value[0..8]={:02x?}", i, share.index, &share.value[..8]);
+        }
+        
         let gf = GF256::new();
         let mut secret = [0u8; 32];
         
@@ -338,12 +365,17 @@ impl ShamirErasureEncoder {
                 .map(|share| (share.index, share.value[byte_idx]))
                 .collect();
             
+            if byte_idx < 8 { // Only debug first 8 bytes to avoid spam
+                println!("   Byte {}: points={:?}", byte_idx, points);
+            }
+            
             secret[byte_idx] = gf.lagrange_interpolate_at_zero(&points)
                 .map_err(|e| FlowError::PersistenceError(
                     format!("Lagrange interpolation failed for byte {}: {}", byte_idx, e)
                 ))?;
         }
         
+        println!("🔑 Reconstructed master key[0..8]: {:02x?}", &secret[..8]);
         Ok(secret)
     }
     
@@ -530,27 +562,44 @@ impl StreamingDecoder {
     }
     
     fn decrypt_chunk(encrypted_chunk: &[u8], master_key: &[u8; 32], chunk_index: usize, block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
+        println!("🔓 Decrypting chunk {}: {} bytes, master_key[0..8]={:02x?}", 
+                 chunk_index, encrypted_chunk.len(), &master_key[..8]);
+        
         if encrypted_chunk.len() < 16 {
+            println!("🔓 Chunk {} too small: {} bytes", chunk_index, encrypted_chunk.len());
             return Ok(Vec::new()); // Empty chunk
         }
         
         let chunk_key = ShamirErasureEncoder::derive_chunk_key(master_key, chunk_index, block_id);
+        println!("🔓 Chunk {} key[0..8]: {:02x?}", chunk_index, &chunk_key[..8]);
+        
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&chunk_key));
         
         // Use the same chunk-specific nonce that was used for encryption
         let chunk_nonce = ShamirErasureEncoder::derive_chunk_nonce(block_id, chunk_index);
         let nonce = Nonce::from_slice(&chunk_nonce);
         
+        println!("🔓 Chunk {} nonce: {:02x?}", chunk_index, &chunk_nonce);
+        
         // Extract tag and ciphertext
         let (tag, ciphertext) = encrypted_chunk.split_at(16);
+        println!("🔓 Chunk {} tag: {:02x?}", chunk_index, &tag[..8]);
+        println!("🔓 Chunk {} ciphertext[0..8]: {:02x?}", chunk_index, &ciphertext[..8.min(ciphertext.len())]);
+        
         let mut plaintext = ciphertext.to_vec();
         
-        cipher.decrypt_in_place_detached(nonce, b"", &mut plaintext, tag.into())
-            .map_err(|e| FlowError::PersistenceError(
-                format!("Decryption failed for chunk {}: {}", chunk_index, e)
-            ))?;
-        
-        Ok(plaintext)
+        match cipher.decrypt_in_place_detached(nonce, b"", &mut plaintext, tag.into()) {
+            Ok(()) => {
+                println!("🔓 Chunk {} decrypted successfully: plaintext[0..8]={:02x?}", chunk_index, &plaintext[..8.min(plaintext.len())]);
+                Ok(plaintext)
+            }
+            Err(e) => {
+                println!("🔓 Chunk {} decryption failed: {}", chunk_index, e);
+                Err(FlowError::PersistenceError(
+                    format!("Decryption failed for chunk {}: {}", chunk_index, e)
+                ))
+            }
+        }
     }
     
     /// Convenience method to reconstruct all data at once
