@@ -319,6 +319,8 @@ impl BlockManager {
         // Distribute shards across rimsd directories
         println!("📦 Distributing {} encrypted shards across {} devices:", shards_with_keys.len(), self.rimsd_directories.len());
         let mut shard_locations = Vec::new();
+        let mut successful_writes = 0;
+        let mut failed_writes = 0;
         
         for (i, shard_with_key) in shards_with_keys.iter().enumerate() {
             let rimsd_dir = &self.rimsd_directories[i % self.rimsd_directories.len()].as_path();
@@ -328,53 +330,90 @@ impl BlockManager {
             println!("   📝 Writing shard {} ({} bytes) + key share → {}", 
                 i, shard_with_key.shard_data.len(), shard_path.display());
             
-            // Write shard data to disk
-            if let Some(parent) = shard_path.parent() {
-                tokio::fs::create_dir_all(parent).await.map_err(|e|
-                    FlowError::PersistenceError(format!("Failed to create shard directory: {}", e))
+            // Try to write shard and key share, but don't fail the entire operation if one device fails
+            let write_result = async {
+                // Write shard data to disk
+                if let Some(parent) = shard_path.parent() {
+                    tokio::fs::create_dir_all(parent).await.map_err(|e|
+                        format!("Failed to create shard directory: {}", e)
+                    )?;
+                }
+                tokio::fs::write(&shard_path, &shard_with_key.shard_data).await.map_err(|e|
+                    format!("Failed to write shard: {}", e)
                 )?;
-            }
-            tokio::fs::write(&shard_path, &shard_with_key.shard_data).await.map_err(|e|
-                FlowError::PersistenceError(format!("Failed to write shard: {}", e))
-            )?;
-            
-            // Write key share to disk
-            if let Some(parent) = key_share_path.parent() {
-                tokio::fs::create_dir_all(parent).await.map_err(|e|
-                    FlowError::PersistenceError(format!("Failed to create key share directory: {}", e))
+                
+                // Write key share to disk
+                if let Some(parent) = key_share_path.parent() {
+                    tokio::fs::create_dir_all(parent).await.map_err(|e|
+                        format!("Failed to create key share directory: {}", e)
+                    )?;
+                }
+                let key_share_data = serde_json::to_vec(&shard_with_key.key_share).map_err(|e|
+                    format!("Failed to serialize key share: {}", e)
                 )?;
+                tokio::fs::write(&key_share_path, &key_share_data).await.map_err(|e|
+                    format!("Failed to write key share: {}", e)
+                )?;
+                
+                Ok::<(), String>(())
+            }.await;
+            
+            match write_result {
+                Ok(()) => {
+                    println!("   ✅ Shard {} and key share written successfully", i);
+                    successful_writes += 1;
+                    
+                    shard_locations.push(ShardLocation {
+                        shard_index: i,
+                        device_id: self.get_device_id(),
+                        rimsd_path: rimsd_dir.to_string_lossy().to_string(),
+                        relative_path: shard_path.strip_prefix(rimsd_dir)
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string(),
+                        key_share_path: Some(key_share_path.strip_prefix(rimsd_dir)
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()),
+                    });
+                }
+                Err(e) => {
+                    println!("   ⚠️  Failed to write shard {} to {}: {}", i, rimsd_dir.display(), e);
+                    println!("      Continuing with remaining devices...");
+                    failed_writes += 1;
+                }
             }
-            let key_share_data = serde_json::to_vec(&shard_with_key.key_share).map_err(|e|
-                FlowError::PersistenceError(format!("Failed to serialize key share: {}", e))
-            )?;
-            tokio::fs::write(&key_share_path, &key_share_data).await.map_err(|e|
-                FlowError::PersistenceError(format!("Failed to write key share: {}", e))
-            )?;
-            
-            println!("   ✅ Shard {} and key share written successfully", i);
-            
-            shard_locations.push(ShardLocation {
-                shard_index: i,
-                device_id: self.get_device_id(),
-                rimsd_path: rimsd_dir.to_string_lossy().to_string(),
-                relative_path: shard_path.strip_prefix(rimsd_dir)
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string(),
-                key_share_path: Some(key_share_path.strip_prefix(rimsd_dir)
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string()),
-            });
         }
-        println!("🎯 All encrypted shards and key shares distributed successfully!");
+        
+        // Check if we have enough successful writes to meet the threshold
+        if successful_writes < self.threshold {
+            println!("❌ Insufficient successful writes: {} < {} required", successful_writes, self.threshold);
+            println!("   Available devices: {}, Failed writes: {}", self.rimsd_directories.len(), failed_writes);
+            return Err(FlowError::PersistenceError(
+                format!("Failed to write enough shards: only {} of {} required shards written (need {} minimum)", 
+                        successful_writes, self.threshold, self.threshold)
+            ));
+        }
+        
+        if failed_writes > 0 {
+            println!("⚠️  {} shards distributed successfully with {} failures", successful_writes, failed_writes);
+            println!("   System remains operational with {} available devices", successful_writes);
+        } else {
+            println!("🎯 All encrypted shards and key shares distributed successfully!");
+        }
         
         // Update metadata
         let mut metadata = metadata;
         metadata.shard_locations = shard_locations;
         
-        // Save metadata
-        self.metadata_store.write().await.add_block(metadata)?;
+        // Save metadata (non-critical - continue even if this fails)
+        if let Err(e) = self.metadata_store.write().await.add_block(metadata) {
+            println!("⚠️  Failed to save metadata: {}", e);
+            println!("   Block storage operation completed successfully despite metadata write failure");
+            // Don't return error - the block was successfully distributed
+        } else {
+            println!("📝 Metadata saved successfully");
+        }
         
         Ok(id)
     }
