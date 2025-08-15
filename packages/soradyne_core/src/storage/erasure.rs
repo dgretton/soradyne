@@ -587,8 +587,17 @@ impl StreamingDecoder {
             }
         }
         
-        // Note: For encrypted blocks, we don't truncate here since the encrypted data
-        // has its own structure (tag + ciphertext per chunk)
+        // Calculate the expected encrypted size based on the original data size
+        let num_chunks = (expected_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        let expected_encrypted_size = num_chunks * (CHUNK_SIZE + 16); // Each chunk has 16-byte tag
+        
+        // Truncate to remove Reed-Solomon padding
+        let actual_encrypted_size = std::cmp::min(full_encrypted_data.len(), expected_encrypted_size);
+        full_encrypted_data.truncate(actual_encrypted_size);
+        
+        println!("🔧 Truncated encrypted data from {} to {} bytes", 
+                 full_encrypted_data.len() + (full_encrypted_data.len() - actual_encrypted_size), 
+                 actual_encrypted_size);
         
         // Extract the specific chunk (each chunk is CHUNK_SIZE + 16 bytes for tag)
         let chunk_size_with_tag = CHUNK_SIZE + 16;
