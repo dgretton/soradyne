@@ -119,8 +119,8 @@ impl ShamirErasureEncoder {
         // 3. Shamir secret share the master key
         let key_shares = self.split_secret(&master_key)?;
         
-        // 4. Reed-Solomon encode the encrypted data
-        let rs_shards = self.encode_rs(&encrypted_data)?;
+        // 4. Reed-Solomon encode the encrypted data (without length prefix here)
+        let rs_shards = self.encode_rs_raw(&encrypted_data)?;
         
         // 5. Combine RS shards with key shares
         let mut result = Vec::new();
@@ -187,8 +187,8 @@ impl ShamirErasureEncoder {
         self.decode_rs_only(shards, expected_size)
     }
     
-    /// Traditional Reed-Solomon encoding (for internal use)
-    fn encode_rs(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
+    /// Reed-Solomon encoding without length prefix (for encrypted data)
+    fn encode_rs_raw(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
         println!("🔧 Reed-Solomon encoding {} bytes with threshold={}, total_shards={}", 
                  data.len(), self.threshold, self.total_shards);
         
@@ -200,28 +200,13 @@ impl ShamirErasureEncoder {
         let mut padded_data = data.to_vec();
         padded_data.resize(padded_size, 0);
         
-        // Store the original length at the beginning for proper truncation
-        let mut length_prefixed_data = Vec::new();
-        length_prefixed_data.extend_from_slice(&(data.len() as u32).to_le_bytes());
-        length_prefixed_data.extend_from_slice(&padded_data);
-        
-        // Recalculate with length prefix
-        let total_size = length_prefixed_data.len();
-        let shard_size = (total_size + self.threshold - 1) / self.threshold;
-        let padded_size = shard_size * self.threshold;
-        
-        length_prefixed_data.resize(padded_size, 0);
-        
-        println!("🔧 With length prefix: total_size={}, shard_size={}, padded_size={}", 
-                 total_size, shard_size, padded_size);
-        
         let mut shards: Vec<Vec<u8>> = Vec::with_capacity(self.total_shards);
         
         // Create data shards
         for i in 0..self.threshold {
             let start = i * shard_size;
             let end = start + shard_size;
-            shards.push(length_prefixed_data[start..end].to_vec());
+            shards.push(padded_data[start..end].to_vec());
         }
         
         // Create empty parity shards
@@ -240,6 +225,16 @@ impl ShamirErasureEncoder {
                  shards.len(), shard_size);
         
         Ok(shards)
+    }
+    
+    /// Traditional Reed-Solomon encoding with length prefix (for legacy compatibility)
+    fn encode_rs(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
+        // Store the original length at the beginning for proper truncation
+        let mut length_prefixed_data = Vec::new();
+        length_prefixed_data.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        length_prefixed_data.extend_from_slice(data);
+        
+        self.encode_rs_raw(&length_prefixed_data)
     }
     
     /// Legacy RS-only decode for backward compatibility
@@ -591,6 +586,9 @@ impl StreamingDecoder {
                 full_encrypted_data.extend_from_slice(shard);
             }
         }
+        
+        // Truncate to remove Reed-Solomon padding
+        full_encrypted_data.truncate(expected_size);
         
         // Extract the specific chunk (each chunk is CHUNK_SIZE + 16 bytes for tag)
         let chunk_size_with_tag = CHUNK_SIZE + 16;
