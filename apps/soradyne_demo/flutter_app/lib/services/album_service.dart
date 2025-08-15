@@ -24,18 +24,22 @@ class AlbumService extends ChangeNotifier {
 
   void _initializeBindings() {
     try {
+      debugPrint('Creating SoradyneBindings...');
       _bindings = SoradyneBindings();
+      debugPrint('SoradyneBindings created successfully, calling init...');
       final result = _bindings.init();
+      debugPrint('Init returned: $result');
       if (result == 0) {
         _initialized = true;
         debugPrint('Soradyne FFI initialized successfully');
       } else {
-        _error = 'Failed to initialize Soradyne FFI';
+        _error = 'Failed to initialize Soradyne FFI (error code: $result)';
         debugPrint('Failed to initialize Soradyne FFI: $result');
       }
     } catch (e) {
       _error = 'FFI initialization error: $e';
       debugPrint('FFI initialization error: $e');
+      debugPrint('Stack trace: ${StackTrace.current}');
     }
   }
 

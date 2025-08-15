@@ -64,10 +64,15 @@ class SoradyneBindings {
         final executablePath = Platform.resolvedExecutable;
         final appDir = path.dirname(executablePath);
         final dylibPath = path.join(appDir, 'libsoradyne.dylib');
+        print('Attempting to load dylib from: $dylibPath');
         _lib = DynamicLibrary.open(dylibPath);
+        print('Successfully loaded dylib from: $dylibPath');
       } catch (e) {
+        print('Failed to load from app bundle: $e');
+        print('Attempting fallback to loading by name...');
         // Fallback to loading by name
         _lib = DynamicLibrary.open('libsoradyne.dylib');
+        print('Successfully loaded dylib by name');
       }
     } else if (Platform.isLinux) {
       _lib = DynamicLibrary.open('libsoradyne.so');
