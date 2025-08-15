@@ -63,7 +63,6 @@ static mut ALBUM_SYSTEM: Option<Arc<Mutex<AlbumSystem>>> = None;
 pub struct AlbumSystem {
     albums: HashMap<String, MediaAlbum>,
     block_manager: Arc<BlockManager>,
-    runtime: Arc<Runtime>,
     data_dir: PathBuf,
     albums_index_block_id: Option<[u8; 32]>,
 }
@@ -110,24 +109,16 @@ impl AlbumSystem {
         })?);
         println!("BlockManager created successfully");
         
-        println!("Creating Tokio runtime...");
-        let runtime = Arc::new(Runtime::new().map_err(|e| {
-            println!("Failed to create Tokio runtime: {}", e);
-            e
-        })?);
-        println!("Tokio runtime created successfully");
-        
         let mut system = Self {
             albums: HashMap::new(),
             block_manager,
-            runtime,
             data_dir,
             albums_index_block_id: None,
         };
         
         println!("Loading existing albums from block storage...");
         // Load existing albums from block storage
-        system.load_albums_from_blocks().map_err(|e| {
+        system.load_albums_from_blocks().await.map_err(|e| {
             println!("Failed to load albums from blocks: {}", e);
             e
         })?;
@@ -137,7 +128,7 @@ impl AlbumSystem {
         Ok(system)
     }
     
-    fn load_albums_from_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn load_albums_from_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // Try to load the albums index from a known location
         let index_file = self.data_dir.join("albums_index.txt");
         
@@ -159,10 +150,8 @@ impl AlbumSystem {
                     
                     println!("Loading albums index from block: {}", hex::encode(block_id));
                     
-                    // Load the albums index using the runtime
-                    if let Ok(index_data) = self.runtime.block_on(async {
-                        self.block_manager.read_block(&block_id).await
-                    }) {
+                    // Load the albums index
+                    if let Ok(index_data) = self.block_manager.read_block(&block_id).await {
                         println!("Successfully read index data: {} bytes", index_data.len());
                         
                         if let Ok(index_json) = String::from_utf8(index_data) {
@@ -175,9 +164,7 @@ impl AlbumSystem {
                                 for (album_id, album_block_id) in album_index {
                                     println!("Loading album {} from block {}", album_id, hex::encode(album_block_id));
                                     
-                                    if let Ok(album_data) = self.runtime.block_on(async {
-                                        self.block_manager.read_block(&album_block_id).await
-                                    }) {
+                                    if let Ok(album_data) = self.block_manager.read_block(&album_block_id).await {
                                         if let Ok(album_json) = String::from_utf8(album_data) {
                                             if let Ok(mut album) = serde_json::from_str::<MediaAlbum>(&album_json) {
                                                 // Restore the block manager reference
@@ -218,7 +205,7 @@ impl AlbumSystem {
         Ok(())
     }
     
-    fn save_albums_to_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn save_albums_to_blocks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // Create an index mapping album IDs to their block IDs
         let mut album_index = HashMap::new();
         
@@ -231,19 +218,15 @@ impl AlbumSystem {
             let album_json = serde_json::to_string_pretty(&serializable_album)?;
             let album_data = album_json.as_bytes();
             
-            // Store the album in a block using the runtime
-            let album_block_id = self.runtime.block_on(async {
-                self.block_manager.write_direct_block(album_data).await
-            })?;
+            // Store the album in a block
+            let album_block_id = self.block_manager.write_direct_block(album_data).await?;
             album_index.insert(album_id.clone(), album_block_id);
         }
         
         // Save the index to a block
         let index_json = serde_json::to_string_pretty(&album_index)?;
         let index_data = index_json.as_bytes();
-        let index_block_id = self.runtime.block_on(async {
-            self.block_manager.write_direct_block(index_data).await
-        })?;
+        let index_block_id = self.block_manager.write_direct_block(index_data).await?;
         
         // Store the index block ID in a simple file for bootstrapping
         let index_file = self.data_dir.join("albums_index.txt");
@@ -340,7 +323,14 @@ pub extern "C" fn soradyne_create_album(name_ptr: *const c_char) -> *mut c_char 
                 system.albums.insert(album_id.clone(), album);
                 
                 // Save albums to persistent storage
-                if let Err(e) = system.save_albums_to_blocks() {
+                let block_manager = Arc::clone(&system.block_manager);
+                let mut system_clone = system.clone();
+                drop(system); // Release the lock
+                
+                let rt = Runtime::new().unwrap();
+                if let Err(e) = rt.block_on(async {
+                    system_clone.save_albums_to_blocks().await
+                }) {
                     eprintln!("Failed to save albums to blocks: {}", e);
                 }
                 
@@ -444,31 +434,16 @@ pub extern "C" fn soradyne_upload_media(album_id_ptr: *const c_char, file_path_p
                         .to_string_lossy()
                         .to_string();
                     
-                    // Store in block storage using the runtime
+                    // Store in block storage
                     let block_manager = Arc::clone(&system.block_manager);
-                    let runtime = Arc::clone(&system.runtime);
                     
                     println!("Attempting to write {} bytes to block storage", file_data.len());
                     
-                    // Check if file is too large for direct block storage
-                    const MAX_DIRECT_BLOCK_SIZE: usize = 1024 * 1024; // 1MB limit
-                    
-                    let result = if file_data.len() > MAX_DIRECT_BLOCK_SIZE {
-                        println!("File too large for direct block, using indirect storage");
-                        // For now, we'll use the block file system for large files
-                        runtime.block_on(async {
-                            use crate::storage::block_file::BlockFile;
-                            let block_file = BlockFile::new(Arc::clone(&block_manager));
-                            block_file.append(&file_data).await?;
-                            block_file.root_block().await.ok_or_else(|| 
-                                crate::flow::error::FlowError::PersistenceError("No root block".to_string())
-                            )
-                        })
-                    } else {
-                        runtime.block_on(async {
-                            block_manager.write_direct_block(&file_data).await
-                        })
-                    };
+                    // Create temporary runtime for FFI
+                    let rt = Runtime::new().unwrap();
+                    let result = rt.block_on(async {
+                        block_manager.write_direct_block(&file_data).await
+                    });
                     
                     match result {
                         Ok(block_id) => {
@@ -504,10 +479,6 @@ pub extern "C" fn soradyne_upload_media(album_id_ptr: *const c_char, file_path_p
                             if let Some(album) = system.albums.get_mut(&album_id) {
                                 let crdt = album.get_or_create(&media_id);
                                 if crdt.apply_local(op).is_ok() {
-                                    // Save albums to persistent storage
-                                    if let Err(e) = system.save_albums_to_blocks() {
-                                        eprintln!("Failed to save albums to blocks: {}", e);
-                                    }
                                     println!("Successfully uploaded media: {}", media_id);
                                     return 0; // Success
                                 } else {
@@ -587,10 +558,10 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                         block_id.copy_from_slice(&block_id_bytes);
                                         
                                         let block_manager = Arc::clone(&system.block_manager);
-                                        let runtime = Arc::clone(&system.runtime);
                                         
                                         // Read the media data from block storage
-                                        if let Ok(media_data) = runtime.block_on(async {
+                                        let rt = Runtime::new().unwrap();
+                                        if let Ok(media_data) = rt.block_on(async {
                                             block_manager.read_block(&block_id).await
                                         }) {
                                             println!("Successfully read {} bytes from block storage for media {}", media_data.len(), media_id);
