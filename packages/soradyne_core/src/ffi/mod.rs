@@ -69,7 +69,7 @@ pub struct AlbumSystem {
 }
 
 impl AlbumSystem {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         println!("Creating AlbumSystem...");
         
         // Create data directory
@@ -83,38 +83,32 @@ impl AlbumSystem {
         })?;
         println!("Created data directory successfully");
         
-        // COMMENTED OUT: Create rimsd directories (forcing SD card discovery only)
-        // let mut rimsd_dirs = Vec::new();
-        // for i in 0..4 {
-        //     let device_dir = data_dir.join(format!("rimsd_{}", i));
-        //     let rimsd_dir = device_dir.join(".rimsd");
-        //     println!("Creating rimsd directory: {:?}", rimsd_dir);
-        //     std::fs::create_dir_all(&rimsd_dir).map_err(|e| {
-        //         println!("Failed to create rimsd directory {}: {}", i, e);
-        //         e
-        //     })?;
-        //     rimsd_dirs.push(rimsd_dir);
-        // }
-        // println!("Created {} rimsd directories", rimsd_dirs.len());
-        
         let metadata_path = data_dir.join("metadata.json");
         println!("Metadata path: {:?}", metadata_path);
         
-        println!("Creating BlockManager...");
-        // FORCE SD CARD DISCOVERY ONLY - no local fallback
-        println!("⚠️ SD card discovery mode - no local fallback available");
-        return Err("SD card discovery not yet implemented in AlbumSystem::new()".into());
-        
-        // let block_manager = Arc::new(BlockManager::new(
-        //     rimsd_dirs,
-        //     metadata_path,
-        //     3, // threshold
-        //     4, // total_shards
-        // ).map_err(|e| {
-        //     println!("Failed to create BlockManager: {}", e);
-        //     e
-        // })?);
-        // println!("BlockManager created successfully");
+        println!("🔍 Discovering SD cards...");
+        let rimsd_dirs = crate::storage::device_identity::discover_soradyne_volumes().await
+            .map_err(|e| format!("SD card discovery failed: {}", e))?;
+
+        if rimsd_dirs.is_empty() {
+            return Err("No Soradyne SD cards found! Please insert SD cards with .rimsd directories".into());
+        }
+
+        println!("✅ Found {} SD cards", rimsd_dirs.len());
+        let threshold = std::cmp::min(3, rimsd_dirs.len()); // Adaptive threshold, prefer 3 but adapt to available
+        let total_shards = rimsd_dirs.len();
+
+        println!("Creating BlockManager with {} shards (threshold: {})...", total_shards, threshold);
+        let block_manager = Arc::new(BlockManager::new(
+            rimsd_dirs,
+            metadata_path,
+            threshold,
+            total_shards,
+        ).map_err(|e| {
+            println!("Failed to create BlockManager: {}", e);
+            e
+        })?);
+        println!("BlockManager created successfully");
         
         println!("Creating Tokio runtime...");
         let runtime = Arc::new(Runtime::new().map_err(|e| {
@@ -267,7 +261,17 @@ impl AlbumSystem {
 #[no_mangle]
 pub extern "C" fn soradyne_init() -> i32 {
     println!("Starting Soradyne initialization...");
-    match AlbumSystem::new() {
+    
+    // Create a runtime to handle the async initialization
+    let rt = match Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            println!("Failed to create Tokio runtime: {}", e);
+            return -1;
+        }
+    };
+    
+    match rt.block_on(AlbumSystem::new()) {
         Ok(system) => {
             println!("AlbumSystem created successfully");
             unsafe {
