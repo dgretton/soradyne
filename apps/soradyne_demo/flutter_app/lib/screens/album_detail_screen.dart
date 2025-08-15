@@ -69,8 +69,12 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           if (items.isEmpty) {
             return Center(
               child: DragTarget<List<File>>(
-                onWillAccept: (data) => data != null,
-                onAccept: (files) {
+                onWillAcceptWithDetails: (details) {
+                  print('Drag will accept check: ${details.data}');
+                  return details.data != null && details.data is List<File>;
+                },
+                onAcceptWithDetails: (details) {
+                  final files = details.data as List<File>;
                   print('Files dropped: ${files.map((f) => f.path).toList()}');
                   _handleDroppedFiles(files);
                 },
@@ -132,8 +136,12 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           }
 
           return DragTarget<List<File>>(
-            onWillAccept: (data) => data != null,
-            onAccept: (files) {
+            onWillAcceptWithDetails: (details) {
+              print('Grid drag will accept check: ${details.data}');
+              return details.data != null && details.data is List<File>;
+            },
+            onAcceptWithDetails: (details) {
+              final files = details.data as List<File>;
               print('Files dropped on grid: ${files.map((f) => f.path).toList()}');
               _handleDroppedFiles(files);
             },
