@@ -83,34 +83,38 @@ impl AlbumSystem {
         })?;
         println!("Created data directory successfully");
         
-        // Create rimsd directories
-        let mut rimsd_dirs = Vec::new();
-        for i in 0..4 {
-            let device_dir = data_dir.join(format!("rimsd_{}", i));
-            let rimsd_dir = device_dir.join(".rimsd");
-            println!("Creating rimsd directory: {:?}", rimsd_dir);
-            std::fs::create_dir_all(&rimsd_dir).map_err(|e| {
-                println!("Failed to create rimsd directory {}: {}", i, e);
-                e
-            })?;
-            rimsd_dirs.push(rimsd_dir);
-        }
-        println!("Created {} rimsd directories", rimsd_dirs.len());
+        // COMMENTED OUT: Create rimsd directories (forcing SD card discovery only)
+        // let mut rimsd_dirs = Vec::new();
+        // for i in 0..4 {
+        //     let device_dir = data_dir.join(format!("rimsd_{}", i));
+        //     let rimsd_dir = device_dir.join(".rimsd");
+        //     println!("Creating rimsd directory: {:?}", rimsd_dir);
+        //     std::fs::create_dir_all(&rimsd_dir).map_err(|e| {
+        //         println!("Failed to create rimsd directory {}: {}", i, e);
+        //         e
+        //     })?;
+        //     rimsd_dirs.push(rimsd_dir);
+        // }
+        // println!("Created {} rimsd directories", rimsd_dirs.len());
         
         let metadata_path = data_dir.join("metadata.json");
         println!("Metadata path: {:?}", metadata_path);
         
         println!("Creating BlockManager...");
-        let block_manager = Arc::new(BlockManager::new(
-            rimsd_dirs,
-            metadata_path,
-            3, // threshold
-            4, // total_shards
-        ).map_err(|e| {
-            println!("Failed to create BlockManager: {}", e);
-            e
-        })?);
-        println!("BlockManager created successfully");
+        // FORCE SD CARD DISCOVERY ONLY - no local fallback
+        println!("⚠️ SD card discovery mode - no local fallback available");
+        return Err("SD card discovery not yet implemented in AlbumSystem::new()".into());
+        
+        // let block_manager = Arc::new(BlockManager::new(
+        //     rimsd_dirs,
+        //     metadata_path,
+        //     3, // threshold
+        //     4, // total_shards
+        // ).map_err(|e| {
+        //     println!("Failed to create BlockManager: {}", e);
+        //     e
+        // })?);
+        // println!("BlockManager created successfully");
         
         println!("Creating Tokio runtime...");
         let runtime = Arc::new(Runtime::new().map_err(|e| {
