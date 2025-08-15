@@ -587,8 +587,24 @@ impl StreamingDecoder {
             }
         }
         
-        // Note: For encrypted blocks, we don't truncate here since the encrypted data
-        // has its own structure (tag + ciphertext per chunk)
+        // Calculate the actual encrypted size (without Reed-Solomon padding)
+        // For chunk 0, we know the exact size should be original_data_size + 16 (tag)
+        let num_chunks = (expected_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        let last_chunk_size = if expected_size % CHUNK_SIZE == 0 { CHUNK_SIZE } else { expected_size % CHUNK_SIZE };
+        
+        let mut total_encrypted_size = 0;
+        for i in 0..num_chunks {
+            let chunk_data_size = if i == num_chunks - 1 { last_chunk_size } else { CHUNK_SIZE };
+            total_encrypted_size += chunk_data_size + 16; // +16 for AES-GCM tag
+        }
+        
+        println!("🔧 Calculated encrypted size: {} bytes (from {} chunks)", total_encrypted_size, num_chunks);
+        println!("🔧 Reed-Solomon reconstructed: {} bytes", full_encrypted_data.len());
+        
+        // Truncate to remove Reed-Solomon padding
+        full_encrypted_data.truncate(total_encrypted_size);
+        
+        println!("🔧 After truncation: {} bytes", full_encrypted_data.len());
         
         // Extract the specific chunk (each chunk is CHUNK_SIZE + 16 bytes for tag)
         let chunk_size_with_tag = CHUNK_SIZE + 16;
