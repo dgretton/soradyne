@@ -342,9 +342,15 @@ pub extern "C" fn soradyne_create_album(name_ptr: *const c_char) -> *mut c_char 
                 
                 system.albums.insert(album_id.clone(), album);
                 
-                // Note: Save to persistent storage will be handled by a background task
-                // For now, we'll skip automatic saving in FFI to avoid runtime complexity
-                println!("Album created successfully (persistent save deferred)");
+                // Save to persistent storage immediately
+                let rt = Runtime::new().unwrap();
+                if let Err(e) = rt.block_on(async {
+                    system.save_albums_to_blocks().await
+                }) {
+                    println!("Failed to save albums to blocks: {}", e);
+                } else {
+                    println!("Album created and saved successfully");
+                }
                 
                 let response = serde_json::json!({
                     "id": album_id,
