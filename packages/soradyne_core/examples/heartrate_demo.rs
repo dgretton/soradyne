@@ -49,10 +49,10 @@ async fn main() {
     // Optionally connect to a peer (uncomment and set the correct address)
     let bridge_clone2 = bridge.clone();
     tokio::spawn(async move {
-        bridge_clone2
-            .connect("10.111.172.135:5001")  // peer IP address
-            .await
-            .unwrap();
+        match bridge_clone2.connect("10.111.172.135:5001").await {
+            Ok(_) => println!("[NetworkBridge] Successfully connected to peer at 10.111.172.135:5001"),
+            Err(e) => println!("[NetworkBridge] Failed to connect to peer at 10.111.172.135:5001: {}", e),
+        }
     });
 
     // Subscribe to updates
