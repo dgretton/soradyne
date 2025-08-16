@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::io::{self, Write};
 use tokio;
 use soradyne::storage::{BlockManager, discover_soradyne_volumes};
+use soradyne::storage::device_identity::fingerprint_device;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Interactive demo loop
     loop {
         println!("\n🎮 Demo Commands:");
+        println!("   init      - Initialize .rimsd directory on SD card");
         println!("   w <text>  - Write text as a block");
         println!("   r <id>    - Read block by ID (first 8 chars)");
         println!("   l         - List all blocks");
@@ -61,6 +63,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         match parts[0] {
+            "init" => {
+                println!("\n🔧 Initialize Soradyne SD Card");
+                println!("===============================");
+                println!("This will create a .rimsd directory and generate device fingerprints.");
+                println!("Enter the mount path of your SD card:");
+                println!("Examples:");
+                println!("  macOS:   /Volumes/SDCARD");
+                println!("  Linux:   /media/username/SDCARD or /mnt/sdcard");
+                println!("  Windows: D:\\ or E:\\");
+                print!("\nSD card path: ");
+                io::stdout().flush()?;
+                
+                let mut path_input = String::new();
+                io::stdin().read_line(&mut path_input)?;
+                let sd_path = std::path::Path::new(path_input.trim());
+                
+                if !sd_path.exists() {
+                    println!("❌ Path does not exist: {}", sd_path.display());
+                    continue;
+                }
+                
+                let rimsd_path = sd_path.join(".rimsd");
+                
+                println!("\n🔍 Initializing Soradyne storage at: {}", rimsd_path.display());
+                
+                // Create .rimsd directory if it doesn't exist
+                if let Err(e) = tokio::fs::create_dir_all(&rimsd_path).await {
+                    println!("❌ Failed to create .rimsd directory: {}", e);
+                    continue;
+                }
+                
+                // Generate device fingerprint (this will create soradyne_device_id.txt automatically)
+                match fingerprint_device(&rimsd_path).await {
+                    Ok(fingerprint) => {
+                        println!("✅ Successfully initialized Soradyne storage!");
+                        println!("\n📊 Device Fingerprint:");
+                        println!("   Soradyne Device ID: {:?}", fingerprint.soradyne_device_id);
+                        println!("   Hardware ID: {:?}", fingerprint.hardware_id);
+                        println!("   Filesystem UUID: {:?}", fingerprint.filesystem_uuid);
+                        println!("   Capacity: {:.2} GB", fingerprint.capacity_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
+                        println!("   Bad block signature: 0x{:016x}", fingerprint.bad_block_signature);
+                        
+                        println!("\n💾 Files created:");
+                        println!("   {}/soradyne_device_id.txt", rimsd_path.display());
+                        
+                        // Verify the device ID file was created
+                        let device_id_file = rimsd_path.join("soradyne_device_id.txt");
+                        if device_id_file.exists() {
+                            if let Ok(content) = tokio::fs::read_to_string(&device_id_file).await {
+                                println!("   Device ID: {}", content.trim());
+                            }
+                        }
+                        
+                        println!("\n🎉 SD card is now ready for Soradyne storage!");
+                        println!("   You can now restart this demo to use the initialized card.");
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to generate device fingerprint: {}", e);
+                        println!("   The .rimsd directory was created but fingerprinting failed.");
+                        println!("   You may need to run this on the actual SD card device.");
+                    }
+                }
+            }
+            
             "w" => {
                 if parts.len() < 2 {
                     println!("❌ Usage: w <text>");
