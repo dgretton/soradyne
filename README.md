@@ -2,11 +2,11 @@
   <img src="docs/img/soradynelogo.png" alt="Soradyne Logo" width="400">
 </div>
 
-# Soradyne Protocol
+# Soradyne
 
 ⚠️ **PROOF OF CONCEPT - NOT FOR PRODUCTION USE** ⚠️
 
-A protocol for secure, peer-to-peer shared self-data objects with a focus on privacy and user control.
+A protocol and app demonstrator for secure, peer-to-peer shared self-data objects with a focus on privacy and user control.
 
 **Important Notice**: This is experimental proof-of-concept code designed to demonstrate what's possible with decentralized self-data objects. The codebase is not well organized for others to easily view and understand - it's really meant to get the ball rolling and show concrete possibilities. Much improvement is needed before this would be ready for prime time or production use.
 
