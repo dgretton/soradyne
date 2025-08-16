@@ -203,7 +203,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bridge_for_connection = bridge.clone();
     tokio::spawn(async move {
         sleep(Duration::from_secs(5)).await; // Give time for other side to start listening
-        if let Err(e) = bridge_for_connection.connect("192.168.1.46:5001").await {
+        if let Err(e) = bridge_for_connection.connect("10.111.172.135:5001").await {
             eprintln!("Failed to connect to remote Soradyne peer: {}", e);
         } else {
             println!("Connected to remote Soradyne peer");
