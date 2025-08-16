@@ -2,6 +2,8 @@
 
 A protocol for secure, peer-to-peer shared self-data objects with a focus on privacy and user control.
 
+Made with Aider Chat Bot backed by Claude Sonnet 4 hosted on OpenRouter.
+
 ## What is Soradyne?
 
 Soradyne is a protocol that enables secure, peer-to-peer sharing of self-data objects (SDOs). It's designed to give users full control over their personal data, allowing them to share it with others on their terms.
