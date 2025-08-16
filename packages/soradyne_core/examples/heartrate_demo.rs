@@ -47,15 +47,13 @@ async fn main() {
     });
 
     // Optionally connect to a peer (uncomment and set the correct address)
-    /*
     let bridge_clone2 = bridge.clone();
     tokio::spawn(async move {
         bridge_clone2
-            .connect("192.168.1.42:5001")  // replace with actual peer IP/port
+            .connect("10.111.172.135:5001")  // peer IP address
             .await
             .unwrap();
     });
-    */
 
     // Subscribe to updates
     flow.subscribe(Box::new(|value| {
