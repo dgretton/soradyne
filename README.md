@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="docs/img/soradynelogo.png" alt="Soradyne Logo" width="400">
+</div>
+
 # Soradyne Protocol
 
 ⚠️ **PROOF OF CONCEPT - NOT FOR PRODUCTION USE** ⚠️
