@@ -603,6 +603,7 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                             println!("Processing media file: {}", filename);
                                             
                                             // Use filename extension for primary detection, fallback to content detection
+                                            // Check images FIRST to avoid false positives from audio detection
                                             let resized_data = if filename.to_lowercase().ends_with(".mp4") ||
                                                                  filename.to_lowercase().ends_with(".mov") ||
                                                                  filename.to_lowercase().ends_with(".avi") ||
@@ -610,6 +611,16 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                                                  is_video_file(&media_data) {
                                                 println!("Detected video file, generating video thumbnail at size {}", max_size);
                                                 generate_video_at_size(&media_data, max_size)
+                                            } else if filename.to_lowercase().ends_with(".jpg") ||
+                                                     filename.to_lowercase().ends_with(".jpeg") ||
+                                                     filename.to_lowercase().ends_with(".png") ||
+                                                     filename.to_lowercase().ends_with(".gif") ||
+                                                     filename.to_lowercase().ends_with(".bmp") ||
+                                                     filename.to_lowercase().ends_with(".webp") ||
+                                                     filename.to_lowercase().ends_with(".tiff") ||
+                                                     filename.to_lowercase().ends_with(".tif") {
+                                                println!("Detected image file (by extension), generating resized image at size {}", max_size);
+                                                generate_image_at_size(&media_data, max_size)
                                             } else if filename.to_lowercase().ends_with(".mp3") ||
                                                      filename.to_lowercase().ends_with(".wav") ||
                                                      filename.to_lowercase().ends_with(".flac") ||
@@ -619,7 +630,7 @@ fn get_media_at_resolution(album_id_ptr: *const c_char, media_id_ptr: *const c_c
                                                 println!("Detected audio file, generating audio placeholder at size {}", max_size);
                                                 create_audio_placeholder_at_size(max_size)
                                             } else {
-                                                println!("Detected image file, generating resized image at size {}", max_size);
+                                                println!("Detected image file (fallback), generating resized image at size {}", max_size);
                                                 generate_image_at_size(&media_data, max_size)
                                             };
                                             
