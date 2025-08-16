@@ -1,6 +1,10 @@
 # Soradyne Protocol
 
+⚠️ **PROOF OF CONCEPT - NOT FOR PRODUCTION USE** ⚠️
+
 A protocol for secure, peer-to-peer shared self-data objects with a focus on privacy and user control.
+
+**Important Notice**: This is experimental proof-of-concept code designed to demonstrate what's possible with decentralized self-data objects. The codebase is not well organized for others to easily view and understand - it's really meant to get the ball rolling and show concrete possibilities. Much improvement is needed before this would be ready for prime time or production use.
 
 Made with Aider Chat Bot backed by Claude Sonnet 4 hosted on OpenRouter.
 
@@ -67,7 +71,19 @@ Soradyne is built with a layered architecture:
 
 ## Project Status
 
-Soradyne is currently in the early development phase. It's not yet ready for production use, but we welcome contributions and feedback!
+⚠️ **This is proof-of-concept code only** ⚠️
+
+Soradyne is currently in the very early experimental phase. This codebase serves as a demonstration of concepts and possibilities rather than a production-ready system. Key limitations include:
+
+- **Not production ready**: This code should never be used in production environments
+- **Poor organization**: The codebase structure is not well organized for external contributors or users
+- **Experimental nature**: Many components are rough prototypes to explore feasibility
+- **Security concerns**: Cryptographic and security implementations need thorough review
+- **Documentation gaps**: Much of the code lacks proper documentation and examples
+
+The goal is to show what's possible concretely and get the conversation started about decentralized self-data protocols. Significant work is needed to make this suitable for real-world use.
+
+We welcome feedback and discussions about the concepts, but please do not use this code for anything beyond experimentation and learning!
 
 ## License
 
