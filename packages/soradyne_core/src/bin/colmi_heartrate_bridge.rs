@@ -202,11 +202,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Optionally connect to a remote Soradyne peer (uncomment to use)
     let bridge_for_connection = bridge.clone();
     tokio::spawn(async move {
+        let remote_address = "10.111.172.135:5001";
+        println!("[Connection] Waiting 5 seconds before attempting to connect to remote peer...");
         sleep(Duration::from_secs(5)).await; // Give time for other side to start listening
-        if let Err(e) = bridge_for_connection.connect("10.111.172.135:5001").await {
-            eprintln!("Failed to connect to remote Soradyne peer: {}", e);
-        } else {
-            println!("Connected to remote Soradyne peer");
+        
+        println!("[Connection] Attempting to connect to remote Soradyne peer at {}", remote_address);
+        match bridge_for_connection.connect(remote_address).await {
+            Ok(_) => {
+                println!("[Connection] ✅ Successfully connected to remote Soradyne peer at {}", remote_address);
+            }
+            Err(e) => {
+                eprintln!("[Connection] ❌ Failed to connect to remote Soradyne peer at {}: {}", remote_address, e);
+                eprintln!("[Connection] This is normal if no peer is running at that address");
+            }
         }
     });
 
