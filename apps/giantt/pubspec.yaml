@@ -15,8 +15,6 @@ dependencies:
     path: ../../packages/giantt_core
   
   # Shared packages
-  soradyne_flutter:
-    path: ../../packages/soradyne_flutter
   ai_chat_flutter:
     path: ../../packages/ai_chat_flutter
   
