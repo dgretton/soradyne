@@ -3,6 +3,7 @@ import '../models/giantt_item.dart';
 import '../models/status.dart';
 import '../models/priority.dart';
 import '../models/duration.dart';
+import '../models/time_constraint.dart';
 import '../storage/dual_file_manager.dart';
 import '../parser/giantt_parser.dart';
 import '../graph/giantt_graph.dart';
@@ -19,6 +20,7 @@ class AddArgs {
     this.charts = const [],
     this.tags = const [],
     this.relations = const {},
+    this.timeConstraints = const [],
   });
 
   final String id;
@@ -29,6 +31,7 @@ class AddArgs {
   final List<String> charts;
   final List<String> tags;
   final Map<String, List<String>> relations;
+  final List<TimeConstraint> timeConstraints;
 }
 
 /// Add a new item to the graph
@@ -60,6 +63,7 @@ class AddCommand extends CliCommand<AddArgs> {
     List<String> charts = [];
     List<String> tags = [];
     Map<String, List<String>> relations = {};
+    List<TimeConstraint> timeConstraints = [];
 
     for (int i = 2; i < args.length; i++) {
       final arg = args[i];
@@ -85,6 +89,13 @@ class AddCommand extends CliCommand<AddArgs> {
       } else if (arg.startsWith('--blocks=')) {
         final blocksStr = arg.substring(9);
         relations['BLOCKS'] = blocksStr.split(',').map((b) => b.trim()).toList();
+      } else if (arg.startsWith('--constraints=')) {
+        final constraintsStr = arg.substring(14);
+        for (final constraintStr in constraintsStr.split(' ')) {
+          if (constraintStr.trim().isNotEmpty) {
+            timeConstraints.add(TimeConstraint.parse(constraintStr.trim()));
+          }
+        }
       }
     }
 
@@ -97,6 +108,7 @@ class AddCommand extends CliCommand<AddArgs> {
       charts: charts,
       tags: tags,
       relations: relations,
+      timeConstraints: timeConstraints,
     );
   }
 
@@ -160,7 +172,7 @@ class AddCommand extends CliCommand<AddArgs> {
         charts: args.charts,
         tags: args.tags,
         relations: args.relations,
-        timeConstraints: const [],
+        timeConstraints: args.timeConstraints,
         userComment: null,
         autoComment: null,
         occlude: false,

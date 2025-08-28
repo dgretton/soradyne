@@ -19,7 +19,7 @@ class GianttItem {
     this.charts = const [],
     this.tags = const [],
     this.relations = const {},
-    this.timeConstraint,
+    this.timeConstraints = const [],
     this.userComment,
     this.autoComment,
     this.occlude = false,
@@ -52,8 +52,8 @@ class GianttItem {
   /// Relations to other items (relation type -> list of target IDs)
   final Map<String, List<String>> relations;
   
-  /// Optional time constraint
-  final TimeConstraint? timeConstraint;
+  /// Time constraints for this item
+  final List<TimeConstraint> timeConstraints;
   
   /// User-added comment
   final String? userComment;
@@ -80,7 +80,7 @@ class GianttItem {
     List<String>? charts,
     List<String>? tags,
     Map<String, List<String>>? relations,
-    TimeConstraint? timeConstraint,
+    List<TimeConstraint>? timeConstraints,
     String? userComment,
     String? autoComment,
     bool? occlude,
@@ -95,7 +95,7 @@ class GianttItem {
       charts: charts ?? this.charts,
       tags: tags ?? this.tags,
       relations: relations ?? this.relations,
-      timeConstraint: timeConstraint ?? this.timeConstraint,
+      timeConstraints: timeConstraints ?? this.timeConstraints,
       userComment: userComment ?? this.userComment,
       autoComment: autoComment ?? this.autoComment,
       occlude: occlude ?? this.occlude,
@@ -117,7 +117,8 @@ class GianttItem {
            tags.length == other.tags.length &&
            tags.every((tag) => other.tags.contains(tag)) &&
            relations.length == other.relations.length &&
-           timeConstraint == other.timeConstraint &&
+           timeConstraints.length == other.timeConstraints.length &&
+           timeConstraints.every((tc) => other.timeConstraints.contains(tc)) &&
            userComment == other.userComment &&
            autoComment == other.autoComment &&
            occlude == other.occlude;
@@ -127,7 +128,7 @@ class GianttItem {
   int get hashCode => Object.hash(
     id, title, description, status, priority, duration,
     Object.hashAll(charts), Object.hashAll(tags),
-    Object.hashAll(relations.entries), timeConstraint,
+    Object.hashAll(relations.entries), Object.hashAll(timeConstraints),
     userComment, autoComment, occlude
   );
 
@@ -175,9 +176,10 @@ class GianttItem {
       buffer.write(relationParts.join(' '));
     }
     
-    // Time constraint
-    if (timeConstraint != null) {
-      buffer.write(' @@@ $timeConstraint');
+    // Time constraints
+    if (timeConstraints.isNotEmpty) {
+      buffer.write(' @@@ ');
+      buffer.write(timeConstraints.map((tc) => tc.toString()).join(' '));
     }
     
     // Comments
