@@ -28,6 +28,10 @@ dependencies:
   # Gantt-specific dependencies
   gantt_chart: ^0.2.0
   timeline_tile: ^2.0.0
+  
+  # Mobile-specific dependencies
+  path_provider: ^2.1.5
+  permission_handler: ^11.0.1
 
 dev_dependencies:
   flutter_test:
