@@ -44,7 +44,7 @@ class GianttParser {
       final parsedDuration = _parseDurationSafely(duration);
       
       // Parse post-title section
-      final (charts, tags, relations, timeConstraint, userComment, autoComment) = 
+      final (charts, tags, relations, timeConstraints, userComment, autoComment) = 
           _parsePostTitleSection(postTitle);
       
       return GianttItem(
@@ -56,7 +56,7 @@ class GianttParser {
         charts: charts,
         tags: tags,
         relations: relations,
-        timeConstraint: timeConstraint,
+        timeConstraints: timeConstraints,
         userComment: userComment,
         autoComment: autoComment,
         occlude: occlude,
@@ -134,7 +134,7 @@ class GianttParser {
   }
 
   /// Parse the post-title section
-  static (List<String>, List<String>, Map<String, List<String>>, TimeConstraint?, String?, String?) 
+  static (List<String>, List<String>, Map<String, List<String>>, List<TimeConstraint>, String?, String?) 
       _parsePostTitleSection(String postTitle) {
     
     // Parse charts first
@@ -172,13 +172,14 @@ class GianttParser {
     final cleanRelationsStr = _removeComments(relationsStr);
     final relations = _parseRelations(cleanRelationsStr);
     
-    // Parse time constraint (remove comments from constraint string)
+    // Parse time constraints (remove comments from constraint string)
     final cleanTimeConstraintStr = timeConstraintStr != null ? _removeComments(timeConstraintStr) : null;
-    final timeConstraint = cleanTimeConstraintStr != null && cleanTimeConstraintStr.isNotEmpty
-        ? TimeConstraint.fromString(cleanTimeConstraintStr)
-        : null;
+    final timeConstraints = <TimeConstraint>[];
+    if (cleanTimeConstraintStr != null && cleanTimeConstraintStr.isNotEmpty) {
+      _parseTimeConstraints(cleanTimeConstraintStr, timeConstraints);
+    }
     
-    return (charts, tags, relations, timeConstraint, userComment, autoComment);
+    return (charts, tags, relations, timeConstraints, userComment, autoComment);
   }
 
   /// Parse charts from string like {"Chart1","Chart2"}
