@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:giantt_core/giantt_core.dart';
 
 void main() {
   runApp(const GianttApp());

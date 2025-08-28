@@ -14,9 +14,6 @@ dependencies:
   giantt_core:
     path: ../../packages/giantt_core
   
-  # Shared packages
-  ai_chat_flutter:
-    path: ../../packages/ai_chat_flutter
   
   # CLI dependencies
   args: ^2.4.2
