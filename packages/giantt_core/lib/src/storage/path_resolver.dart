@@ -171,6 +171,23 @@ class PathResolver {
     return path;
   }
 
+  /// Get the directory portion of a file path
+  static String _getDirectoryPath(String filepath) {
+    final lastSeparator = filepath.lastIndexOf(Platform.pathSeparator);
+    if (lastSeparator == -1) {
+      // Also check for forward slash in case of cross-platform paths
+      final lastForwardSlash = filepath.lastIndexOf('/');
+      if (lastForwardSlash == -1) {
+        return '.';
+      }
+      return filepath.substring(0, lastForwardSlash);
+    }
+    return filepath.substring(0, lastSeparator);
+  }
+
+  /// Get the directory portion of a file path (public version)
+  static String getDirectoryPath(String filepath) => _getDirectoryPath(filepath);
+
   /// Get a safe filename by removing invalid characters
   static String getSafeFilename(String filename) {
     // Remove or replace characters that are invalid on various platforms

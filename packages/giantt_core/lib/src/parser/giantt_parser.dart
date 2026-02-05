@@ -3,7 +3,6 @@ import '../models/giantt_item.dart';
 import '../models/status.dart';
 import '../models/priority.dart';
 import '../models/duration.dart';
-import '../models/relation.dart';
 import '../models/time_constraint.dart';
 import '../models/graph_exceptions.dart';
 
@@ -286,6 +285,31 @@ class GianttParser {
     // Remove user comments (#)
     text = text.replaceFirst(RegExp(r'#(?!##).*$'), '').trim();
     return text;
+  }
+
+  /// Parse multiple time constraints from a string
+  /// Constraints can be separated by commas or whitespace
+  /// Formats: window(...), due(...), every(...)
+  static void _parseTimeConstraints(String constraintStr, List<TimeConstraint> timeConstraints) {
+    if (constraintStr.isEmpty) return;
+
+    // Find all constraint patterns: window(...), due(...), every(...)
+    // We need to match balanced parentheses
+    final constraintPattern = RegExp(r'(window|due|every)\([^)]+\)');
+    final matches = constraintPattern.allMatches(constraintStr);
+
+    for (final match in matches) {
+      final constraintText = match.group(0)!;
+      try {
+        final constraint = TimeConstraint.fromString(constraintText);
+        if (constraint != null) {
+          timeConstraints.add(constraint);
+        }
+      } catch (e) {
+        // Skip invalid constraints but continue parsing others
+        // Could log this in debug mode
+      }
+    }
   }
 
 }

@@ -1,5 +1,6 @@
 import 'command_interface.dart';
 import '../models/giantt_item.dart';
+import '../graph/giantt_graph.dart';
 import '../storage/dual_file_manager.dart';
 
 /// Arguments for remove command

@@ -93,7 +93,10 @@ class AddCommand extends CliCommand<AddArgs> {
         final constraintsStr = arg.substring(14);
         for (final constraintStr in constraintsStr.split(' ')) {
           if (constraintStr.trim().isNotEmpty) {
-            timeConstraints.add(TimeConstraint.parse(constraintStr.trim()));
+            final constraint = TimeConstraint.parse(constraintStr.trim());
+            if (constraint != null) {
+              timeConstraints.add(constraint);
+            }
           }
         }
       }

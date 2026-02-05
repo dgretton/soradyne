@@ -319,20 +319,20 @@ class GraphDoctor {
   /// Check for time constraint violations
   void _checkTimeConstraints() {
     for (final item in graph.items.values) {
-      if (item.timeConstraint != null) {
-        // Check if time constraint is valid
-        final constraint = item.timeConstraint!;
-        
-        // Add validation for time windows here
-        // This would check if the constraint makes sense given dependencies
-        // For now, we'll add a placeholder for future time constraint validation
-        
-        // Example: Check if constraint conflicts with dependencies
-        final requiredItems = item.relations['REQUIRES'] ?? [];
-        for (final requiredId in requiredItems) {
-          final requiredItem = graph.items[requiredId];
-          if (requiredItem?.timeConstraint != null) {
-            // Could add logic here to check if time constraints are compatible
+      if (item.timeConstraints.isNotEmpty) {
+        // Check if time constraints are valid
+        for (final constraint in item.timeConstraints) {
+          // Add validation for time windows here
+          // This would check if the constraint makes sense given dependencies
+          // For now, we'll add a placeholder for future time constraint validation
+
+          // Example: Check if constraint conflicts with dependencies
+          final requiredItems = item.relations['REQUIRES'] ?? [];
+          for (final requiredId in requiredItems) {
+            final requiredItem = graph.items[requiredId];
+            if (requiredItem != null && requiredItem.timeConstraints.isNotEmpty) {
+              // Could add logic here to check if time constraints are compatible
+            }
           }
         }
       }

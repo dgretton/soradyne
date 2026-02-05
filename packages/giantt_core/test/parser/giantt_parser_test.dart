@@ -67,10 +67,10 @@ void main() {
         
         expect(item.id, equals('task4'));
         expect(item.status, equals(GianttStatus.blocked));
-        expect(item.timeConstraint, isNotNull);
-        expect(item.timeConstraint!.type, equals(TimeConstraintType.window));
-        expect(item.timeConstraint!.duration.toString(), equals('5d'));
-        expect(item.timeConstraint!.gracePeriod?.toString(), equals('2d'));
+        expect(item.timeConstraints, isNotEmpty);
+        expect(item.timeConstraints.first.type, equals(TimeConstraintType.window));
+        expect(item.timeConstraints.first.duration.toString(), equals('5d'));
+        expect(item.timeConstraints.first.gracePeriod?.toString(), equals('2d'));
       });
 
       test('should parse item with comments', () {
@@ -196,7 +196,7 @@ void main() {
         for (final (constraintStr, expectedType) in testCases) {
           final line = '○ task1 1d "Test task" {} >>> @@@ $constraintStr';
           final item = GianttParser.fromString(line);
-          expect(item.timeConstraint?.type, equals(expectedType));
+          expect(item.timeConstraints.firstOrNull?.type, equals(expectedType));
         }
       });
     });

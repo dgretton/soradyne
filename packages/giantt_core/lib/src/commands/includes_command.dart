@@ -121,7 +121,7 @@ class IncludesCommand extends CliCommand<IncludesArgs> {
         structure[filepath] = includes;
         for (final include in includes) {
           final resolvedPath = PathResolver.resolvePath(
-            PathResolver._getDirectoryPath(filepath),
+            PathResolver.getDirectoryPath(filepath),
             include,
           );
           buildTree(resolvedPath);
@@ -187,7 +187,7 @@ class IncludesCommand extends CliCommand<IncludesArgs> {
       
       for (final include in includes) {
         final resolvedPath = PathResolver.resolvePath(
-          PathResolver._getDirectoryPath(filepath),
+          PathResolver.getDirectoryPath(filepath),
           include,
         );
         

@@ -10,8 +10,23 @@ abstract class Command {
   String get name;
   String get description;
   ArgParser get argParser;
-  
+
   Future<void> execute(ArgResults args);
+}
+
+/// Generic base class for CLI commands with typed arguments
+abstract class CliCommand<T> {
+  const CliCommand();
+
+  String get name;
+  String get description;
+  String get usage;
+
+  /// Parse command-line arguments into typed args object
+  T parseArgs(List<String> args);
+
+  /// Execute the command with context
+  Future<CommandResult<T>> execute(CommandContext context);
 }
 
 /// Result of a command execution

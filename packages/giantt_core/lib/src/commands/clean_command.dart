@@ -161,17 +161,10 @@ class CleanCommand extends CliCommand<CleanArgs> {
       BackupManager.cleanupAllBackups(filesToClean, retentionCount: retentionCount);
     }
 
-    final results = {
-      'total_found': totalBackupsFound,
-      'total_removed': totalBackupsToRemove,
-      'retention_count': retentionCount,
-      'file_stats': fileStats,
-    };
-
-    final message = dryRun 
+    final message = dryRun
       ? 'Would clean $totalBackupsToRemove of $totalBackupsFound backup files'
       : 'Cleaned $totalBackupsToRemove of $totalBackupsFound backup files';
 
-    return CommandResult.success(results, message);
+    return CommandResult.message(message);
   }
 }

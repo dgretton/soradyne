@@ -87,6 +87,9 @@ class TimeConstraint {
   /// Whether recurring constraints should stack
   final bool stack;
 
+  /// Parse a time constraint from a string (alias for fromString)
+  static TimeConstraint? parse(String? constraintStr) => fromString(constraintStr);
+
   /// Parse a time constraint from a string
   static TimeConstraint? fromString(String? constraintStr) {
     if (constraintStr == null || constraintStr.isEmpty) {

@@ -591,7 +591,7 @@ Future<void> _showOneItem(GianttGraph graph, String substring) async {
     print('Duration: ${item.duration}');
     print('Charts: ${item.charts.join(', ')}');
     print('Tags: ${item.tags.isNotEmpty ? item.tags.join(', ') : 'None'}');
-    print('Time Constraint: ${item.timeConstraint ?? 'None'}');
+    print('Time Constraints: ${item.timeConstraints.isNotEmpty ? item.timeConstraints.join(', ') : 'None'}');
     print('Relations:');
     
     if (item.relations.isEmpty) {

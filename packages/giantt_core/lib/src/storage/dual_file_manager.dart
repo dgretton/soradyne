@@ -9,6 +9,7 @@ import '../logging/log_occluder.dart';
 import 'atomic_file_writer.dart';
 import 'backup_manager.dart';
 import 'file_header_generator.dart';
+import 'file_repository.dart';
 import 'path_resolver.dart';
 
 /// Manages dual-file operations for include/occlude system
@@ -316,18 +317,5 @@ class OccludeResult {
   bool get hasOccluded => occludedCount > 0;
 }
 
-/// Result of a log occlude operation
-class LogOccludeResult {
-  const LogOccludeResult({
-    required this.occludedCount,
-    required this.occludedLogs,
-    required this.dryRun,
-  });
-
-  final int occludedCount;
-  final List<LogEntry> occludedLogs;
-  final bool dryRun;
-
-  bool get hasOccluded => occludedCount > 0;
-}
+// LogOccludeResult is imported from log_occluder.dart
 
