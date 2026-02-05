@@ -183,6 +183,7 @@ ArgParser _createModifyCommand() {
 
 ArgParser _createRemoveCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addFlag('force', abbr: 'F', help: 'Force removal without confirmation', negatable: false)
@@ -191,6 +192,7 @@ ArgParser _createRemoveCommand() {
 
 ArgParser _createSetStatusCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use');
 }
@@ -213,6 +215,7 @@ ArgParser _createTouchCommand() {
 
 ArgParser _createInsertCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('charts', help: 'Comma-separated list of charts')
@@ -230,20 +233,23 @@ ArgParser _createIncludesCommand() {
 
 ArgParser _createCleanCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addFlag('yes', abbr: 'y', help: 'Skip confirmation prompt', negatable: false)
     ..addOption('keep', abbr: 'k', defaultsTo: '3', help: 'Number of recent backups to keep');
 }
 
 ArgParser _createLogCommand() {
   return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Logs file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Occluded logs file to use')
     ..addOption('tags', help: 'Additional comma-separated tags');
 }
 
 ArgParser _createOccludeCommand() {
-  final parser = ArgParser();
-  
+  final parser = ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false);
+
   // Add subcommands for occlude
   parser.addCommand('items', ArgParser()
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
@@ -857,7 +863,7 @@ Future<void> _executeRemove(ArgResults args) async {
     }
 
     // Remove the item
-    graph.items.remove(itemId);
+    graph.removeItem(itemId);
 
     // Clean up relations that reference this item (unless keep-relations is set)
     if (!keepRelations) {
