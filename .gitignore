@@ -11,6 +11,11 @@ pubspec.lock
 # Flutter
 .dart_tool/
 .metadata
+.flutter-plugins-dependencies
+
+# Python
+__pycache__/
+*.pyc
 
 # Test outputs
 **/rimsd_*/
