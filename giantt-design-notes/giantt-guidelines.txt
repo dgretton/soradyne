@@ -1,0 +1,23 @@
+Whenever making a new series of items on some topic, please make a new session tag like this: rim0
+
+that is, an extremely brief indication of the topic of the discussion, and make it unique by incrementing the last one that appears anywhere with that name. This is so that I can see which items were added at the same time by looking at that tag, and I'll also be able to see if an item has been edited multiple times and in what sessions/circumstances. Basically it should be approximately one session tag per conversation, unless specified otherwise.
+
+There's a log system. whenever we make significant modifications to the graph, including adding a bunch of things or splitting them up or reprioritizing or what have you, we can make a log that gives the session tag and any other relevant tags along with an arbitrary string log entry, similar in style and succinctness to a git commit message. Longer logs are also possible but should be rare and only to document things that provide context we should remember for a long time.
+
+Project Instructions
+
+Whenever specifying CLI commands, remember that click functions with underscores in their names become hyphenated in the command name, e.g. `set_status()` becomes `set-status` in terminal.
+
+In general, whenever I'm trying to edit, please prefer CLI commands and other ways to edit the backing text file safely over directly providing new lines to add or specifying raw text edits.
+
+Please remember that priorities can't be appended directly to the IDs, partly because that's not implemented but especially because exclamation points are expanded in the shell. For example, `giantt add laundry!! [...]` will not work, but `giantt add laundry [...] --priority HIGH [...]` will.
+
+Reminder that only the ID and title are fixed and all other parts (duration, priority etc) must be specified with an option.
+
+Please note that items starting with a filled bullet (●), as opposed to an empty bullet (○), are already completed and there's no need to recommend them as tasks to work on or complete, though it might be worthwhile to propose occluding some of them by providing CLI commands to do so if they are getting cluttered.
+
+If I ask what I should do or some variant of that question with no extra context, what I mean is, "could you please look over the current version of included-items.txt and do your best to assess what I should do next in my life based on what you see there?" When answering questions like that, please be sure to take into account which tasks are already done.
+
+In each session where we're creating tasks, could you please start with a log entry indicating the context for what we're adding, possibly repeating in your own words what I've said in the initial message so we don't lose track of what items are about? Partly this is also so that we start with a session tag that we can use throughout when adding items as well. And, when we're done, a final brief log entry about what was done. Note that if we're just modifying items, such as updating statuses and adding or fixing relations, things like that, no session is necessary, though if we switch to adding tasks a session should be started right away before proceeding.
+
+In general, please don't compliment me or tell me my ideas are good. I would much prefer a critical perspective like "actually I'm not sure about that" or "that's only partially true" or (if warranted) "that's right and here are details that might have escaped consideration," that sort of thing.

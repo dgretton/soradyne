@@ -1,0 +1,72 @@
+Giantt will run in my terminal on my computer, on my phone in a gui, in a browser locally on my computer, and might optionally find its way to being hosted (privately) online or something. It should be backed by text data that is not canonically in any particular place, i.e. while it is still at its core just a special text file on my computer like the inventory is, it's a bit more "out there" in a form that can be written to and read from in a synchronized way from and to all of my devices. It should be ok to move the whole backing file and the metadata file around every time there is any edit from any source, it might get up to a megabyte if things get really crazy but not bigger. it should be possible to view multiple different gantt charts that are associated with different themes or projects in my life, of which there will certainly be at least a dozen. These can be called "charts" or "giantt charts." Mexico planes project, having a family, moving into my new house, finishing my phd, maintaining my grandfather's music legacy, founding a startup, writing music. I guess each "theme" or "project" should probably be uniquely associated with a particular goal that can be said in a sentence or short paragraph. They should be sort of fractal-y in that multiple projects all point to my thesis for my phd, but many of those items also point to other things in other timelines and goals, so there's no strict sense of containment of one chart within another--more like every item can have one or more tags or identifiers that mark them as belonging to one or more sub-charts. One neat way to do this is to make a set of cards I can flip and sort through, each of which has a gantt chart on it, and I can find the one I want that has to do with a particular project and open it to look at all the stuff in it, or I can open up multiple of them at the same time and see them overlaid on each other so I can see how crazy it is to do them at the same time or if they mesh or parallelize neatly--or if I need to add a constraint I forgot. The critical path should always be simple to see (that's an algorithmic requirement), and there shouldn't be any concrete moment in time that anything is supposed to happen precisely, as an optional feature things that are unconstrained can move around easily by touching or dragging them (and it's always easy and accessible to change the length of time something should take by dragging or entering something directly) but anyway the point is that this is not for creating a schedule, it's for taking stock and making progress with a rough timeline in mind. I would like to be able to sort the items by different characteristics, like urgency or least recently updated project, and it should be straightforward to see visually (and maybe in a little popup with links or something) where constraints are coming from however they might be sorted. An integrated chat interface that is modular w.r.t. any particular text AI would be great so that I can make queries from my phone. I'd like to define some special markup whose description is provided to the AI so that it knows that if it responds in a particular way, like with unusual punctuation wrapping its text or something, that text will be interpreted as a structured command that can be run directly by tapping on it or otherwise accepting it. There should be an undo feature and backups across all time--I don't expect these files will get huge, if I can fill up a whole gigabyte across years of use where I save whole copies of the entire data store at a time I will be astonished. Storing history as diffs so that I could possibly undo some changes but not others would be some nice polish, but honestly, I can always just go in and edit the backing data file directly if I need to manually merge some conflicting changes or recover something.
+
+--- Logs ---
+
+Records of things done should always be recorded in logs. Logs have tags, which are the same sorts of tags as are used in items. They also have timestamps. Almost all log entries will be very short, and most editing sessions (usually, a conversation in which CLI or UI commands are generated and executed) will result in the addition of a tiny log entry with a session tag, in addition to other relevant tags for the conversation. Occasionally, thoughts, feelings, priorities, musings, etc can be entered into the logs.
+
+--- Occlusion ---
+
+There is an 'occlude' directory for old giantt items and logs that are not necessary to keep track of anymore for immediate decision-making. Most likely this is because the items & notes about them are done and in the past, but the items may or may not have been completed (they can have any status and that's ok). This is serialized and stored in the same format as the usual giantt items (that is, not json or yaml but the custom giantt notation). 'Include' contrasts 'occlude;' items are either included or occluded. Metadata is similarly occluded so it stays paired correctly with the occluded items. (items can be occluded but metadata cannot be directly occluded, it comes along with the items.) The item & item metadata files in the 'occlude' directory might get much bigger than the current giantt items file. Occluded items still need to be synced between all devices so that scrolling back through time (for example) or any other action that reveals occluded items and logs shows them just like any included entities. Apart from a status difference (essentially reducible to an 'occlude' flag which may have a mild visual cue and some small UI implications), occluded and included giantt items or occluded and included log entries are materially the same. The distinction and separation into separate files is mostly for AI--the current giantt items and logs are loaded into projects or context windows for language models, whereas the occluded items can be safely ignored for present decision-making. This means that some long-term or past items and logs might remain included for a long time because they still provide needed context for decision-making, so archiving is not an automatic process and is not dependent on status or future/past.
+
+--- Phone app gui ---
+
+The phone app should have front and center when it's opened a carousel of cards, each of which shows the gantt chart for a Giantt Chart group, sort of like the mac app switcher that shows a stack disappearing into the distance with one visible on top, and when you scroll left/right the ones at the top sort themselves fast and smoothly to the back. The interface should have momentum, i.e. you can swipe and let go, and it continues rolling in that direction. These cards are shortcuts to open particular groups of Giantt Charts. Most of these will just be a group of length 1, so, one card per chart by default, but you can also pin a group of charts as a card. Each Giantt Chart group has a time horizon start point and end point in its metadata that gives the time-scale that it opens at by default and how much of the timeline should be shown in the card.
+
+The next section down should be the actual gantt chart viewer. When a card is selected, it just auto-scrolls down to this section with the Giant Chart(s) selected. There should be a horizontal scroll at the top of this section like a tab view in a browser or filter selection that lets you select one or more charts to look at--when selected they are visually distinct and sort themselves to the front of the scroll. Somewhere near here is the option to pin the currently selected group of charts as a card. 
+
+The gantt viewer has pinch-to-zoom on the horizontal axis and items listed as rows going down. The descriptions of the items are frozen like a frozen column in a spreadsheet on the left. They can be collapsed. The display is the usual for a gantt chart--boxes of various lengths and colors. Their descriptions should be shown as much as possible like the text inside google calendar--if it overflows, it's truncated with ellipses (...). There should be a slider for the vertical scale of the rows, and if the scale is large enough it should show more and more of the metadata for the row progressively, e.g. add description, tags, detailed description. It's fine if all of the rows scale vertically at the same time, no need to keep them separate scales. Log entries can be visible subtly as little points in time that can be expanded and viewed.
+
+There should be sort/view options at the top. "Sort by" should be a dropdown. Filter by tags should be a collapsible selector like the chart selector, only showing tags that are present in the current view (ordered by decreasing total number of times they appear in the currently viewed items). If the "normal" option is selected for view, everything is first segmented by groups of items that are specific to this chart (can be stored as a special tag that starts with an underscore) that can be collapsed (group name appears as a row with a collapse arrow), and then, within each item group, just in topological sort order. Tapping the group name lets you either delete the group (preserves the items, they're unaffected) or occlude the group and all the items in it.
+
+Tapping an item's rectangle should give options for modifying duration, adding and removing relations. Tapping an item's left-side descriptor should give options for editing the properties of the item.
+
+selecting items works like google photos selection--long press on the item opens a typical selection overlay at the top, continuing to hold and move around causes scrolling and multi-select by blocks, and releasing and tapping others adds them or removes them from the selection. You can group the selection.
+
+There is a big button at the bottom that you can tap to open the AI chat. When opened, you can select which AI and then type something. If the AI responds with the special delimiters, these are formatted as a function name and sequence of arguments you can tap on--if so, there is a prompt with some optional information about what will happen and a button to confirm, as well as a direct edit button to get in and modify some text directly before accepting & executing. The effect updates the backing text file immediately and it immediately syncs elsewhere. The effects are also shown immediately in the gantt chart viewer. If there is an error, it's shown here with an option to undo immediately.
+
+--- Desktop gui ---
+
+Basically the same as the phone gui, horizontal scroll at the top to flip through the cards but if selected no need to scroll down, the cards can just be at the top (unless collapsed). Same horizontal and vertical scroll options but vertical is connected to the pinch zoom vertical direction rather than a vertical-zoom slider. Main difference is that all the durations can be modified by clicking and dragging handles on sides of the rectangles for items and moving them around. (remains to be seen whether this can be incorporated in a cohesive way into the phone gui.)
+
+--- Rim integration ---
+
+Rim will enable syncing Giantt items across different users. The items file (and occluded items file) will still be replicated to all of a user's devices running Giantt, but there will be some rim data objects that can optionally feed into and modify the graph. The flow will be, load up the graph from the items file, go query for new rim data object updates (which might include redirect tables of obfuscated item IDs to control privacy) and build new items and new graphs to the extent possible with available information, merge the graphs into the current items file, and if that succeeds, use that as the items in memory for display, etc. and also save it to disk with backups as usual. The items file itself might be synced around with rim but that's optional. 
+
+--- Development Plan ---
+
+Initial Stage: LLM-assisted CLI
+
+
+ - Text-based representation with CLI manipulation
+ - LLM provides insights and generates commands
+ - Basic dependency tracking and timeline visualization through text
+ - Focused on immediate decision support
+ - Add/remove/bulk-modify-by-tag-or-chart items and logs
+ - Files are uploaded manually and individually to LLMs
+
+
+Multi-Device Interactive Stage
+
+
+ - Complete sync system operational across devices
+ - Cards UI for quick chart access and grouping
+ - Interactive visualization on mobile/web/desktop
+ - Direct manipulation of items (drag/resize/connect)
+ - Real-time updates across devices
+ - Spring layout engine actively optimizing item positions
+ - Multiple concurrent chart views
+ - Automated constraint satisfaction, critical path detection
+ - Graceful handling of recurring items
+
+
+Intelligent Planning Assistant
+
+
+ - In-app LLM chat about items
+ - Selectable models from list
+ - Lightweight API for LLMs to use to manipulate items and logs
+ - Validation of API usage/formatting in LLM responses and auto-retry with error info
+ - Validated API commands show up with special formatting, nice rounded boxes and capsules
+ - Edit API commands directly in text form if necessary
+ - Pop-over/tap-to-accept commands on mobile, suggest-confirm dialog on web and desktop
+

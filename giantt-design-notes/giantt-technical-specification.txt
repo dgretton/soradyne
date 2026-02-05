@@ -1,0 +1,141 @@
+# Giantt Technical Specification
+
+## Core Item Structure
+
+Each item in the system contains:
+- id: Unique identifier, alphanumeric with underscores, human readable
+- title: Short descriptive name
+- description: Detailed description of the item
+- duration: Expected time to complete
+  - amount: Numeric value
+  - unit: Time unit (minutes, hours, days, weeks, months)
+- timeline_constraints:
+  - earliest_start: Optional timestamp
+  - latest_end: Optional timestamp
+- status: Current state (NOT_STARTED, IN_PROGRESS, BLOCKED, COMPLETED)
+- priority: Importance level (LOW, MEDIUM, HIGH, CRITICAL)
+- last_updated: System-managed timestamp for any modification
+- last_user_update: Optional timestamp for explicit user updates
+- charts: Array of chart identifiers this item belongs to
+- tags: Array of user-defined tags
+- occlude: Whether this item is occluded (not shown to LLMs due to context length constraints)
+- metadata: Flexible key-value store for additional properties
+
+## Relation Types
+
+###Primary Relations
+
+- REQUIRES (AND relations)
+  - Represents hard prerequisites
+  - If X REQUIRES A and B, both A and B must be completed before X
+  - Automatically implies BLOCKS relations going the other way
+  - Does not automatically create any other relations
+  - Used for topological sorting and constraint satisfaction
+
+- ANYOF (OR relations)
+  - Represents alternative paths to enable an item
+  - If X ANYOF A and B, completing either A or B enables X
+  - Automatically implies SUFFICIENT relations going the other way
+  - Affects earliest possible start time of an item
+
+### Secondary Relations
+
+- SUPERCHARGES
+  - Represents optional but beneficial connections
+  - Pull: weak attraction from end to start of supercharged item
+  - Direction: Supercharging item typically follows enhanced item
+  
+- INDICATES
+  - Represents natural progression or logical next steps
+  - Pull: medium attraction
+  - Direction: Indicated item follows indicating item
+  
+- TOGETHER
+  - Represents parallel work opportunities
+  - Pull: strong attraction
+  - Direction: Parallel alignment of start time
+  
+- CONFLICTS
+  - Represents resource conflicts or mutual exclusivity
+  - Pull: strong repulsion
+  - Used to attempt to prevent simultaneous scheduling but before/after is not important
+
+### Redundant Relations
+
+- BLOCKS
+  - Strictly the reciprocal of REQUIRES
+- SUFFICIENT
+  - Strictly the reciprocal of ANYOF
+
+## Layout Engine Principles
+
+Layout Engine Principles
+The visualization engine uses a two-phase approach to determine optimal item positioning:
+
+Phase 1: Schedule Resolution
+
+Input: Graph with REQUIRES and UNLOCKS relations, durations, time constraints
+Process:
+
+Establish valid ordering through topological sort of REQUIRES
+Compute earliest possible start times considering UNLOCKS paths
+Identify valid time windows for each item
+
+
+Output:
+
+Valid item ordering
+Time windows (earliest start, latest end) for each item
+Metadata about scheduling decisions
+
+Phase 2: Spring Layout
+
+Input: Output from Phase 1 plus secondary relations
+Constraints:
+
+Items must remain within their valid time windows
+REQUIRES relations cannot be violated
+Forces are as described above
+
+Output:
+
+Final 2D positioning of items
+Vertical ordering for readability
+
+Optimization Strategy
+
+Phase 1 uses ordinary topological sort followed by a greedy forward pass for initial solution
+
+More sophisticated algorithms can be substituted
+Interface remains consistent regardless of algorithm
+
+
+Phase 2 uses force-directed layout within constraints
+
+Spring constants derived from relations
+Optimization continues until stable state or timeout
+
+
+
+Performance Considerations
+
+Phase 1 prioritizes finding valid solution quickly
+Phase 2 can run incrementally for interactive updates
+Caching of partial results between updates
+Separate thread for continuous layout optimization
+
+## Charts (Collections)
+
+- Each chart represents a cohesive collection of related items
+- Items can belong to multiple charts simultaneously
+- Charts provide different views into the same underlying data
+- Charts can be:
+  - Viewed individually
+  - Viewed simultaneously as a group to analyze interactions
+  - Filtered by various criteria
+  - Sorted by properties like urgency or last update
+- Charts maintain layout state:
+  - Time window preferences
+  - Current spring layout configuration
+  - Item vertical order
+  - View settings (zoom, view window, grouping for example)

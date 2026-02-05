@@ -1,0 +1,10 @@
+#######################################################################
+#                                                                     #
+#                        Giantt Occluded Items                        #
+#     This file contains all occluded Giantt items in topological     #
+#            order according to the REQUIRES (⊢) relation.            #
+#              Edit this file manually at your own risk.              #
+#                                                                     #
+#######################################################################
+
+
