@@ -3,8 +3,6 @@
 import 'dart:io';
 import 'package:args/args.dart';
 import 'package:giantt_core/giantt_core.dart';
-import 'package:giantt_core/src/commands/command_interface.dart';
-import 'package:giantt_core/src/storage/file_header_generator.dart';
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
@@ -26,6 +24,7 @@ void main(List<String> arguments) async {
   parser.addCommand('log', _createLogCommand());
   parser.addCommand('occlude', _createOccludeCommand());
   parser.addCommand('doctor', _createDoctorCommand());
+  parser.addCommand('add-include', _createAddIncludeCommand());
 
   try {
     final results = parser.parse(arguments);
@@ -81,6 +80,7 @@ void _printUsage(ArgParser parser) {
   print('  log         Create a log entry with session tag and message');
   print('  occlude     Occlude items or logs');
   print('  doctor      Check the health of the Giantt graph and fix issues');
+  print('  add-include Add an include directive to a Giantt items file');
   print('');
   print('Run "giantt <command> --help" for more information on a command.');
 }
@@ -283,6 +283,12 @@ ArgParser _createDoctorCommand() {
   return parser;
 }
 
+ArgParser _createAddIncludeCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addOption('file', abbr: 'f', help: 'Giantt items file to use');
+}
+
 Future<void> _executeCommand(ArgResults command) async {
   switch (command.name) {
     case 'init':
@@ -326,6 +332,9 @@ Future<void> _executeCommand(ArgResults command) async {
       break;
     case 'doctor':
       await _executeDoctor(command);
+      break;
+    case 'add-include':
+      await _executeAddInclude(command);
       break;
     default:
       throw ArgumentError('Unknown command: ${command.name}');
@@ -658,18 +667,295 @@ Future<void> _showLogs(LogCollection logs, String substring) async {
 }
 
 Future<void> _executeModify(ArgResults args) async {
-  print('TODO: Implement modify command');
-  // TODO: Implement modify logic
+  if (args.rest.length < 3) {
+    stderr.writeln('Error: Please provide item ID, property, and value');
+    stderr.writeln('Usage: giantt modify <id> <property> <value> [--add|--remove]');
+    exit(1);
+  }
+
+  final itemId = args.rest[0];
+  final property = args.rest[1];
+  final value = args.rest[2];
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final addMode = args['add'] as bool;
+  final removeMode = args['remove'] as bool;
+
+  try {
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+
+    // Load graph
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
+    // Find item by ID or substring
+    GianttItem? item;
+    if (graph.items.containsKey(itemId)) {
+      item = graph.items[itemId];
+    } else {
+      try {
+        item = graph.findBySubstring(itemId);
+      } catch (e) {
+        stderr.writeln('Error: Item "$itemId" not found');
+        exit(1);
+      }
+    }
+
+    if (item == null) {
+      stderr.writeln('Error: Item "$itemId" not found');
+      exit(1);
+    }
+
+    // Apply modification based on property
+    GianttItem modifiedItem;
+    switch (property.toLowerCase()) {
+      case 'title':
+        modifiedItem = item.copyWith(title: value);
+        break;
+      case 'status':
+        modifiedItem = item.copyWith(status: GianttStatus.fromName(value.toUpperCase()));
+        break;
+      case 'priority':
+        modifiedItem = item.copyWith(priority: GianttPriority.fromName(value.toUpperCase()));
+        break;
+      case 'duration':
+        modifiedItem = item.copyWith(duration: GianttDuration.parse(value));
+        break;
+      case 'charts':
+        final chartsList = value.split(',').map((c) => c.trim()).toList();
+        if (addMode) {
+          modifiedItem = item.copyWith(charts: [...item.charts, ...chartsList]);
+        } else if (removeMode) {
+          modifiedItem = item.copyWith(charts: item.charts.where((c) => !chartsList.contains(c)).toList());
+        } else {
+          modifiedItem = item.copyWith(charts: chartsList);
+        }
+        break;
+      case 'tags':
+        final tagsList = value.split(',').map((t) => t.trim()).toList();
+        if (addMode) {
+          modifiedItem = item.copyWith(tags: [...item.tags, ...tagsList]);
+        } else if (removeMode) {
+          modifiedItem = item.copyWith(tags: item.tags.where((t) => !tagsList.contains(t)).toList());
+        } else {
+          modifiedItem = item.copyWith(tags: tagsList);
+        }
+        break;
+      case 'requires':
+        final requiresList = value.split(',').map((r) => r.trim()).toList();
+        final newRelations = Map<String, List<String>>.from(item.relations);
+        if (addMode) {
+          newRelations['REQUIRES'] = [...(newRelations['REQUIRES'] ?? []), ...requiresList];
+        } else if (removeMode) {
+          newRelations['REQUIRES'] = (newRelations['REQUIRES'] ?? []).where((r) => !requiresList.contains(r)).toList();
+          if (newRelations['REQUIRES']!.isEmpty) newRelations.remove('REQUIRES');
+        } else {
+          newRelations['REQUIRES'] = requiresList;
+        }
+        modifiedItem = item.copyWith(relations: newRelations);
+        break;
+      case 'anyof':
+        final anyOfList = value.split(',').map((a) => a.trim()).toList();
+        final newRelations = Map<String, List<String>>.from(item.relations);
+        if (addMode) {
+          newRelations['ANYOF'] = [...(newRelations['ANYOF'] ?? []), ...anyOfList];
+        } else if (removeMode) {
+          newRelations['ANYOF'] = (newRelations['ANYOF'] ?? []).where((a) => !anyOfList.contains(a)).toList();
+          if (newRelations['ANYOF']!.isEmpty) newRelations.remove('ANYOF');
+        } else {
+          newRelations['ANYOF'] = anyOfList;
+        }
+        modifiedItem = item.copyWith(relations: newRelations);
+        break;
+      case 'blocks':
+        final blocksList = value.split(',').map((b) => b.trim()).toList();
+        final newRelations = Map<String, List<String>>.from(item.relations);
+        if (addMode) {
+          newRelations['BLOCKS'] = [...(newRelations['BLOCKS'] ?? []), ...blocksList];
+        } else if (removeMode) {
+          newRelations['BLOCKS'] = (newRelations['BLOCKS'] ?? []).where((b) => !blocksList.contains(b)).toList();
+          if (newRelations['BLOCKS']!.isEmpty) newRelations.remove('BLOCKS');
+        } else {
+          newRelations['BLOCKS'] = blocksList;
+        }
+        modifiedItem = item.copyWith(relations: newRelations);
+        break;
+      case 'comment':
+        modifiedItem = item.copyWith(userComment: value);
+        break;
+      default:
+        stderr.writeln('Error: Unknown property "$property"');
+        stderr.writeln('Valid properties: title, status, priority, duration, charts, tags, requires, anyof, blocks, comment');
+        exit(1);
+    }
+
+    // Update in graph
+    graph.addItem(modifiedItem);
+
+    // Check for cycles if relations were modified
+    if (['requires', 'anyof', 'blocks'].contains(property.toLowerCase())) {
+      try {
+        graph.topologicalSort();
+      } catch (e) {
+        stderr.writeln('Error: Modification would create a cycle in dependencies');
+        exit(1);
+      }
+    }
+
+    // Save graph
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+
+    print('Successfully modified "$property" for item "${item.id}"');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeRemove(ArgResults args) async {
-  print('TODO: Implement remove command');
-  // TODO: Implement remove logic
+  if (args.rest.isEmpty) {
+    stderr.writeln('Error: Please provide an item ID to remove');
+    stderr.writeln('Usage: giantt remove <id> [--force]');
+    exit(1);
+  }
+
+  final itemId = args.rest[0];
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final force = args['force'] as bool;
+  final keepRelations = args['keep-relations'] as bool;
+
+  try {
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+
+    // Load graph
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
+    // Find the item
+    if (!graph.items.containsKey(itemId)) {
+      stderr.writeln('Error: Item "$itemId" not found');
+      exit(1);
+    }
+
+    // Check for dependencies unless force is used
+    if (!force) {
+      final dependentItems = <String>[];
+      for (final item in graph.items.values) {
+        final requires = item.relations['REQUIRES'] ?? [];
+        final anyOf = item.relations['ANYOF'] ?? [];
+        if (requires.contains(itemId) || anyOf.contains(itemId)) {
+          dependentItems.add(item.id);
+        }
+      }
+
+      if (dependentItems.isNotEmpty) {
+        stderr.writeln('Error: Cannot remove item "$itemId" because it is required by: ${dependentItems.join(", ")}');
+        stderr.writeln('Use --force to remove anyway.');
+        exit(1);
+      }
+    }
+
+    // Remove the item
+    graph.items.remove(itemId);
+
+    // Clean up relations that reference this item (unless keep-relations is set)
+    if (!keepRelations) {
+      for (final item in graph.items.values) {
+        bool modified = false;
+        final newRelations = <String, List<String>>{};
+
+        for (final entry in item.relations.entries) {
+          final cleanedTargets = entry.value.where((target) => target != itemId).toList();
+          if (cleanedTargets.length != entry.value.length) {
+            modified = true;
+          }
+          if (cleanedTargets.isNotEmpty) {
+            newRelations[entry.key] = cleanedTargets;
+          }
+        }
+
+        if (modified) {
+          final updatedItem = item.copyWith(relations: newRelations);
+          graph.addItem(updatedItem);
+        }
+      }
+    }
+
+    // Save graph
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+
+    print('Successfully removed item "$itemId"');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeSetStatus(ArgResults args) async {
-  print('TODO: Implement set-status command');
-  // TODO: Implement set-status logic
+  if (args.rest.length < 2) {
+    stderr.writeln('Error: Please provide item ID/substring and new status');
+    stderr.writeln('Usage: giantt set-status <id> <status>');
+    stderr.writeln('Valid statuses: NOT_STARTED, IN_PROGRESS, BLOCKED, COMPLETED');
+    exit(1);
+  }
+
+  final itemId = args.rest[0];
+  final statusStr = args.rest[1];
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+
+  try {
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+
+    // Load graph
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
+    // Find item by ID or substring
+    GianttItem? item;
+    if (graph.items.containsKey(itemId)) {
+      item = graph.items[itemId];
+    } else {
+      try {
+        item = graph.findBySubstring(itemId);
+      } catch (e) {
+        stderr.writeln('Error: Item "$itemId" not found');
+        exit(1);
+      }
+    }
+
+    if (item == null) {
+      stderr.writeln('Error: Item "$itemId" not found');
+      exit(1);
+    }
+
+    // Parse the new status
+    GianttStatus newStatus;
+    try {
+      newStatus = GianttStatus.fromName(statusStr.toUpperCase());
+    } catch (e) {
+      try {
+        newStatus = GianttStatus.fromSymbol(statusStr);
+      } catch (e) {
+        stderr.writeln('Error: Invalid status "$statusStr"');
+        stderr.writeln('Valid statuses: NOT_STARTED, IN_PROGRESS, BLOCKED, COMPLETED');
+        exit(1);
+      }
+    }
+
+    // Update the item
+    final updatedItem = item.copyWith(status: newStatus);
+    graph.addItem(updatedItem);
+
+    // Save graph
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+
+    print('Set status of "${item.id}" to ${newStatus.name}');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeSort(ArgResults args) async {
@@ -694,7 +980,7 @@ Future<void> _executeSort(ArgResults args) async {
     final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
     
     // Perform topological sort (this validates the graph)
-    final sortedItems = graph.topologicalSort();
+    graph.topologicalSort();
     
     // Save the sorted graph
     FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
@@ -765,8 +1051,104 @@ Future<void> _executeTouch(ArgResults args) async {
 }
 
 Future<void> _executeInsert(ArgResults args) async {
-  print('TODO: Implement insert command');
-  // TODO: Implement insert logic
+  if (args.rest.length < 4) {
+    stderr.writeln('Error: Please provide new_id, title, before_id, and after_id');
+    stderr.writeln('Usage: giantt insert <new_id> <title> <before_id> <after_id> [options]');
+    exit(1);
+  }
+
+  final newId = args.rest[0];
+  final title = args.rest[1];
+  final beforeId = args.rest[2];
+  final afterId = args.rest[3];
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final duration = args['duration'] as String;
+  final priority = args['priority'] as String;
+  final charts = args['charts'] as String?;
+  final tags = args['tags'] as String?;
+
+  try {
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+
+    // Load graph
+    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
+    // Check if new ID already exists
+    if (graph.items.containsKey(newId)) {
+      stderr.writeln('Error: Item with ID "$newId" already exists');
+      exit(1);
+    }
+
+    // Check if before and after items exist
+    if (!graph.items.containsKey(beforeId)) {
+      stderr.writeln('Error: Before item "$beforeId" not found');
+      exit(1);
+    }
+    if (!graph.items.containsKey(afterId)) {
+      stderr.writeln('Error: After item "$afterId" not found');
+      exit(1);
+    }
+
+    // Parse duration and priority
+    final parsedDuration = GianttDuration.parse(duration);
+    final parsedPriority = GianttPriority.fromName(priority);
+
+    // Parse charts and tags
+    final chartList = charts?.split(',').map((c) => c.trim()).toList() ?? <String>[];
+    final tagList = tags?.split(',').map((t) => t.trim()).toList() ?? <String>[];
+
+    // Create the new item with relations to insert it between the two existing items
+    // The new item REQUIRES the afterId (it depends on after)
+    // The beforeId should REQUIRE the new item (before depends on new)
+    final newItem = GianttItem(
+      id: newId,
+      title: title,
+      status: GianttStatus.notStarted,
+      priority: parsedPriority,
+      duration: parsedDuration,
+      charts: chartList,
+      tags: tagList,
+      relations: {'REQUIRES': [afterId]},
+    );
+
+    // Add the new item
+    graph.addItem(newItem);
+
+    // Update beforeId to require newId instead of afterId
+    final beforeItem = graph.items[beforeId]!;
+    final beforeRelations = Map<String, List<String>>.from(beforeItem.relations);
+
+    // Remove afterId from REQUIRES and add newId
+    if (beforeRelations.containsKey('REQUIRES')) {
+      beforeRelations['REQUIRES'] = beforeRelations['REQUIRES']!
+          .where((r) => r != afterId)
+          .toList();
+      beforeRelations['REQUIRES']!.add(newId);
+    } else {
+      beforeRelations['REQUIRES'] = [newId];
+    }
+
+    final updatedBeforeItem = beforeItem.copyWith(relations: beforeRelations);
+    graph.addItem(updatedBeforeItem);
+
+    // Check for cycles
+    try {
+      graph.topologicalSort();
+    } catch (e) {
+      stderr.writeln('Error: Insert would create a cycle in dependencies');
+      exit(1);
+    }
+
+    // Save graph
+    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+
+    print('Successfully inserted "$newId" between "$beforeId" and "$afterId"');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeIncludes(ArgResults args) async {
@@ -790,18 +1172,347 @@ Future<void> _executeIncludes(ArgResults args) async {
 }
 
 Future<void> _executeClean(ArgResults args) async {
-  print('TODO: Implement clean command');
-  // TODO: Implement clean logic
+  final skipConfirm = args['yes'] as bool;
+  final keepStr = args['keep'] as String;
+  final keep = int.tryParse(keepStr) ?? 3;
+
+  try {
+    // Find giantt directory
+    final gianttDir = _findGianttDirectory();
+    if (gianttDir == null) {
+      stderr.writeln('Error: No Giantt workspace found. Run "giantt init" first.');
+      exit(1);
+    }
+
+    // Find all backup files
+    final backupFiles = <File>[];
+    final includeDir = Directory('$gianttDir/include');
+    final occludeDir = Directory('$gianttDir/occlude');
+
+    for (final dir in [includeDir, occludeDir]) {
+      if (dir.existsSync()) {
+        for (final entity in dir.listSync()) {
+          if (entity is File && entity.path.endsWith('.backup')) {
+            backupFiles.add(entity);
+          }
+        }
+      }
+    }
+
+    if (backupFiles.isEmpty) {
+      print('No backup files found.');
+      return;
+    }
+
+    // Group backups by base file
+    final backupsByFile = <String, List<File>>{};
+    for (final backup in backupFiles) {
+      final name = backup.path;
+      // Extract base filename (remove .N.backup suffix)
+      final match = RegExp(r'^(.+)\.\d+\.backup$').firstMatch(name);
+      if (match != null) {
+        final baseFile = match.group(1)!;
+        backupsByFile.putIfAbsent(baseFile, () => []).add(backup);
+      }
+    }
+
+    // Calculate what would be removed
+    int totalToRemove = 0;
+    final filesToRemove = <File>[];
+
+    for (final entry in backupsByFile.entries) {
+      final backups = entry.value;
+      // Sort by backup number (newest first)
+      backups.sort((a, b) {
+        final aNum = int.tryParse(RegExp(r'\.(\d+)\.backup$').firstMatch(a.path)?.group(1) ?? '0') ?? 0;
+        final bNum = int.tryParse(RegExp(r'\.(\d+)\.backup$').firstMatch(b.path)?.group(1) ?? '0') ?? 0;
+        return bNum.compareTo(aNum);
+      });
+
+      // Mark files beyond the retention count for removal
+      if (backups.length > keep) {
+        final toRemove = backups.sublist(keep);
+        filesToRemove.addAll(toRemove);
+        totalToRemove += toRemove.length;
+      }
+    }
+
+    if (filesToRemove.isEmpty) {
+      print('No backup files need to be removed (keeping $keep most recent).');
+      return;
+    }
+
+    print('Found ${backupFiles.length} backup files, $totalToRemove would be removed (keeping $keep most recent).');
+
+    if (!skipConfirm) {
+      stdout.write('Do you want to proceed? [y/N]: ');
+      final input = stdin.readLineSync()?.trim().toLowerCase() ?? '';
+      if (input != 'y' && input != 'yes') {
+        print('Aborted.');
+        return;
+      }
+    }
+
+    // Remove the files
+    for (final file in filesToRemove) {
+      file.deleteSync();
+    }
+
+    print('Removed $totalToRemove backup files.');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
+}
+
+Future<void> _executeAddInclude(ArgResults args) async {
+  if (args.rest.isEmpty) {
+    stderr.writeln('Error: Please provide include path');
+    stderr.writeln('Usage: giantt add-include <include_path> [--file items.txt]');
+    exit(1);
+  }
+
+  final includePath = args.rest[0];
+  final file = args['file'] as String?;
+
+  try {
+    final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+
+    // Check if file exists
+    final itemsFile = File(itemsPath);
+    if (!itemsFile.existsSync()) {
+      stderr.writeln('Error: File not found: $itemsPath');
+      exit(1);
+    }
+
+    // Read the current file content
+    final lines = itemsFile.readAsLinesSync();
+
+    // Find where to insert the include directive
+    // Include directives should be at the top of the file, after the banner
+    int insertPos = 0;
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.startsWith('#include ')) {
+        insertPos = i + 1;
+      } else if (line.isNotEmpty && !line.startsWith('#')) {
+        // Found first non-comment, non-empty line - insert before this
+        break;
+      }
+    }
+
+    // Create a backup first
+    final backupPath = _incrementBackupName(itemsPath);
+    itemsFile.copySync(backupPath);
+
+    // Insert the include directive
+    lines.insert(insertPos, '#include $includePath');
+
+    // Write the updated content
+    itemsFile.writeAsStringSync(lines.join('\n'));
+
+    print('Added include directive for "$includePath" to $itemsPath');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
+}
+
+String _incrementBackupName(String filepath) {
+  int backupNum = 1;
+  while (true) {
+    final backupPath = '$filepath.$backupNum.backup';
+    if (!File(backupPath).existsSync()) {
+      return backupPath;
+    }
+    backupNum++;
+  }
+}
+
+String? _findGianttDirectory() {
+  // Check for local .giantt directory
+  final localDir = Directory('.giantt');
+  if (localDir.existsSync()) {
+    return localDir.path;
+  }
+
+  // Check home directory
+  final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (homeDir != null) {
+    final homeGianttDir = Directory('$homeDir/.giantt');
+    if (homeGianttDir.existsSync()) {
+      return homeGianttDir.path;
+    }
+  }
+
+  return null;
 }
 
 Future<void> _executeLog(ArgResults args) async {
-  print('TODO: Implement log command');
-  // TODO: Implement log logic
+  if (args.rest.length < 2) {
+    stderr.writeln('Error: Please provide session and message');
+    stderr.writeln('Usage: giantt log <session> <message> [--tags tag1,tag2]');
+    exit(1);
+  }
+
+  final session = args.rest[0];
+  final message = args.rest[1];
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final tagsStr = args['tags'] as String?;
+
+  try {
+    final logsPath = file ?? _getDefaultGianttPath('logs.jsonl');
+    final occludeLogsPath = occludeFile ?? _getDefaultGianttPath('logs.jsonl', occlude: true);
+
+    // Load logs
+    final logs = FileRepository.loadLogs(logsPath, occludeLogsPath);
+
+    // Parse additional tags
+    final additionalTags = tagsStr?.split(',').map((t) => t.trim()).toList();
+
+    // Create the log entry
+    logs.createEntry(session, message, additionalTags: additionalTags);
+
+    // Save logs
+    FileRepository.saveLogs(logsPath, occludeLogsPath, logs);
+
+    print('Log entry created with session tag "$session"');
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeOcclude(ArgResults args) async {
-  print('TODO: Implement occlude command');
-  // TODO: Implement occlude logic
+  if (args.command == null) {
+    stderr.writeln('Usage: giantt occlude [items|logs] [options]');
+    stderr.writeln('');
+    stderr.writeln('Subcommands:');
+    stderr.writeln('  items   Occlude items by ID or tag');
+    stderr.writeln('  logs    Occlude logs by session or tag');
+    exit(1);
+  }
+
+  final subcommand = args.command!;
+  final dryRun = subcommand['dry-run'] as bool;
+  final tags = (subcommand['tag'] as List<String>?) ?? [];
+
+  try {
+    if (subcommand.name == 'items') {
+      final file = subcommand['file'] as String?;
+      final occludeFile = subcommand['occlude-file'] as String?;
+      final itemIds = subcommand.rest;
+
+      final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+      final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+
+      // Load graph
+      final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
+      // Find items to occlude
+      final itemsToOcclude = <GianttItem>[];
+
+      if (itemIds.isNotEmpty) {
+        // Occlude by ID
+        for (final itemId in itemIds) {
+          final item = graph.items[itemId];
+          if (item != null && !item.occlude) {
+            itemsToOcclude.add(item);
+          } else if (item == null) {
+            stderr.writeln('Warning: Item "$itemId" not found');
+          }
+        }
+      }
+
+      if (tags.isNotEmpty) {
+        // Occlude by tag
+        for (final item in graph.items.values) {
+          if (!item.occlude && item.tags.any((t) => tags.contains(t))) {
+            if (!itemsToOcclude.contains(item)) {
+              itemsToOcclude.add(item);
+            }
+          }
+        }
+      }
+
+      if (itemsToOcclude.isEmpty) {
+        print('No items to occlude.');
+        return;
+      }
+
+      final action = dryRun ? 'Would occlude' : 'Occluded';
+      print('$action ${itemsToOcclude.length} items:');
+      for (final item in itemsToOcclude) {
+        print('  - ${item.id}: ${item.title}');
+        if (!dryRun) {
+          final occludedItem = item.setOcclude(true);
+          graph.addItem(occludedItem);
+        }
+      }
+
+      if (!dryRun) {
+        FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+      }
+
+    } else if (subcommand.name == 'logs') {
+      final file = subcommand['file'] as String?;
+      final occludeFile = subcommand['occlude-file'] as String?;
+      final sessionIdentifiers = subcommand.rest;
+
+      final logsPath = file ?? _getDefaultGianttPath('logs.jsonl');
+      final occludeLogsPath = occludeFile ?? _getDefaultGianttPath('logs.jsonl', occlude: true);
+
+      // Load logs
+      final logs = FileRepository.loadLogs(logsPath, occludeLogsPath);
+
+      // Find logs to occlude
+      final logsToOcclude = <LogEntry>[];
+
+      if (sessionIdentifiers.isNotEmpty) {
+        // Occlude by session
+        for (final session in sessionIdentifiers) {
+          for (final entry in logs.entries) {
+            if (!entry.occlude && entry.session == session) {
+              logsToOcclude.add(entry);
+            }
+          }
+        }
+      }
+
+      if (tags.isNotEmpty) {
+        // Occlude by tag
+        for (final entry in logs.entries) {
+          if (!entry.occlude && entry.tags.any((t) => tags.contains(t))) {
+            if (!logsToOcclude.contains(entry)) {
+              logsToOcclude.add(entry);
+            }
+          }
+        }
+      }
+
+      if (logsToOcclude.isEmpty) {
+        print('No logs to occlude.');
+        return;
+      }
+
+      final action = dryRun ? 'Would occlude' : 'Occluded';
+      print('$action ${logsToOcclude.length} log entries:');
+      final sessions = logsToOcclude.map((e) => e.session).toSet();
+      print('  Sessions: ${sessions.join(", ")}');
+
+      if (!dryRun) {
+        for (final entry in logsToOcclude) {
+          final occludedEntry = entry.setOcclude(true);
+          logs.replaceEntry(entry, occludedEntry);
+        }
+        FileRepository.saveLogs(logsPath, occludeLogsPath, logs);
+      }
+    }
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
 
 Future<void> _executeDoctor(ArgResults args) async {

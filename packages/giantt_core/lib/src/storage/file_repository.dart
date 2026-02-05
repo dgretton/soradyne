@@ -324,7 +324,7 @@ class FileRepository {
   /// Load logs from a single file
   static List<LogEntry> _loadLogsFromFile(String filepath, {required bool occlude}) {
     final logs = <LogEntry>[];
-    
+
     try {
       final file = File(filepath);
       if (!file.existsSync()) {
@@ -347,7 +347,41 @@ class FileRepository {
     } catch (e) {
       throw GraphException('Error loading logs from $filepath: $e');
     }
-    
+
     return logs;
+  }
+
+  /// Save logs to files with atomic operations
+  static void saveLogs(String filepath, String occludeFilepath, LogCollection logs) {
+    try {
+      // Prepare file contents
+      final includeContent = StringBuffer();
+      final occludeContent = StringBuffer();
+
+      // Add headers
+      includeContent.writeln(FileHeaderGenerator.generateLogsFileHeader());
+      occludeContent.writeln(FileHeaderGenerator.generateOccludedLogsFileHeader());
+
+      // Add logs to appropriate files
+      for (final log in logs.entries) {
+        final logLine = log.toJsonLine();
+        if (log.occlude) {
+          occludeContent.writeln(logLine);
+        } else {
+          includeContent.writeln(logLine);
+        }
+      }
+
+      // Write both files atomically
+      final fileContents = {
+        filepath: includeContent.toString(),
+        occludeFilepath: occludeContent.toString(),
+      };
+
+      AtomicFileWriter.writeFiles(fileContents);
+
+    } catch (e) {
+      throw GraphException('Failed to save logs: $e');
+    }
   }
 }
