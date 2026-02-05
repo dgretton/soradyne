@@ -145,14 +145,12 @@ class GianttItem {
     // JSON-encoded title
     buffer.write(jsonEncode(title));
     
-    // Charts
-    buffer.write(' {');
+    // Charts: {} for empty, {"Chart1","Chart2"} for non-empty
     if (charts.isNotEmpty) {
-      buffer.write('"${charts.join('","')}"');
+      buffer.write(' {"${charts.join('","')}"}');
     } else {
-      buffer.write('""');
+      buffer.write(' {}');
     }
-    buffer.write('}');
     
     // Tags
     if (tags.isNotEmpty) {
