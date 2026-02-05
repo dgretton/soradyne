@@ -4,9 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Soradyne is a proof-of-concept protocol for secure, peer-to-peer shared self-data objects (SDOs) with CRDT-based synchronization. The monorepo also contains Giantt, a task dependency management system being ported to use Soradyne as its sync backend.
+Soradyne is a proof-of-concept protocol for secure, peer-to-peer Self-Data Flows with CRDT-based synchronization. The monorepo also contains Giantt, a task dependency management system being ported from Python to Dart to use Soradyne as its sync backend.
 
-**Important**: The `giantt-original/` directory is a **symlink for reference only** (points to the original Giantt CLI codebase). Do not edit or commit anything in that directory—it exists purely as documentation of the original implementation being ported.
+**Reference materials** (do not edit):
+- `giantt-original/` - Symlink to original Python CLI (external, for reference only)
+- `docs/port_reference/` - Python source files being ported (`giantt_core.py`, `giantt_cli.py`)
+- `giantt-design-notes/` - Feature specs, notation docs, CLI manual
 
 ## Monorepo Structure
 
@@ -75,12 +78,19 @@ dart run giantt_core:giantt
 ### Giantt Core (Dart)
 - `models/` - GianttItem, Relation, TimeConstraint, Duration, Status, Priority
 - `parser/` - Parses `.giantt` text files into item graphs
-- `graph/` - Dependency graph with cycle detection
-- `storage/` - File repository with atomic writes and backup management
+- `graph/` - Dependency graph with cycle detection (inline in `giantt_graph.dart`)
+- `storage/` - FileRepository, DualFileManager (include/occlude system), atomic writes, backups
 - `validation/` - GraphDoctor for finding issues in graphs
-- `logging/` - Log entry tracking
+- `logging/` - Log entry tracking with occlusion support
+- `commands/` - CLI commands extending `CliCommand<T>` base class
+
+**Key design notes:**
+- Items support multiple `timeConstraints` (List), not singular
+- Include/occlude system: active items in `include/`, archived in `occlude/`
+- Relations are bidirectional (auto-created in graph operations)
 
 ### Key Concepts
-- **SelfDataFlow**: The core abstraction (`flow/mod.rs`) for user-owned data streams that sync peer-to-peer. Generic over any `T: Send + Sync + Clone`. Examples: `HeartrateFlow`, `SelfDataFlow<RobotJointState>`
+- **SelfDataFlow**: The core Rust abstraction (`flow/mod.rs`) for user-owned data streams that sync peer-to-peer. Generic over any `T: Send + Sync + Clone`. Examples: `HeartrateFlow`, `SelfDataFlow<RobotJointState>`
 - **Data Dissolution**: Splitting data across multiple devices using erasure coding for security/resilience
 - **Data Crystallization**: Recombining dissolved data when devices reunite
+- **Giantt Items**: Task nodes with relations (REQUIRES, ANYOF, BLOCKS, etc.), time constraints, and status tracking
