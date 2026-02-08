@@ -19,7 +19,7 @@ scripts:
     run: flutter test
     exec:
       packageFilters:
-        scope: ['soradyne_flutter', 'ai_chat_flutter']
+        scope: ['soradyne_flutter', 'ai_chat_flutter', 'inventory']
         
   analyze:
     run: flutter analyze
@@ -31,4 +31,4 @@ scripts:
     run: flutter build
     exec:
       packageFilters:
-        scope: ['soradyne_demo', 'giantt']
+        scope: ['soradyne_demo', 'giantt', 'inventory']

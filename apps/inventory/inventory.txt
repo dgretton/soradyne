@@ -1,0 +1,54 @@
+# Clothing
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Shirts -> Second drawer from top of 5-drawer bedroom dresser
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Pajamas -> 4th drawer (second from bottom) of 5-drawer bedroom dresser
+{"category":"Clothing","tags":["seasonal_summer","rarely_used"]} Bathing suits -> 4th drawer (second from bottom) of 5-drawer bedroom dresser
+{"category":"Clothing","tags":["frequently_used","quick_access"]} undergarments, socks -> 1st drawer of 5-drawer bedroom dresser
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Hanging clothes (e.g., jackets, dresses, dress shirts) -> Clothes hanger space in closet
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Shoes -> Hanging shoe organizer in closet
+{"category":"Clothing","tags":["small_item","quick_access"]} Small clothing items (e.g., belts, pins, trinkets) -> Hanging cloth pouch door organizer in closet
+{"category":"Clothing","tags":["travel_essential","rarely_used"]} Empty Samsonite carry-on suitcase -> Overhead storage in closet far in the back on the left
+{"category":"Clothing","tags":["outdoor_activity","safety"]} Knee pads/shin guards for electric unicycling/wheel -> Hanging on hook in front corner of closet to right of door
+{"category":"Clothing","tags":["seasonal_fall","seasonal_winter"]} Large number of sweaters -> mostly filling bottom shelf of dresser
+{"category":"Clothing","tags":["rarely_used"]} Fake-snake-skin reddish belt -> Hanging cloth pouch door organizer in closet, 3 across 5 down
+{"category":"Clothing","tags":["frequently_used"]} Black belt -> hanging cloth pouch door organizer in closet, 4 across 5 down
+{"category":"Clothing","tags":["travel_essential","valuable"]} Brown belt with hidden zip pocket -> Hanging cloth pouch door organizer in closet, 4 across 5 down
+{"category":"Clothing","tags":["rarely_used","small_item"]} Costume trinkets (sparkly heart pins, skeleton key) -> Hanging cloth pouch door organizer in closet, 1 across 5 down
+{"category":"Clothing","tags":["rarely_used"]} Handkerchiefs -> Hanging cloth pouch door organizer in closet, 2 across 5 down
+{"category":"Clothing","tags":["outdoor_activity","quick_access"]} Two pairs of sunglasses -> Hanging cloth pouch door organizer in closet, 1 across 1 down (top row)
+{"category":"Clothing","tags":["outdoor_activity","safety","needs_charging"]} Wearable high-vis LED strands with battery pack -> Hanging cloth pouch door organizer in closet, 1 across 4 down
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Plaid schoolgirl costume -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Sparkly-hemmed thigh-high fishnets -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Fine-mesh patterned fishnets -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Black multi-strapped garter belt with rivets -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Plaid schoolgirl costume -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Sparkly-hemmed thigh-high fishnets -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Fine-mesh patterned fishnets -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Black strapped harness -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Elastic red and black ruffly top with tiny red bow -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Rainbow mesh top -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Long thick red thigh-high socks -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} Black close-fitting top with blue sparkles -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["rarely_used","container_bedA"]} Bread costume top -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["rarely_used"]} Close-fitting patchwork jeans -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["rarely_used","small_item"]} Ziploc of chokers and bangles -> Hanging cloth pouch door organizer in closet, 1 across 5 down (with other costume trinkets)
+{"category":"Clothing","tags":["intimacy","rarely_used","container_bedA"]} White, purple, and pink silk handkerchief -> Vinyl storage bag A under raised queen bed
+
+# Containers
+{"category":"Containers","tags":["container_bedA"]} Vinyl storage bag A (intimate apparel) -> under raised queen bed, closer to dresser
+{"category":"Containers","tags":["container_bedB"]} Vinyl storage bag B (general storage) -> under raised queen bed, closer to window
+{"category":"Containers","tags":["container_W3"]} White fabric bin with dividers for painting supplies -> Bottom shelf (7/7) of tall black metal and wood 7-shelf unit near window, left-hand white fabric bin with dividers [FULL]
+{"category":"Containers","tags":["container_L1"]} Large plastic bin for costume and fragile craft items -> bottom shelf of wire racks on right side of basement
+{"category":"Containers","tags":["container_S1"]} Small stackable bin for computer peripherals -> lower shelf above workbench in basement, left side
+{"category":"Containers","tags":["container_S2"]} Small bin for craft supplies and delicate items -> lower shelf above workbench in basement, right side
+{"category":"Containers","tags":["container_S3"]} Small bin for electronics -> lower shelf above workbench in basement, right side
+{"category":"Containers","tags":["container_L2"]} Large plastic bin for frames and rectangular decor -> bottom shelf of wire racks on left side of basement
+
+# Decor
+{"category":"Decor","tags":["need_maintenance","frequently_used"]} 3 spider plants -> Tiered metal rack near window
+{"category":"Decor","tags":["need_maintenance","frequently_used"]} 3 spider plants -> Wire shelving unit (4 shelves high) in room
+{"category":"Decor","tags":["need_maintenance","frequently_used"]} 2 spider plants -> Green corner near large corn plant
+{"category":"Decor","tags":["rarely_used"]} Ukulele poster with chord shapes -> Rolled up and stored in the corner behind the door
+{"category":"Decor","tags":["sentimental","fragile"]} Wind chime (fused glass, driftwood, cord) made by late aunt -> Hanging from a hook in the top right corner of the window frame of the window above the desk, visible but out of the way of daily activities
+{"category":"Decor","tags":["fragile","sentimental"]} Two champagne glasses from the national womens' hall of fame -> Overhead storage in back of closet on left side, wrapped in paper & kept in a HUBS cardboard box
+{"category":"Decor","tags":["rarely_used","container_L2"]} Small-medium size painting -> L2
+{"category":"Decor","tags":["sentimental","quick_access"]} Photo of brother's family in small thick frame -> in vew on top of desk

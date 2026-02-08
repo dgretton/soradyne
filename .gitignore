@@ -31,3 +31,5 @@ packages/soradyne_core/target
 Cargo.lock
 soradyne_complete.txt
 .giantt
+inventory-example-app-symlink
+giantt-original
