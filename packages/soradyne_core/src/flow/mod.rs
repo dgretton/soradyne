@@ -1,8 +1,33 @@
 //! flow/mod.rs
 //!
-//! The core SelfDataFlow abstraction, extended for a live heartrate sync demo.
-//! This module defines the SelfDataFlow type, metadata, and full operations
-//! for live distributed data flows with eventual consistency.
+//! The Self-Data Flow system for peer-to-peer data synchronization.
+//!
+//! # Concepts
+//!
+//! - **Flow**: A persistent, UUID'd bundle of streams with policies. The flow
+//!   is the authority - once you have one, it calls the shots for how data
+//!   is sent and received.
+//!
+//! - **Stream**: The basic I/O abstraction. Streams are named and have a
+//!   category hint (drip/jet) but the category is descriptive, not enforced.
+//!   - *Drip*: Eventually consistent, authoritative data
+//!   - *Jet*: Fast, possibly lossy, real-time data
+//!
+//! - **DataChannel**: A concrete implementation of Stream for in-memory pub/sub
+//!   with conflict resolution. This is the former "SelfDataFlow" - it's now
+//!   understood as one way to implement a stream, not the flow itself.
+//!
+//! # Bootstrap sequence
+//!
+//! ```text
+//! UUID
+//!   ↓ (lookup in storage)
+//! type_name + config
+//!   ↓ (type_name selects constructor)
+//! constructor(config)
+//!   ↓
+//! Flow instance with streams
+//! ```
 
 mod conflict;
 pub mod error;
@@ -11,10 +36,14 @@ mod persistence;
 mod routing;
 pub mod traits;
 pub mod examples;
+pub mod stream;
+pub mod flow_core;
 
 pub use conflict::{ConflictResolver, LastWriteWins};
 pub use error::FlowError;
 pub use traits::{StorageBackend, FlowAuthenticator, FlowType, Diffable};
+pub use stream::{Stream, StreamSpec, StreamCardinality, TypedStream};
+pub use flow_core::{Flow, FlowConfig, FlowSchema, FlowRegistry, FlowConfigStorage, InMemoryConfigStorage, BasicFlow};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -23,19 +52,28 @@ use tokio::sync::broadcast;
 use serde::{Serialize, Deserialize};
 
 
-/// Metadata for a SelfDataFlow
+/// Metadata for a DataChannel
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct FlowMetadata {
+pub struct ChannelMetadata {
     pub id: Uuid,
     pub name: String,
     pub owner_id: Uuid,
     pub version: u64,
 }
 
-/// The core SelfDataFlow type
-pub struct SelfDataFlow<T: Send + Sync + Clone + 'static> {
+/// A data channel for in-memory pub/sub with conflict resolution.
+///
+/// This is the former `SelfDataFlow<T>`. It's now understood as one concrete
+/// implementation of the Stream trait - useful for in-memory reactive data,
+/// but not the only way to implement a stream.
+///
+/// DataChannel can be used as a building block when implementing flows.
+/// For example, a flow might use a DataChannel backed by a ConvergentDocument
+/// for its drip stream.
+pub struct DataChannel<T: Send + Sync + Clone + 'static> {
+    name: String,
     value: Arc<Mutex<T>>,
-    metadata: Arc<Mutex<FlowMetadata>>,
+    metadata: Arc<Mutex<ChannelMetadata>>,
     subscribers: Arc<Mutex<HashMap<Uuid, Box<dyn Fn(&T) + Send + Sync>>>>,
     update_tx: broadcast::Sender<T>,
     resolver: Arc<dyn ConflictResolver<T> + Send + Sync>,
@@ -44,13 +82,13 @@ pub struct SelfDataFlow<T: Send + Sync + Clone + 'static> {
     flow_type: FlowType,
 }
 
-impl<T> SelfDataFlow<T>
+impl<T> DataChannel<T>
 where
     T: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    /// Create a new SelfDataFlow
+    /// Create a new DataChannel
     pub fn new(name: &str, owner_id: Uuid, initial_value: T, flow_type: FlowType) -> Self {
-        let metadata = FlowMetadata {
+        let metadata = ChannelMetadata {
             id: Uuid::new_v4(),
             name: name.to_string(),
             owner_id,
@@ -59,6 +97,7 @@ where
         let (update_tx, _) = broadcast::channel(32);
 
         Self {
+            name: name.to_string(),
             metadata: Arc::new(Mutex::new(metadata)),
             value: Arc::new(Mutex::new(initial_value)),
             subscribers: Arc::new(Mutex::new(HashMap::new())),
@@ -70,18 +109,18 @@ where
         }
     }
 
-    /// Set the storage backend for this flow
+    /// Set the storage backend for this channel
     pub fn with_storage(mut self, storage: impl StorageBackend + Send + Sync + 'static) -> Self {
         self.storage = Some(Arc::new(storage));
         self
     }
 
-    /// Set the authenticator for this flow
+    /// Set the authenticator for this channel
     pub fn with_authenticator(mut self, authenticator: impl FlowAuthenticator<T> + Send + Sync + 'static) -> Self {
         self.authenticator = Some(Arc::new(authenticator));
         self
     }
-    
+
     /// Get the flow type
     pub fn flow_type(&self) -> FlowType {
         self.flow_type
@@ -91,8 +130,8 @@ where
     pub fn get_value(&self) -> Option<T> {
         self.value.lock().ok().map(|v| v.clone())
     }
-    
-    /// Create a new SelfDataFlow with default settings (for backward compatibility)
+
+    /// Create a new DataChannel with default settings (for backward compatibility)
     pub fn new_default(name: &str, owner_id: Uuid, initial_value: T) -> Self {
         Self::new(name, owner_id, initial_value, FlowType::Custom)
     }
@@ -116,17 +155,17 @@ where
             }
         }
     }
-    
+
     /// Update the value using a diff and notify subscribers
     /// This is more efficient for incremental updates as it avoids sending the entire object
-    pub fn update_with_diff<D>(&self, diff: &D) 
-    where 
+    pub fn update_with_diff<D>(&self, diff: &D)
+    where
         T: Diffable<Diff = D>
     {
         if let Ok(mut metadata) = self.metadata.lock() {
             metadata.version += 1;
         }
-        
+
         if let Ok(mut guard) = self.value.lock() {
             let new_value = guard.apply(diff);
             *guard = new_value.clone();
@@ -138,11 +177,11 @@ where
             }
         }
     }
-    
+
     /// Broadcast a diff to subscribers without updating the local value
     /// This is useful when you want to send incremental updates to peers
-    pub fn broadcast_diff<D>(&self, diff: &D) 
-    where 
+    pub fn broadcast_diff<D>(&self, diff: &D)
+    where
         T: Diffable<Diff = D>
     {
         if let Ok(guard) = self.value.lock() {
@@ -167,16 +206,16 @@ where
             }
         }
     }
-    
+
     /// Merge a remote diff
-    pub fn merge_diff<D>(&self, diff: &D) 
-    where 
+    pub fn merge_diff<D>(&self, diff: &D)
+    where
         T: Diffable<Diff = D>
     {
         if let Ok(mut metadata) = self.metadata.lock() {
             metadata.version += 1;
         }
-        
+
         if let Ok(mut guard) = self.value.lock() {
             let remote_value = guard.apply(diff);
             let resolved = self.resolver.resolve(&*guard, &remote_value);
@@ -190,7 +229,7 @@ where
         }
     }
 
-    /// Subscribe to updates
+    /// Subscribe to updates (typed)
     pub fn subscribe(&self, callback: Box<dyn Fn(&T) + Send + Sync>) -> Uuid {
         let id = Uuid::new_v4();
         if let Ok(mut subs) = self.subscribers.lock() {
@@ -205,20 +244,20 @@ where
             subs.remove(&id);
         }
     }
-    
-    /// Sign the current flow data
+
+    /// Sign the current channel data
     pub fn sign(&self) -> Result<Vec<u8>, FlowError> {
         if let Some(authenticator) = &self.authenticator {
             if let Ok(guard) = self.value.lock() {
                 return authenticator.sign(&*guard);
             }
-            Err(FlowError::PersistenceError("Failed to access flow data".to_string()))
+            Err(FlowError::PersistenceError("Failed to access channel data".to_string()))
         } else {
             Err(FlowError::PersistenceError("No authenticator configured".to_string()))
         }
     }
-    
-    /// Verify a signature for the current flow data
+
+    /// Verify a signature for the current channel data
     pub fn verify(&self, signature: &[u8]) -> bool {
         if let Some(authenticator) = &self.authenticator {
             if let Ok(guard) = self.value.lock() {
@@ -228,7 +267,7 @@ where
         false
     }
 
-    /// Persist the flow data using the configured storage backend
+    /// Persist the channel data using the configured storage backend
     pub fn persist(&self) -> Result<(), FlowError> {
         if let Some(storage) = &self.storage {
             if let Ok(metadata) = self.metadata.lock() {
@@ -238,13 +277,13 @@ where
                     }
                 }
             }
-            Err(FlowError::PersistenceError("Failed to serialize flow data".to_string()))
+            Err(FlowError::PersistenceError("Failed to serialize channel data".to_string()))
         } else {
             Err(FlowError::PersistenceError("No storage backend configured".to_string()))
         }
     }
 
-    /// Load flow data from the configured storage backend
+    /// Load channel data from the configured storage backend
     pub fn load(&mut self) -> Result<(), FlowError> {
         if let Some(storage) = &self.storage {
             if let Ok(metadata) = self.metadata.lock() {
@@ -255,15 +294,15 @@ where
                         return Ok(());
                     }
                 }
-                return Err(FlowError::PersistenceError("Failed to deserialize flow data".to_string()));
+                return Err(FlowError::PersistenceError("Failed to deserialize channel data".to_string()));
             }
-            Err(FlowError::PersistenceError("Failed to access flow metadata".to_string()))
+            Err(FlowError::PersistenceError("Failed to access channel metadata".to_string()))
         } else {
             Err(FlowError::PersistenceError("No storage backend configured".to_string()))
         }
     }
-    
-    /// Check if flow data exists in the storage backend
+
+    /// Check if channel data exists in the storage backend
     pub fn exists(&self) -> bool {
         if let Some(storage) = &self.storage {
             if let Ok(metadata) = self.metadata.lock() {
@@ -272,17 +311,69 @@ where
         }
         false
     }
-    
-    /// Delete flow data from the storage backend
+
+    /// Delete channel data from the storage backend
     pub fn delete(&self) -> Result<(), FlowError> {
         if let Some(storage) = &self.storage {
             if let Ok(metadata) = self.metadata.lock() {
                 return storage.delete(metadata.id);
             }
-            Err(FlowError::PersistenceError("Failed to access flow metadata".to_string()))
+            Err(FlowError::PersistenceError("Failed to access channel metadata".to_string()))
         } else {
             Err(FlowError::PersistenceError("No storage backend configured".to_string()))
         }
     }
 }
 
+/// Implement Stream trait for DataChannel to allow it to be used in flows.
+impl<T> Stream for DataChannel<T>
+where
+    T: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> + 'static,
+{
+    fn read(&self) -> Result<Option<Vec<u8>>, FlowError> {
+        if let Ok(guard) = self.value.lock() {
+            let bytes = serde_json::to_vec(&*guard)
+                .map_err(|e| FlowError::SerializationError(e.to_string()))?;
+            Ok(Some(bytes))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn write(&self, data: &[u8]) -> Result<(), FlowError> {
+        let value: T = serde_json::from_slice(data)
+            .map_err(|e| FlowError::SerializationError(e.to_string()))?;
+        self.update(value);
+        Ok(())
+    }
+
+    fn subscribe(&self, callback: Box<dyn Fn(&[u8]) + Send + Sync>) -> Uuid {
+        // Wrap the bytes callback to serialize the value
+        let typed_callback: Box<dyn Fn(&T) + Send + Sync> = Box::new(move |value: &T| {
+            if let Ok(bytes) = serde_json::to_vec(value) {
+                callback(&bytes);
+            }
+        });
+        DataChannel::subscribe(self, typed_callback)
+    }
+
+    fn unsubscribe(&self, subscription_id: Uuid) {
+        DataChannel::unsubscribe(self, subscription_id);
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+// === Backward compatibility aliases ===
+// These allow existing code to continue working while we migrate.
+
+/// DEPRECATED: Use DataChannel instead.
+/// This alias exists for backward compatibility during migration.
+#[deprecated(since = "0.2.0", note = "Use DataChannel instead")]
+pub type SelfDataFlow<T> = DataChannel<T>;
+
+/// DEPRECATED: Use ChannelMetadata instead.
+#[deprecated(since = "0.2.0", note = "Use ChannelMetadata instead")]
+pub type FlowMetadata = ChannelMetadata;

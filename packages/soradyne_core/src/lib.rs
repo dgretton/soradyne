@@ -1,5 +1,6 @@
 // Soradyne - Collaborative Media Album System
 
+pub mod convergent;
 pub mod flow;
 pub mod identity;
 pub mod network;

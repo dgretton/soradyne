@@ -30,3 +30,4 @@ packages/soradyne_core/target
 *.DS_Store
 Cargo.lock
 soradyne_complete.txt
+.giantt

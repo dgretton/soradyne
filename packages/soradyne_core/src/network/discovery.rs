@@ -1,4 +1,4 @@
-//! Peer discovery mechanisms for SelfDataFlow network.
+//! Peer discovery mechanisms for the Flow network.
 
 use std::net::SocketAddr;
 use uuid::Uuid;

@@ -6,7 +6,7 @@ use tokio::task;
 use tokio::sync::Mutex;
 use serde_json;
 use crate::types::heartrate::Heartrate;
-use crate::flow::SelfDataFlow;
+use crate::flow::DataChannel;
 use crate::flow::FlowError;
 use crate::network::discovery::{PeerDiscovery, DiscoveredPeer};
 
@@ -70,7 +70,7 @@ impl NetworkBridge {
     pub async fn listen(
         &self,
         addr: &str,
-        flow: Arc<SelfDataFlow<Heartrate>>,
+        channel: Arc<DataChannel<Heartrate>>,
     ) -> tokio::io::Result<()> {
         let listener = TcpListener::bind(addr).await?;
         println!("[NetworkBridge] Listening on {}", addr);
@@ -82,7 +82,7 @@ impl NetworkBridge {
             let write_half = Arc::new(Mutex::new(write_half));
             println!("[NetworkBridge] New peer connected: {}", peer_addr);
 
-            let flow_clone = flow.clone();
+            let channel_clone = channel.clone();
             let peers_clone = self.peers.clone();
 
             {
@@ -102,7 +102,7 @@ impl NetworkBridge {
                                 "[NetworkBridge] Received heartrate: {:.1} bpm",
                                 heartrate.bpm
                             );
-                            flow_clone.merge(heartrate);
+                            channel_clone.merge(heartrate);
                         }
                         Err(e) => {
                             eprintln!("[NetworkBridge] Failed to parse message: {:?}", e);

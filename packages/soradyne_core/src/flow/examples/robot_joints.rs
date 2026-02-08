@@ -1,12 +1,16 @@
 //! Robot Joints Example
 //!
-//! This example demonstrates using SelfDataFlow with the Diffable trait
+//! This example demonstrates using DataChannel with the Diffable trait
 //! for efficient updates to robot joint positions.
+//!
+//! In a full flow-based architecture, this DataChannel would be registered
+//! as a stream within a Flow. For now, it shows the basic mechanics of
+//! reactive data with diff support.
 
 use std::collections::HashMap;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
-use crate::flow::{SelfDataFlow, FlowType, Diffable};
+use crate::flow::{DataChannel, FlowType, Diffable};
 
 /// Represents a single robot joint position
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -132,7 +136,7 @@ impl Diffable for RobotJointState {
 }
 
 /// Create a demo robot joint flow
-pub fn create_robot_joint_flow(robot_id: &str, owner_id: Uuid) -> SelfDataFlow<RobotJointState> {
+pub fn create_robot_joint_flow(robot_id: &str, owner_id: Uuid) -> DataChannel<RobotJointState> {
     // Create initial state with some joints
     let mut initial_joints = HashMap::new();
     
@@ -165,7 +169,7 @@ pub fn create_robot_joint_flow(robot_id: &str, owner_id: Uuid) -> SelfDataFlow<R
     };
     
     // Create the flow
-    SelfDataFlow::new(
+    DataChannel::new(
         &format!("Robot Joints - {}", robot_id),
         owner_id,
         initial_state,
