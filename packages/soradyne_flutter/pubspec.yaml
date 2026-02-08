@@ -23,13 +23,12 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.soradyne.flutter
-        pluginClass: SoradyneFlutterPlugin
+        ffiPlugin: true
       ios:
-        pluginClass: SoradyneFlutterPlugin
+        ffiPlugin: true
       linux:
-        pluginClass: SoradyneFlutterPlugin
+        ffiPlugin: true
       macos:
-        pluginClass: SoradyneFlutterPlugin
+        ffiPlugin: true
       windows:
-        pluginClass: SoradyneFlutterPlugin
+        ffiPlugin: true

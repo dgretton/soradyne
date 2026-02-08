@@ -23,6 +23,8 @@ dependencies:
   intl: ^0.19.0
   ai_chat_flutter:
     path: ../../packages/ai_chat_flutter
+  soradyne_flutter:
+    path: ../../packages/soradyne_flutter
 
 dev_dependencies:
   flutter_test:

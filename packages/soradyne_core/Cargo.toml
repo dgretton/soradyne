@@ -34,7 +34,7 @@ env_logger = "0.10"
 multer = "2.1"
 
 # HTTP client for downloading test images
-reqwest = { version = "0.11", features = ["stream", "json"] }
+reqwest = { version = "0.11", default-features = false, features = ["stream", "json", "rustls-tls"] }
 
 # Image processing
 image = "0.24"
@@ -67,8 +67,8 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["fileapi", "handleapi", "winioctl"] }
 
-[build-dependencies]
-ffmpeg-next = { version = "7.0", features = ["build"] }
+# [build-dependencies]
+# ffmpeg-next = { version = "7.0", features = ["build"] }
 
 [dev-dependencies]
 # Testing utilities

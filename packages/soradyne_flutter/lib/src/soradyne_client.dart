@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:io';
 import 'package:ffi/ffi.dart';
 
 class SoradyneClient {
@@ -15,19 +16,16 @@ class SoradyneClient {
 
   Future<void> initialize({String? dataDirectory}) async {
     if (_initialized) return;
-    
+
     _lib = _loadLibrary();
     final result = _lib.lookupFunction<Int32 Function(), int Function()>('soradyne_init')();
-    
+
     if (result != 0) {
       throw Exception('Failed to initialize Soradyne core');
     }
-    
+
     _initialized = true;
   }
-
-  AlbumService get albums => AlbumService._(this);
-  RealtimeMessaging get messaging => RealtimeMessaging._(this);
 
   DynamicLibrary _loadLibrary() {
     if (Platform.isMacOS) return DynamicLibrary.open('libsoradyne.dylib');

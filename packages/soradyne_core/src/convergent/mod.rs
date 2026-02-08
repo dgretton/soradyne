@@ -9,6 +9,7 @@ mod operation;
 mod document;
 mod schema;
 pub mod giantt;
+pub mod inventory;
 
 pub use horizon::{Horizon, DeviceId, SeqNum};
 pub use operation::{Operation, OpId, OpEnvelope, Value, ItemId};
