@@ -16,6 +16,7 @@ Soradyne is a proof-of-concept protocol for secure, peer-to-peer Self-Data Flows
 ```
 apps/
   giantt/              # Flutter app for Giantt (task management UI)
+  inventory/           # Flutter app for personal inventory management
   soradyne_demo/       # Flutter demo app showcasing Soradyne capabilities
 packages/
   giantt_core/         # Dart: Core giantt logic (parser, graph, storage, validation)
@@ -59,6 +60,25 @@ cd apps/giantt && flutter run
 dart run giantt_core:giantt
 ```
 
+### Android Cross-Compilation
+```bash
+# Prerequisites (one-time setup):
+rustup target add aarch64-linux-android
+cargo install cargo-ndk
+# Requires Android NDK (install via Android Studio SDK Manager)
+
+# Build libsoradyne.so for Android arm64:
+cd packages/soradyne_core
+cargo ndk -t arm64-v8a build --release --no-default-features
+
+# Copy into the Flutter plugin's jniLibs (picked up automatically by Gradle):
+mkdir -p ../soradyne_flutter/android/src/main/jniLibs/arm64-v8a
+cp target/aarch64-linux-android/release/libsoradyne.so \
+   ../soradyne_flutter/android/src/main/jniLibs/arm64-v8a/
+```
+
+The `.so` is gitignored and must be rebuilt locally after a fresh clone.
+
 ### Full Build
 ```bash
 ./build.sh  # Builds Rust library and TypeScript bindings
@@ -67,13 +87,14 @@ dart run giantt_core:giantt
 ## Architecture Notes
 
 ### Soradyne Core (Rust)
+- `convergent/` - ConvergentDocument CRDT engine with schemas for Giantt and Inventory
 - `storage/` - Data dissolution (erasure coding via reed-solomon) and device identity
 - `flow/` - Real-time data streaming
 - `identity/` - Cryptographic identity management
 - `network/` - P2P networking (warp-based HTTP, designed for BLE expansion)
 - `album/` - Photo album SDO implementation
 - `video/` - Video frame extraction (optional ffmpeg feature)
-- `ffi/` - Foreign function interface for Flutter bindings
+- `ffi/` - Foreign function interface for Flutter bindings (giantt_flow, inventory_flow)
 
 ### Giantt Core (Dart)
 - `models/` - GianttItem, Relation, TimeConstraint, Duration, Status, Priority
