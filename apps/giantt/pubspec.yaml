@@ -24,6 +24,13 @@ dependencies:
   gantt_chart: ^0.2.0
   timeline_tile: ^2.0.0
   
+  # AI chat
+  ai_chat_flutter:
+    path: ../../packages/ai_chat_flutter
+  provider: ^6.1.1
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+
   # Mobile-specific dependencies
   path_provider: ^2.1.5
   permission_handler: ^11.0.1

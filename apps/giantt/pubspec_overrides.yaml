@@ -2,3 +2,5 @@
 dependency_overrides:
   giantt_core:
     path: ../../packages/giantt_core
+  ai_chat_flutter:
+    path: ../../packages/ai_chat_flutter
