@@ -157,40 +157,103 @@ impl InventoryFlow {
             return;
         }
 
-        if let Some(ref path) = self.storage_path {
-            let _ = std::fs::create_dir_all(path);
+        let Some(ref path) = self.storage_path else {
+            return;
+        };
 
-            let ops_path = path.join("operations.jsonl");
-            let ops: Vec<_> = self.document.all_operations().collect();
+        if let Err(e) = std::fs::create_dir_all(path) {
+            eprintln!("[inventory_flow] flush: failed to create dir {:?}: {}", path, e);
+            return;
+        }
 
-            if let Ok(file) = std::fs::File::create(&ops_path) {
-                use std::io::Write;
-                let mut writer = std::io::BufWriter::new(file);
-                for op in ops {
-                    if let Ok(json) = serde_json::to_string(op) {
-                        let _ = writeln!(writer, "{}", json);
-                    }
-                }
+        let ops_path = path.join("operations.jsonl");
+        let ops: Vec<_> = self.document.all_operations().collect();
+        let op_count = ops.len();
+
+        // Write to a temp file first, then rename for atomicity
+        let tmp_path = path.join("operations.jsonl.tmp");
+
+        let result = (|| -> std::io::Result<()> {
+            use std::io::Write;
+            let file = std::fs::File::create(&tmp_path)?;
+            let mut writer = std::io::BufWriter::new(file);
+            let mut written = 0usize;
+            for op in &ops {
+                let json = serde_json::to_string(op)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                writeln!(writer, "{}", json)?;
+                written += 1;
             }
+            writer.flush()?;
+            eprintln!(
+                "[inventory_flow] flush: wrote {}/{} ops to {:?}",
+                written, op_count, tmp_path
+            );
+            Ok(())
+        })();
 
-            self.dirty = false;
+        match result {
+            Ok(()) => {
+                if let Err(e) = std::fs::rename(&tmp_path, &ops_path) {
+                    eprintln!(
+                        "[inventory_flow] flush: rename {:?} -> {:?} failed: {}",
+                        tmp_path, ops_path, e
+                    );
+                    return;
+                }
+                self.dirty = false;
+            }
+            Err(e) => {
+                eprintln!("[inventory_flow] flush: write failed: {}", e);
+                // Clean up partial temp file
+                let _ = std::fs::remove_file(&tmp_path);
+                // dirty remains true so next flush retries
+            }
         }
     }
 
     /// Load operations from disk
     fn load_from_disk(&mut self) {
-        if let Some(ref path) = self.storage_path {
-            let ops_path = path.join("operations.jsonl");
-            if ops_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&ops_path) {
-                    for line in content.lines() {
-                        if let Ok(envelope) = serde_json::from_str::<OpEnvelope>(line) {
-                            self.document.apply_remote(envelope);
-                        }
-                    }
+        let Some(ref path) = self.storage_path else {
+            return;
+        };
+
+        let ops_path = path.join("operations.jsonl");
+        if !ops_path.exists() {
+            eprintln!("[inventory_flow] load: no operations file at {:?}", ops_path);
+            return;
+        }
+
+        let content = match std::fs::read_to_string(&ops_path) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[inventory_flow] load: failed to read {:?}: {}", ops_path, e);
+                return;
+            }
+        };
+
+        let mut loaded = 0usize;
+        let mut skipped = 0usize;
+        for (i, line) in content.lines().enumerate() {
+            match serde_json::from_str::<OpEnvelope>(line) {
+                Ok(envelope) => {
+                    self.document.apply_remote(envelope);
+                    loaded += 1;
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[inventory_flow] load: skipping line {} in {:?}: {}",
+                        i + 1, ops_path, e
+                    );
+                    skipped += 1;
                 }
             }
         }
+
+        eprintln!(
+            "[inventory_flow] load: {} ops loaded, {} skipped from {:?}",
+            loaded, skipped, ops_path
+        );
     }
 }
 
@@ -287,7 +350,10 @@ pub extern "C" fn soradyne_inventory_close(handle: *mut std::ffi::c_void) {
     }
 
     unsafe {
-        let _ = Arc::from_raw(handle as *const Mutex<InventoryFlow>);
+        let arc = Arc::from_raw(handle as *const Mutex<InventoryFlow>);
+        if let Ok(mut flow) = arc.lock() {
+            flow.flush();
+        };
     }
 }
 

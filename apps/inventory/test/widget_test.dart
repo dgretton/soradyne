@@ -61,6 +61,10 @@ class MockInventoryApi implements InventoryApi {
   InventoryEntry? findDescriptionConflict(String description) => throw UnimplementedError();
   @override
   InventoryEntry findByIdPrefix(String idPrefix) => throw UnimplementedError();
+  @override
+  Map<String, InventoryEntry> get currentState => throw UnimplementedError();
+  @override
+  String getOperationsJson() => throw UnimplementedError();
 }
 
 void main() {

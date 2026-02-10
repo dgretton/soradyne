@@ -6,8 +6,8 @@ import '../models/app_state.dart';
 import '../ui/widgets/filter_bar.dart';
 import '../ui/widgets/chat_fab.dart';
 import '../ui/settings_page.dart';
-import '../services/export_service.dart';
 import 'history_page.dart';
+import 'widgets/export_dialog.dart';
 
 class InventoryListPage extends StatefulWidget {
   const InventoryListPage({super.key});
@@ -34,61 +34,6 @@ class _InventoryListPageState extends State<InventoryListPage> {
     setState(() {
       _inventoryFuture = _loadInventory();
     });
-  }
-
-  Future<void> _exportToClipboard() async {
-    try {
-      final api = Provider.of<InventoryApi>(context, listen: false);
-      final exportedContent = api.exportToLegacyFormat();
-      await ExportService.copyToClipboard(exportedContent);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Inventory exported to clipboard'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error exporting to clipboard: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _exportToFile() async {
-    try {
-      final api = Provider.of<InventoryApi>(context, listen: false);
-      final exportedContent = api.exportToLegacyFormat();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
-      final filename = 'inventory_export_$timestamp.txt';
-      final filePath = await ExportService.saveToFile(exportedContent, filename);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Inventory exported to: $filePath'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error exporting to file: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   List<InventoryEntry> _filterItems(List<InventoryEntry> items, String filterText) {
@@ -154,11 +99,9 @@ class _InventoryListPageState extends State<InventoryListPage> {
                 icon: const Icon(Icons.more_vert),
                 onSelected: (value) {
                   switch (value) {
-                    case 'export_clipboard':
-                      _exportToClipboard();
-                      break;
-                    case 'export_file':
-                      _exportToFile();
+                    case 'export':
+                      final api = Provider.of<InventoryApi>(context, listen: false);
+                      ExportDialog.show(context, api);
                       break;
                     case 'history':
                       Navigator.of(context).push(
@@ -178,22 +121,12 @@ class _InventoryListPageState extends State<InventoryListPage> {
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
-                    value: 'export_clipboard',
+                    value: 'export',
                     child: Row(
                       children: [
-                        Icon(Icons.copy),
+                        Icon(Icons.ios_share),
                         SizedBox(width: 8),
-                        Text('Copy to Clipboard'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'export_file',
-                    child: Row(
-                      children: [
-                        Icon(Icons.download),
-                        SizedBox(width: 8),
-                        Text('Export to File'),
+                        Text('Export'),
                       ],
                     ),
                   ),

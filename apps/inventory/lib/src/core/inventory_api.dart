@@ -551,6 +551,11 @@ class InventoryApi {
   // Export
   // ===========================================================================
 
+  /// Returns the raw CRDT operations as a JSON string (for history export/sync).
+  String getOperationsJson() {
+    return _flowClient.inventoryGetOperations(_handle);
+  }
+
   String exportToLegacyFormat() {
     final state = currentState.values.toList();
 
