@@ -14,7 +14,7 @@ class InventoryCommandRunner extends CommandRunner<void> {
       : super('inv', 'A command-line tool for managing personal inventory.') {
     argParser.addOption(
       'inventory',
-      defaultsTo: 'inventory.txt',
+      defaultsTo: 'seed_inventory.txt',
       help: 'Inventory file path',
     );
     addCommand(AddCommand());

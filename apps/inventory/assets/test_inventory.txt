@@ -1,0 +1,185 @@
+# Clothing
+{"category":"Clothing","tags":["rarely_used","seasonal_summer"]} Bathing suits -> currently unknown (packed)
+{"category":"Clothing","tags":["container_L8","festival_wear"]} Black and white Sunny see-through top (worn to Firefly) -> container L8
+{"category":"Clothing","tags":["frequently_used"]} Black belt -> hanging cloth pouch door organizer in closet, 4 across 5 down
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Black close-fitting top with blue sparkles -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Black multi-strapped garter belt with rivets -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Black strapped harness -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["container_bedA","rarely_used"]} Bread costume top -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["travel_essential","valuable"]} Brown belt with hidden zip pocket -> Hanging cloth pouch door organizer in closet, 4 across 5 down
+{"category":"Clothing","tags":["rarely_used"]} Close-fitting patchwork jeans -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["rarely_used","small_item"]} Costume trinkets (sparkly heart pins, skeleton key) -> Hanging cloth pouch door organizer in closet, 1 across 5 down
+{"category":"Clothing","tags":["container_L8"]} Cute armless black top made of thin material -> container L8
+{"category":"Clothing","tags":["container_L8"]} Cute red dress -> container L8
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Elastic red and black ruffly top with tiny red bow -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["rarely_used","travel_essential"]} Empty Samsonite carry-on suitcase -> Overhead storage in closet far in the back on the left
+{"category":"Clothing","tags":["rarely_used"]} Fake-snake-skin reddish belt -> Hanging cloth pouch door organizer in closet, 3 across 5 down
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Fine-mesh patterned fishnets -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Fine-mesh patterned fishnets -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["container_L8","outerwear","weather_protection"]} Floral pattern black raincoat -> container L8
+{"category":"Clothing","tags":["rarely_used"]} Handkerchiefs -> Hanging cloth pouch door organizer in closet, 2 across 5 down
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Hanging clothes (e.g., jackets, dresses, dress shirts) -> Clothes hanger space in closet
+{"category":"Clothing","tags":["outdoor_activity","safety"]} Knee pads/shin guards for electric unicycling/wheel -> Hanging on hook in front corner of closet to right of door
+{"category":"Clothing","tags":["seasonal_fall","seasonal_winter"]} Large number of sweaters -> middle left drawer of 6-drawer dresser in closet behind curtains
+{"category":"Clothing","tags":["container_L8","historical_recreation","rarely_used"]} Light yellow SCA tunic -> container L8
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Long thick red thigh-high socks -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Most casual shirts -> top right drawer of 6-drawer dresser in closet behind curtains
+{"category":"Clothing","tags":["container_L4","outdoor_activity"]} Pair of brown hiking boots -> container L4
+{"category":"Clothing","tags":["container_L8","outdoor_activity","seasonal_winter"]} Pair of heavy wool hiking socks -> container L8
+{"category":"Clothing","tags":["container_L4","seasonal_winter"]} Pair of worn black winter boots -> container L4
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Pajamas -> middle right drawer of 6-drawer dresser in closet behind curtains
+{"category":"Clothing","tags":[]} Pants collection (mostly worn jeans with rips) -> bottom right drawer of 6-drawer dresser in closet behind curtains
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Plaid schoolgirl costume -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Plaid schoolgirl costume -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Rainbow mesh top -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":[]} Rolled towels and loose linens (pillowcases, sheets) -> bottom left drawer of 6-drawer dresser in closet behind curtains
+{"category":"Clothing","tags":["container_L8"]} Sheer black top with repeating opaque square pattern and collar (formerly Aubrey's) -> container L8
+{"category":"Clothing","tags":["frequently_used","quick_access"]} Shoes -> Hanging shoe organizer in closet
+{"category":"Clothing","tags":["quick_access","small_item"]} Small clothing items (e.g., belts, pins, trinkets) -> Hanging cloth pouch door organizer in closet
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} Sparkly-hemmed thigh-high fishnets -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["intimacy","rarely_used"]} Sparkly-hemmed thigh-high fishnets -> Vinyl storage bag with zipper under raised queen bed
+{"category":"Clothing","tags":["container_L8"]} Stretchy rainbow tube top -> container L8
+{"category":"Clothing","tags":["outdoor_activity","quick_access"]} Two pairs of sunglasses -> Hanging cloth pouch door organizer in closet, 1 across 1 down (top row)
+{"category":"Clothing","tags":["needs_charging","outdoor_activity","safety"]} Wearable high-vis LED strands with battery pack -> Hanging cloth pouch door organizer in closet, 1 across 4 down
+{"category":"Clothing","tags":["container_L8","historical_recreation","rarely_used"]} White hand sewn SCA under tunic of linen -> container L8
+{"category":"Clothing","tags":["container_bedA","intimacy","rarely_used"]} White, purple, and pink silk handkerchief -> Vinyl storage bag A under raised queen bed
+{"category":"Clothing","tags":["rarely_used","small_item"]} Ziploc of chokers and bangles -> Hanging cloth pouch door organizer in closet, 1 across 5 down (with other costume trinkets)
+{"category":"Clothing","tags":["frequently_used","quick_access"]} undergarments, socks -> top left drawer of 6-drawer dresser in closet behind curtains
+
+# Containers
+{"category":"Containers","tags":["container_L5"]} Heavy blue plastic bag -> container L5
+{"category":"Containers","tags":["container_L7"]} Large plastic bin for computer equipment -> TBD
+{"category":"Containers","tags":["container_L1"]} Large plastic bin for costume and fragile craft items -> bottom shelf of wire racks on right side of basement
+{"category":"Containers","tags":["container_L4","container_Large plastic bin for equipment"]} Large plastic bin for equipment -> TBD
+{"category":"Containers","tags":["container_L2"]} Large plastic bin for frames and rectangular decor -> bottom shelf of wire racks on left side of basement
+{"category":"Containers","tags":["container_L8"]} Large plastic bin for mixed storage -> TBD
+{"category":"Containers","tags":["container_L6"]} Large plastic bin for projects -> TBD
+{"category":"Containers","tags":["container_L5","container_Large plastic bin for supplies"]} Large plastic bin for supplies -> TBD
+{"category":"Containers","tags":["container_L3","container_Large plastic bin for tools"]} Large plastic bin for tools -> TBD
+{"category":"Containers","tags":["container_L9"]} Medium sized black zipper pouch with Mexico trip and RC airplane materials -> container L9
+{"category":"Containers","tags":["container_wooden-drawers"]} Sets of small wooden drawers without windows -> Under raised queen bed
+{"category":"Containers","tags":["container_S2"]} Small bin for craft supplies and delicate items -> lower shelf above workbench in basement, right side
+{"category":"Containers","tags":["container_S3"]} Small bin for electronics -> lower shelf above workbench in basement, right side
+{"category":"Containers","tags":["container_S5"]} Small bin for mechanical and electrical parts -> TBD
+{"category":"Containers","tags":["container_S9"]} Small bin for mechanical and electrical parts -> TBD
+{"category":"Containers","tags":["container_L9"]} Small high quality shiny stainless steel tin -> container L9
+{"category":"Containers","tags":["container_S1"]} Small stackable bin for computer peripherals -> lower shelf above workbench in basement, left side
+{"category":"Containers","tags":["container_L8","container_clear1"]} Square clear plastic bag with zippers (large enough for pillow) -> container L8
+{"category":"Containers","tags":["container_wooden-boxes"]} Three small open top wooden boxes for organizing -> Under raised queen bed
+{"category":"Containers","tags":["container_bedA"]} Vinyl storage bag A (intimate apparel) -> under raised queen bed, closer to dresser
+{"category":"Containers","tags":["container_bedB"]} Vinyl storage bag B (general storage) -> under raised queen bed, closer to window
+{"category":"Containers","tags":["container_W3"]} White fabric bin with dividers for painting supplies -> Bottom shelf (7/7) of tall black metal and wood 7-shelf unit near window, left-hand white fabric bin with dividers [FULL]
+{"category":"Containers","tags":["container_L8","container_mesh1"]} White mesh zipper bag for laundry (10 inches) -> container L8
+{"category":"Containers","tags":["container_L9"]} container L9 for materials and items -> TBD
+
+# Decor
+{"category":"Decor","tags":["frequently_used","need_maintenance"]} 2 spider plants -> Green corner near large corn plant
+{"category":"Decor","tags":["frequently_used","need_maintenance"]} 3 spider plants -> Wire shelving unit (4 shelves high) in room
+{"category":"Decor","tags":["frequently_used","need_maintenance"]} 3 spider plants -> Tiered metal rack near window
+{"category":"Decor","tags":["container_L9","sentimental"]} Homemade candles from David in Mexico -> container L9
+{"category":"Decor","tags":["quick_access","sentimental"]} Photo of brother's family in small thick frame -> in vew on top of desk
+{"category":"Decor","tags":["container_L2","rarely_used"]} Small-medium size painting -> L2
+{"category":"Decor","tags":["sentimental"]} Stuffed penguin from Boston Aquarium -> Top shelf of thin black cabinet behind bedroom door
+{"category":"Decor","tags":["fragile","sentimental"]} Two champagne glasses from the national womens' hall of fame -> Overhead storage in back of closet on left side, wrapped in paper & kept in a HUBS cardboard box
+{"category":"Decor","tags":["antique","container_L8","needs_cleaning"]} Two enormous antique jars rescued from basement renovation (filthy, wrapped in plastic bags) -> container L8
+{"category":"Decor","tags":["rarely_used"]} Ukulele poster with chord shapes -> Rolled up and stored in the corner behind the door
+{"category":"Decor","tags":["fragile","sentimental"]} Wind chime (fused glass, driftwood, cord) made by late aunt -> Hanging from a hook in the top right corner of the window frame of the window above the desk, visible but out of the way of daily activities
+
+# Devices
+{"category":"Devices","tags":[]} 2016 MacBook -> Middle drawer of desk in Aubrey's room
+{"category":"Devices","tags":["audio_equipment","container_L8","music"]} Bass effect pedal with power supply -> container L8
+{"category":"Devices","tags":["container_L7"]} Old Dell computer -> container L7
+{"category":"Devices","tags":["container_L7"]} Optical wired computer mouse for Raspberry Pi -> container L7
+{"category":"Devices","tags":["container_S5"]} Protective clamshell holder for microSD card -> container S5
+{"category":"Devices","tags":["container_L7"]} TP-Link 5 port gigabit desktop switch -> container L7
+{"category":"Devices","tags":["container_L7"]} White and red keyboard for Raspberry Pi -> container L7
+
+# Documents
+{"category":"Documents","tags":["container_L8","sentimental"]} Large paper map of New York State from mom -> container L8
+{"category":"Documents","tags":[]} Soft cover copy of Piranesi book -> Small upper left shelf of thin black cabinet behind bedroom door
+
+# Electrical Parts
+{"category":"Electrical Parts","tags":["container_L7"]} 30 amp electronic speed controller (ESC) -> container L7
+{"category":"Electrical Parts","tags":["audio_equipment","container_L8"]} 6-inch patch cable for quarter inch audio -> container L8
+{"category":"Electrical Parts","tags":["audio_equipment","container_L8"]} Adapter from 1/8 inch to quarter inch audio jack -> container L8
+{"category":"Electrical Parts","tags":["container_S5"]} Assorted LEDs -> container S5
+{"category":"Electrical Parts","tags":["container_S5"]} Beginner parts kit from SparkFun with capacitors, ICs, diodes, transistors -> container S5
+{"category":"Electrical Parts","tags":["container_L7"]} Black power strip -> container L7
+{"category":"Electrical Parts","tags":["container_L7"]} Black power strip with pivoting outlets -> container L7
+{"category":"Electrical Parts","tags":["container_L7"]} Charger for mission control computers in Mexico -> container L7
+{"category":"Electrical Parts","tags":["container_L6"]} Engineering sample kit of ceramic capacitors -> container L6
+{"category":"Electrical Parts","tags":["container_L7"]} Green and white power adapter to 2 USB A plugs -> container L7
+{"category":"Electrical Parts","tags":["container_L8"]} HDMI cable -> container L8
+{"category":"Electrical Parts","tags":["container_L7"]} LiPo battery charger -> container L7
+{"category":"Electrical Parts","tags":["container_L5"]} Medium size LED light bulb with four LED elements -> container L5
+{"category":"Electrical Parts","tags":["container_L7","outdoor_activity"]} Old battery for S18 electric unicycle -> container L7
+{"category":"Electrical Parts","tags":["container_L5"]} Pack of four 9V batteries -> container L5
+{"category":"Electrical Parts","tags":["container_L7"]} Two large capacity lithium polymer batteries -> container L7
+{"category":"Electrical Parts","tags":["audio_equipment","container_L8"]} Two long quarter inch audio extender cables -> container L8
+{"category":"Electrical Parts","tags":["container_L7"]} White power strip -> container L7
+
+# Equipment
+{"category":"Equipment","tags":["container_L4","safety"]} Armored riding gloves -> container L4
+{"category":"Equipment","tags":["container_L8","extremely_critical","festival_essential","lighting"]} Black drawstring bag of lights and backup batteries -> container L8
+{"category":"Equipment","tags":["container_L4","safety"]} Blue motorcycle helmet in black bag -> container L4
+{"category":"Equipment","tags":["container_L9","electronics_project"]} Circuit bending toy that makes fart sound when squeezed -> container L9
+{"category":"Equipment","tags":["container_L4","outdoor_activity"]} Headlamp in box with fox on it -> container L4
+{"category":"Equipment","tags":["container_L4","outdoor_activity"]} Power pads for S18 electric unicycle -> container L4
+{"category":"Equipment","tags":["music","sentimental"]} Remo drum (carried at Cottonwood Gulch) -> Top shelf of thin black cabinet behind bedroom door
+{"category":"Equipment","tags":["container_L4"]} Ring-shaped brass bike bell -> container L4
+{"category":"Equipment","tags":["music"]} Small ukulele (possibly from Chee) -> Top shelf of thin black cabinet behind bedroom door
+{"category":"Equipment","tags":["sentimental"]} Splendor board game with ceramic pieces made by dad in lacquered wooden box -> Bottom left shelf of thin black cabinet behind bedroom door
+{"category":"Equipment","tags":[]} Tripod stand for AT2020 condenser mic with pop filter -> Corner on left side of kitchen door in bedroom
+{"category":"Equipment","tags":["container_L9","lighting"]} White bendy neck desk lamp -> container L9
+
+# Food and Drink
+{"category":"Food and Drink","tags":["container_L5"]} Sandwich stasher silicone pocket -> container L5
+
+# Household Upkeep
+{"category":"Household Upkeep","tags":["container_L6"]} Old translucent plastic bowl -> container L6
+{"category":"Household Upkeep","tags":["container_L8"]} Purple sheet for twin size bed -> container L8
+{"category":"Household Upkeep","tags":[]} Solar spectrum recessed light bulb -> Under raised queen bed
+{"category":"Household Upkeep","tags":["container_L8"]} Very long green soft fabric pillowcase (possibly silk) -> container L8
+
+# Mechanical Parts
+{"category":"Mechanical Parts","tags":["container_S5"]} Assorted nuts (mechanical fasteners) -> container S5
+{"category":"Mechanical Parts","tags":["container_S5"]} Axle with nylon gear, two brass bushings and set screw collars -> container S5
+{"category":"Mechanical Parts","tags":[]} Hardware bracket to mount a floating shelf -> Under raised queen bed
+{"category":"Mechanical Parts","tags":["container_L6","sentimental"]} PLA printed components for engagement ring box (prototypes and final pieces) -> container L6
+{"category":"Mechanical Parts","tags":["container_L6","sentimental"]} Resin printed components for engagement ring box (prototypes and final pieces) -> container L6
+{"category":"Mechanical Parts","tags":["container_L6","sentimental"]} Square geared lily-shaped aluminum engagement ring box components -> container L6
+{"category":"Mechanical Parts","tags":["container_S5"]} Two long M3 bolts -> container S5
+{"category":"Mechanical Parts","tags":["container_S5"]} Two nails -> container S5
+
+# Personal Care
+{"category":"Personal Care","tags":[]} Bottle of isopropyl alcohol -> Under raised queen bed
+
+# Supplies
+{"category":"Supplies","tags":["container_L5"]} Adhesive Guru activator accelerator spray for super glue -> container L5
+{"category":"Supplies","tags":["container_L9"]} Bag of orange indicating silica gel desiccant -> container L9
+{"category":"Supplies","tags":["container_L9"]} Bags for 3D printer filament storage with desiccant -> container L9
+{"category":"Supplies","tags":["container_L5"]} Bamboo Labs maintenance supplies for 3D printer -> container L5
+{"category":"Supplies","tags":["container_S5"]} Camo patterned low creep high tension woven cable on spool -> container S5
+{"category":"Supplies","tags":["container_S5"]} Camo patterned woven cable bundle, couple meters long -> container S5
+{"category":"Supplies","tags":["container_L9","craft_material"]} Complete set of wooden pentagons for dodecahedron (12 pieces, 10 inches each, rustic reclaimed wood) -> container L9
+{"category":"Supplies","tags":["container_L9","needs_maintenance"]} Desiccant that needs restoration/refreshing -> container L9
+{"category":"Supplies","tags":["container_L5"]} Finish Line brand wet bike lubricant -> container L5
+{"category":"Supplies","tags":["adhesive","construction"]} Liquid nails acoustic sealant -> Under wire shelving unit (4 shelves high) in room
+{"category":"Supplies","tags":["container_L5"]} Old Star 16 Fast Platinum silicone rubber (very old) -> container L5
+{"category":"Supplies","tags":["container_L5"]} Roll of colorFabb lw-ASA lightweight ASA filament in black -> container L5
+{"category":"Supplies","tags":["container_L5"]} Scotch mount double stick gel tape -> container L5
+{"category":"Supplies","tags":["container_L5"]} Scotch tape -> container L5
+{"category":"Supplies","tags":["container_L5"]} Smooth On Mold Max 60 high heat resistant silicone rubber -> container L5
+{"category":"Supplies","tags":["container_L5"]} Two microfiber cloths, one black and one orange -> container L5
+{"category":"Supplies","tags":["container_L5"]} Two part 5 minute epoxy -> container L5
+
+# Tools
+{"category":"Tools","tags":["container_L3"]} Gigantic precision calipers (300mm extension) -> container L3
+{"category":"Tools","tags":["container_L7"]} Holder for soldering iron -> container L7
+{"category":"Tools","tags":[]} Paint roller extender pole -> Corner on left side of kitchen door in bedroom
+{"category":"Tools","tags":["container_L3"]} Set of Allen keys in English units -> container L3
+{"category":"Tools","tags":["container_L3"]} Set of ratchet screwdrivers -> container L3
+{"category":"Tools","tags":["container_L3","needs_repair"]} White plastic dustpan with broken broom head (good for sweeping, needs repair) -> container L3
+a good time
+a better time
+

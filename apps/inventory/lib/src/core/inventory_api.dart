@@ -40,7 +40,7 @@ class InventoryApi {
 
     // Check if we need to migrate from old CRDT format
     final oldOpsPath =
-        legacyFilePath.replaceFirst('inventory.txt', 'inventory_ops.jsonl');
+        legacyFilePath.replaceFirst('seed_inventory.txt', 'inventory_ops.jsonl');
     final oldOpsFile = File(oldOpsPath);
 
     // Only migrate if:
@@ -56,12 +56,12 @@ class InventoryApi {
         print('CRDT: Migration complete.');
       }
     } else {
-      // No old ops file — check for legacy inventory.txt
+      // No old ops file — check for legacy seed_inventory.txt
       final legacyFile = File(legacyFilePath);
       if (await legacyFile.exists()) {
         final currentState = _readState();
         if (currentState.isEmpty) {
-          print('CRDT: Migrating from legacy inventory.txt...');
+          print('CRDT: Migrating from seed_inventory.txt...');
           await _migrateFromLegacyFile(legacyFile);
         }
       }
@@ -636,7 +636,7 @@ class InventoryApi {
     }
   }
 
-  /// Migrate from legacy inventory.txt (plain text format)
+  /// Migrate from legacy seed_inventory.txt (plain text format)
   Future<void> _migrateFromLegacyFile(File legacyFile) async {
     final lines = await legacyFile.readAsLines();
     final entries = lines
