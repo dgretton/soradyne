@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_chat_flutter/ai_chat_flutter.dart';
 import '../chat/chat_processor.dart';
+import '../chat/inventory_chat_processor.dart';
 import '../models/app_state.dart';
 import '../core/inventory_api.dart';
 import '../core/models/inventory_entry.dart';
@@ -21,8 +22,10 @@ class _ChatInterfaceState extends State<ChatInterface> {
   final ScrollController _scrollController = ScrollController();
   late final InventoryApi _inventoryApi;
   late final ChatProcessor _chatProcessor;
+  late final InventoryChatCommandProcessor _queryProcessor;
   late final HistoryService _historyService;
   final CommandManager _commandManager = CommandManager();
+  final ReactLoopService _reactLoop = const ReactLoopService(maxIterations: 3);
   List<InventoryEntry> _allItems = [];
   bool _isLoading = true;
   bool _isSending = false;
@@ -30,6 +33,7 @@ class _ChatInterfaceState extends State<ChatInterface> {
   LLMService? _llmService;
   Timer? _debounce;
   bool _showScrollToBottom = false;
+  ReactPhase? _currentPhase;
   late final ErrorWidgetBuilder _originalErrorWidgetBuilder;
 
   @override
@@ -67,7 +71,10 @@ class _ChatInterfaceState extends State<ChatInterface> {
     // No need to listen, as the API instance itself won't change.
     _inventoryApi = Provider.of<InventoryApi>(context, listen: false);
     _chatProcessor = ChatProcessor(_inventoryApi);
+    _queryProcessor = InventoryChatCommandProcessor(_inventoryApi);
     _historyService = HistoryService();
+    TrackedCommand.summarizer = _queryProcessor.commandSummary;
+    TrackedCommand.previewer = _queryProcessor.commandPreview;
     _loadAllItems();
     _loadHistory();
     _loadDraft();
@@ -220,23 +227,23 @@ class _ChatInterfaceState extends State<ChatInterface> {
       if (!mounted) return;
       final appState = Provider.of<AppState>(context, listen: false);
       final settings = Provider.of<LLMSettings>(context, listen: false);
-      final llmContext = await _buildFullContext(appState, settings);
 
-      final response = await _llmService!.sendMessage(_getCurrentSessionMessages(), llmContext);
-
-      // Parse and track any commands in the response
-      final newCommands = _commandManager.parseAndAddCommands(response);
-      if (newCommands.isNotEmpty) {
-        await _commandManager.save();
-      }
-
-      final assistantMessage = ChatMessage(
-        content: response,
-        isUser: false,
-        timestamp: DateTime.now(),
-        commandIds: newCommands.map((c) => c.id).toList(),
+      final finalMessage = await _reactLoop.run(
+        llmService: _llmService!,
+        commandManager: _commandManager,
+        processor: _queryProcessor,
+        getSessionMessages: _getCurrentSessionMessages,
+        buildContext: () => _buildFullContext(appState, settings),
+        onIntermediateMessage: (message) async {
+          setState(() => _messages.add(message));
+          _scrollToBottom();
+        },
+        onPhaseChange: (phase, iteration) {
+          if (mounted) setState(() => _currentPhase = phase);
+        },
       );
-      _messages.add(assistantMessage);
+
+      setState(() => _messages.add(finalMessage));
     } catch (e) {
       final errorMessage = ChatMessage(
         content: 'Error: ${e.toString()}',
@@ -244,12 +251,13 @@ class _ChatInterfaceState extends State<ChatInterface> {
         timestamp: DateTime.now(),
         isError: true,
       );
-      _messages.add(errorMessage);
+      setState(() => _messages.add(errorMessage));
     } finally {
       await _historyService.saveChatHistory(_messages);
       if (mounted) {
         setState(() {
           _isSending = false;
+          _currentPhase = null;
         });
       }
     }
@@ -545,8 +553,16 @@ class _ChatInterfaceState extends State<ChatInterface> {
 USER'S GOAL:
 The user's primary goal is to create a well-organized inventory so they can always find what they own and know where to put new items. They have recently moved and want to establish a system that prevents them from buying duplicates of things they can't find. Please keep this goal of "findability" in mind with all your suggestions.
 
-CORE CAPABILITIES:
-You can suggest commands to:
+QUERY COMMANDS (I will execute these automatically and show you the results):
+- search(query): Search inventory by text across descriptions, locations, categories, and tags
+- show(searchStr): Show full details of a specific item (by ID prefix or description)
+- count(tag?, category?): Count items, optionally filtered by tag and/or category
+- list-tags(): List all tags currently in use
+- list-containers(): List all containers
+
+Use queries to verify state before proposing mutations. For example, before moving an item, use show() to confirm it exists and check its current location.
+
+ACTION COMMANDS (shown to the user as cards for approval before execution):
 - Add new items: add(category, description, location, tags?, isContainer?, containerId?)
 - Create containers: create-container(containerId, location, description?)
 - Move items: move(searchStr, newLocation)
@@ -560,10 +576,15 @@ You can suggest commands to:
 - Batch remove tag from all items: group-remove-tag(tag)
 
 COMMAND FORMAT:
-When suggesting actions, format them as JSON commands like:
+Format all commands (queries and actions) as JSON code blocks:
+```json
+{"command": "search", "arguments": {"query": "hammer"}}
+```
 ```json
 {"command": "add", "arguments": {"category": "Tools", "description": "Hammer", "location": "Toolbox"}}
 ```
+
+For queries, I will auto-execute them and show you the results so you can reason about the inventory before proposing actions.
 
 Each command you suggest is automatically assigned a short ID (e.g., c-a3f2k). You'll see a list of commands with their IDs and statuses (pending/executed/errored/skipped) in the context below. When the user asks you to revise specific commands, reference them by ID:
 ```json
@@ -852,6 +873,8 @@ INTERACTION STYLE:
                         ],
                       ),
                     ),
+                    if (_currentPhase == ReactPhase.executingQueries)
+                      _buildPhaseIndicator('Checking inventory...'),
                     // Message input area
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -917,6 +940,9 @@ INTERACTION STYLE:
   Widget _buildMessageBubble(ChatMessage message) {
     if (message.isError) {
       return _buildErrorBubble(message);
+    }
+    if (message.isToolResult) {
+      return _buildToolResultBubble(message);
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -1065,6 +1091,54 @@ INTERACTION STYLE:
     );
   }
 
+  Widget _buildToolResultBubble(ChatMessage message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(width: 40),
+          Flexible(
+            child: _ToolResultCard(content: message.content),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhaseIndicator(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorBubble(ChatMessage message) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1085,6 +1159,81 @@ INTERACTION STYLE:
               style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Collapsed card for displaying tool/query results inline.
+class _ToolResultCard extends StatefulWidget {
+  final String content;
+  const _ToolResultCard({required this.content});
+
+  @override
+  State<_ToolResultCard> createState() => _ToolResultCardState();
+}
+
+class _ToolResultCardState extends State<_ToolResultCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final firstLine = widget.content.split('\n').first;
+    final hasMore = widget.content.contains('\n');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: hasMore ? () => setState(() => _expanded = !_expanded) : null,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.data_object,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    firstLine,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (hasMore)
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            SelectableText(
+              widget.content,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
         ],
       ),
     );

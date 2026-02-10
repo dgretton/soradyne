@@ -3,6 +3,13 @@ import 'dart:math';
 enum CommandStatus { pending, executed, errored, skipped }
 
 class TrackedCommand {
+  /// Optional delegate for app-specific command summaries.
+  /// Set at startup: `TrackedCommand.summarizer = processor.commandSummary;`
+  static String Function(String commandName, Map<String, dynamic> args)? summarizer;
+
+  /// Optional delegate for app-specific command previews.
+  static String Function(String commandName, Map<String, dynamic> args)? previewer;
+
   final String id;
   final Map<String, dynamic> command;
   final DateTime createdAt;
@@ -45,6 +52,13 @@ class TrackedCommand {
 
   String get summary {
     final args = command['arguments'] as Map<String, dynamic>? ?? {};
+    if (summarizer != null) {
+      return summarizer!(commandName, args);
+    }
+    return _defaultSummary(args);
+  }
+
+  String _defaultSummary(Map<String, dynamic> args) {
     switch (commandName) {
       case 'add':
         final desc = args['description'] ?? '?';
@@ -94,6 +108,13 @@ class TrackedCommand {
 
   String get preview {
     final args = command['arguments'] as Map<String, dynamic>? ?? {};
+    if (previewer != null) {
+      return previewer!(commandName, args);
+    }
+    return _defaultPreview(args);
+  }
+
+  String _defaultPreview(Map<String, dynamic> args) {
     final desc = args['description'];
     final search = args['search_str'] ?? args['searchStr'];
     final tag = args['tag'];

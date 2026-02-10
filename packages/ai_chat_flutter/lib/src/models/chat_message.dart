@@ -4,6 +4,7 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isSessionStart;
   final bool isError;
+  final bool isToolResult;
   final List<String> commandIds;
 
   ChatMessage({
@@ -12,6 +13,7 @@ class ChatMessage {
     required this.timestamp,
     this.isSessionStart = false,
     this.isError = false,
+    this.isToolResult = false,
     this.commandIds = const [],
   });
 
@@ -21,6 +23,7 @@ class ChatMessage {
         'timestamp': timestamp.toIso8601String(),
         'isSessionStart': isSessionStart,
         'isError': isError,
+        if (isToolResult) 'isToolResult': isToolResult,
         if (commandIds.isNotEmpty) 'commandIds': commandIds,
       };
 
@@ -30,6 +33,7 @@ class ChatMessage {
         timestamp: DateTime.parse(json['timestamp'] as String),
         isSessionStart: json['isSessionStart'] as bool? ?? false,
         isError: json['isError'] as bool? ?? false,
+        isToolResult: json['isToolResult'] as bool? ?? false,
         commandIds: (json['commandIds'] as List<dynamic>?)
                 ?.cast<String>()
                 .toList() ??

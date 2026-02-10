@@ -1,3 +1,4 @@
+import 'package:ai_chat_flutter/ai_chat_flutter.dart';
 import 'package:giantt_core/giantt_core.dart';
 import '../services/giantt_service.dart';
 
@@ -26,14 +27,16 @@ const actionCommands = {
   'log',
 };
 
-class GianttChatProcessor {
+class GianttChatProcessor implements ChatCommandProcessor {
   final GianttService _service;
 
   GianttChatProcessor(this._service);
 
+  @override
   /// Returns true if [commandName] is a query (auto-executed for ReAct).
   bool isQuery(String commandName) => queryCommands.contains(commandName);
 
+  @override
   /// Execute a query command and return formatted results.
   /// Returns null if the command is not a query.
   Future<String?> executeQuery(Map<String, dynamic> command) async {
@@ -95,6 +98,73 @@ class GianttChatProcessor {
       default:
         throw StateError('Unknown action command: $name');
     }
+  }
+
+  // -- ChatCommandProcessor summary/preview --
+
+  @override
+  String commandSummary(String commandName, Map<String, dynamic> args) {
+    switch (commandName) {
+      case 'add':
+        final id = args['id'] ?? '?';
+        final title = args['title'] ?? '?';
+        return 'add "$id" $title';
+      case 'modify':
+        final id = args['id'] ?? '?';
+        final fields = args.keys.where((k) => k != 'id').join(', ');
+        return 'modify "$id" ($fields)';
+      case 'remove':
+        return 'remove "${args['id'] ?? '?'}"';
+      case 'set-status':
+        return 'set-status "${args['id'] ?? '?'}" to ${args['status'] ?? '?'}';
+      case 'insert':
+        final id = args['id'] ?? '?';
+        final before = args['before'] ?? '?';
+        final after = args['after'] ?? '?';
+        return 'insert "$id" between $after and $before';
+      case 'occlude':
+        return 'occlude "${args['id'] ?? '?'}"';
+      case 'include':
+        return 'include "${args['id'] ?? '?'}"';
+      case 'add-relation':
+        return 'add ${args['type'] ?? '?'} ${args['from'] ?? '?'} → ${args['to'] ?? '?'}';
+      case 'remove-relation':
+        return 'remove ${args['type'] ?? '?'} ${args['from'] ?? '?'} → ${args['to'] ?? '?'}';
+      case 'log':
+        final session = args['session'] ?? '?';
+        final msg = args['message'] as String? ?? '?';
+        final preview = msg.length > 30 ? '${msg.substring(0, 30)}...' : msg;
+        return 'log "$session": $preview';
+      // Query commands
+      case 'show':
+        return 'show "${args['search'] ?? '?'}"';
+      case 'list-items':
+        final filters = <String>[];
+        if (args['chart'] != null) filters.add('chart:${args['chart']}');
+        if (args['status'] != null) filters.add('status:${args['status']}');
+        if (args['tag'] != null) filters.add('tag:${args['tag']}');
+        return 'list-items${filters.isEmpty ? '' : ' (${filters.join(', ')})'}';
+      case 'list-charts':
+        return 'list-charts';
+      case 'list-tags':
+        return 'list-tags';
+      case 'show-relations':
+        return 'show-relations "${args['id'] ?? '?'}"';
+      case 'show-includes':
+        return 'show-includes';
+      case 'doctor':
+        return 'doctor';
+      default:
+        return '$commandName(...)';
+    }
+  }
+
+  @override
+  String commandPreview(String commandName, Map<String, dynamic> args) {
+    final id = args['id'] as String?;
+    final title = args['title'] as String?;
+    final search = args['search'] as String?;
+    return title ?? id ?? search ?? '';
   }
 
   // -- Query implementations --

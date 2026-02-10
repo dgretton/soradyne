@@ -21,15 +21,15 @@ class _GianttChatScreenState extends State<GianttChatScreen> {
   late final GianttChatProcessor _processor;
   late final HistoryService _historyService;
   final CommandManager _commandManager = CommandManager();
+  final ReactLoopService _reactLoop = const ReactLoopService(maxIterations: 3);
   bool _isLoading = true;
   bool _isSending = false;
   List<ChatMessage> _messages = [];
   LLMService? _llmService;
   Timer? _debounce;
   bool _showScrollToBottom = false;
+  ReactPhase? _currentPhase;
   late final ErrorWidgetBuilder _originalErrorWidgetBuilder;
-
-  static const _maxReactIterations = 3;
 
   @override
   void initState() {
@@ -63,6 +63,8 @@ class _GianttChatScreenState extends State<GianttChatScreen> {
     _service = Provider.of<GianttService>(context, listen: false);
     _processor = GianttChatProcessor(_service);
     _historyService = HistoryService();
+    TrackedCommand.summarizer = _processor.commandSummary;
+    TrackedCommand.previewer = _processor.commandPreview;
     _loadHistory();
     _loadDraft();
     _commandManager.load();
@@ -250,71 +252,22 @@ INTERACTION STYLE:
       if (!mounted) return;
       final settings = Provider.of<LLMSettings>(context, listen: false);
 
-      // ReAct loop: send → parse → auto-execute queries → feed back → repeat
-      for (int iteration = 0; iteration <= _maxReactIterations; iteration++) {
-        final llmContext = await _buildFullContext(settings);
-        final response = await _llmService!.sendMessage(
-          _getCurrentSessionMessages(),
-          llmContext,
-        );
-
-        // Parse commands from the response
-        final newCommands = _commandManager.parseAndAddCommands(response);
-        if (newCommands.isNotEmpty) {
-          await _commandManager.save();
-        }
-
-        // Separate query commands from action commands
-        final queryResults = <String>[];
-        final queryCommandIds = <String>[];
-
-        for (final cmd in newCommands) {
-          if (_processor.isQuery(cmd.commandName)) {
-            final result = await _processor.executeQuery(cmd.command);
-            if (result != null) {
-              queryResults.add('Result of ${cmd.commandName}: $result');
-              _commandManager.markExecuted(cmd.id);
-            }
-            queryCommandIds.add(cmd.id);
-          }
-        }
-
-        if (queryResults.isNotEmpty && iteration < _maxReactIterations) {
-          // Show the LLM's response (with query cards already marked executed)
-          final intermediateMessage = ChatMessage(
-            content: response,
-            isUser: false,
-            timestamp: DateTime.now(),
-            commandIds: newCommands.map((c) => c.id).toList(),
-          );
-          setState(() => _messages.add(intermediateMessage));
+      final finalMessage = await _reactLoop.run(
+        llmService: _llmService!,
+        commandManager: _commandManager,
+        processor: _processor,
+        getSessionMessages: _getCurrentSessionMessages,
+        buildContext: () => _buildFullContext(settings),
+        onIntermediateMessage: (message) async {
+          setState(() => _messages.add(message));
           _scrollToBottom();
+        },
+        onPhaseChange: (phase, iteration) {
+          if (mounted) setState(() => _currentPhase = phase);
+        },
+      );
 
-          // Add query results as a tool-result message
-          final resultsText = queryResults.join('\n\n');
-          final toolResultMessage = ChatMessage(
-            content: resultsText,
-            isUser: true, // Sent as user message so the LLM sees it
-            timestamp: DateTime.now(),
-          );
-          setState(() => _messages.add(toolResultMessage));
-          _scrollToBottom();
-
-          // Continue the loop — LLM will see the results and respond again
-          await _commandManager.save();
-          continue;
-        }
-
-        // No queries (or max iterations reached) — show final response
-        final assistantMessage = ChatMessage(
-          content: response,
-          isUser: false,
-          timestamp: DateTime.now(),
-          commandIds: newCommands.map((c) => c.id).toList(),
-        );
-        setState(() => _messages.add(assistantMessage));
-        break;
-      }
+      setState(() => _messages.add(finalMessage));
     } catch (e) {
       final errorMessage = ChatMessage(
         content: 'Error: $e',
@@ -326,7 +279,10 @@ INTERACTION STYLE:
     } finally {
       await _historyService.saveChatHistory(_messages);
       if (mounted) {
-        setState(() => _isSending = false);
+        setState(() {
+          _isSending = false;
+          _currentPhase = null;
+        });
       }
     }
 
@@ -640,6 +596,7 @@ INTERACTION STYLE:
 
   Widget _buildMessageBubble(ChatMessage message) {
     if (message.isError) return _buildErrorBubble(message);
+    if (message.isToolResult) return _buildToolResultBubble(message);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -681,6 +638,21 @@ INTERACTION STYLE:
               child: Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.onTertiary),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolResultBubble(ChatMessage message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(width: 40), // Indent to align with assistant messages
+          Flexible(
+            child: _ToolResultCard(content: message.content),
+          ),
         ],
       ),
     );
@@ -770,6 +742,39 @@ INTERACTION STYLE:
     );
   }
 
+  Widget _buildPhaseIndicator(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<LLMSettings>(
@@ -844,6 +849,8 @@ INTERACTION STYLE:
                         ],
                       ),
                     ),
+                    if (_currentPhase == ReactPhase.executingQueries)
+                      _buildPhaseIndicator('Looking things up...'),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -895,6 +902,81 @@ INTERACTION STYLE:
                 ),
         );
       },
+    );
+  }
+}
+
+/// Collapsed card for displaying tool/query results inline.
+class _ToolResultCard extends StatefulWidget {
+  final String content;
+  const _ToolResultCard({required this.content});
+
+  @override
+  State<_ToolResultCard> createState() => _ToolResultCardState();
+}
+
+class _ToolResultCardState extends State<_ToolResultCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final firstLine = widget.content.split('\n').first;
+    final hasMore = widget.content.contains('\n');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: hasMore ? () => setState(() => _expanded = !_expanded) : null,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.data_object,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    firstLine,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (hasMore)
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            SelectableText(
+              widget.content,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

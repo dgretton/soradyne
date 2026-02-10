@@ -10,6 +10,8 @@ export 'src/services/llm_service.dart';
 export 'src/services/command_manager.dart';
 export 'src/services/history_service.dart';
 export 'src/services/settings_service.dart';
+export 'src/services/chat_command_processor.dart';
+export 'src/services/react_loop_service.dart';
 
 // Widgets
 export 'src/widgets/command_block_builder.dart';
