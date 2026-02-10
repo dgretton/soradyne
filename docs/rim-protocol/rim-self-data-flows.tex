@@ -101,27 +101,49 @@
   stream/.style={draw=rimblue, thick, ->, >=Stealth},
   drip/.style={draw=dripcolor, thick, ->, >=Stealth, densely dashed},
   jet/.style={draw=jetcolor, thick, ->, >=Stealth},
-  node/.style={draw=rimblue, fill=rimlight, rounded corners=4pt, minimum width=2cm, minimum height=0.8cm, font=\small},
-  flowbox/.style={draw=rimdark, fill=white, rounded corners=8pt, thick, inner sep=12pt},
+  optional/.style={draw=rimblue, thick, ->, >=Stealth, densely dotted},
+  piece/.style={draw=rimdark, fill=rimdark!8, rounded corners=4pt,
+                minimum width=1.6cm, minimum height=0.7cm, font=\small},
+  streambox/.style={draw=rimblue!60, fill=rimlight, rounded corners=3pt,
+                    minimum width=1.4cm, minimum height=0.6cm, font=\scriptsize},
+  fitting/.style={draw=fittingcolor, fill=fittingcolor!10, rounded corners=3pt,
+                  minimum width=1.4cm, minimum height=0.6cm, font=\scriptsize},
+  role/.style={draw=rolecolor, fill=rolecolor!10, rounded corners=3pt,
+               minimum width=1.4cm, minimum height=0.6cm, font=\scriptsize},
+  flowbox/.style={draw=rimdark, fill=white, rounded corners=8pt, thick, inner sep=10pt},
 ]
   % Flow boundary
-  \node[flowbox, minimum width=10cm, minimum height=5cm] (flow) {};
+  \node[flowbox, minimum width=9cm, minimum height=4cm] (flow) {};
   \node[above=0pt of flow.north, font=\small\bfseries\color{rimdark}] {Self-Data Flow};
 
-  % Streams
-  \node[node] (src1) at (-3, 1) {Source A};
-  \node[node] (src2) at (-3, -1) {Source B};
-  \node[node, fill=dripcolor!15] (drip) at (0, 0) {Drip};
-  \node[node, fill=jetcolor!15] (jet1) at (0, 1.5) {Jet};
-  \node[node, fill=fittingcolor!15] (fit) at (0, -1.5) {Fitting};
-  \node[node] (sink) at (3, 0) {Sink};
+  % Pieces (devices) outside the flow on the left
+  \node[piece] (pieceA) at (-6, 1) {Piece A};
+  \node[piece] (pieceB) at (-6, -1) {Piece B};
 
-  % Arrows
-  \draw[stream] (src1) -- (jet1);
-  \draw[stream] (src2) -- (fit);
-  \draw[jet] (jet1) -- (sink);
-  \draw[drip] (drip) -- (sink);
+  % Edit streams
+  \node[streambox] (editA) at (-2.8, 1) {\strut edit};
+  \node[streambox] (editB) at (-2.8, -1) {\strut edit};
+
+  % Fitting (CRDT merge)
+  \node[fitting] (fit) at (0, 0) {fitting};
+
+  % Drip (convergent state)
+  \node[streambox, fill=dripcolor!15] (drip) at (2.8, 0) {\strut drip};
+
+  % Piece (device) outside the flow on the right
+  \node[piece] (pieceC) at (6, 0) {Piece C};
+
+  % Source -> edit stream
+  \draw[stream] (pieceA) -- (editA);
+  \draw[stream] (pieceB) -- (editB);
+
+  % Edit streams -> fitting -> drip (the convergent path)
+  \draw[stream] (editA) -- (fit);
+  \draw[stream] (editB) -- (fit);
   \draw[stream, color=fittingcolor] (fit) -- (drip);
+
+  % Drip -> consuming piece
+  \draw[stream, color=dripcolor] (drip) -- (pieceC);
 \end{tikzpicture}
 
 \vfill
@@ -191,7 +213,7 @@ created, moved, transformed, stored, and queried across devices in the Rim proto
 
 It covers:
 \begin{itemize}[leftmargin=2em]
-  \item The conceptual model: flows, streams, roles, fittings, policies
+  \item The conceptual model: flows, streams, flow roles, fittings, policies
   \item Data geometry: how the spatial, temporal, and structural character of data
     is described so that flows can operate on it uniformly
   \item Worked examples across diverse data types: images, video, sound, spatial
@@ -251,7 +273,7 @@ A flow type is a versioned design document that specifies:
 
 \begin{enumerate}[leftmargin=2em]
   \item What streams the flow has (names, cardinalities, categories)
-  \item What roles are needed to operate the flow
+  \item What flow roles are needed to operate the flow
   \item What policies govern error handling, delegation, discovery, memorization
   \item What interface the flow presents to applications
   \item What serialization formats are used
@@ -570,18 +592,18 @@ merged:
 
 % ============================================================
 \newpage
-\section{Roles}
+\section{Flow Roles}
 \label{sec:roles}
 
-\subsection{What a Role Is}
+\subsection{What a Flow Role Is}
 
-A role is an abstract unit of responsibility within a flow. Roles are defined in the
-flow's type definition. Parties (devices, processes, services) \emph{fill} roles at
-runtime.
+A \emph{flow role} is an abstract unit of responsibility within a flow. Flow roles are
+defined in the flow's type definition. Parties (devices, processes, services) \emph{fill}
+roles at runtime.
 
-\begin{definition}[Role]
-A role is a named set of responsibilities defined by a flow type. A single device can
-fill many roles. Many devices can fill the same role. Roles are abstract; they do not
+\begin{definition}[Flow Role]
+A flow role is a named set of responsibilities defined by a flow type. A single device
+can fill many roles. Many devices can fill the same role. Roles are abstract; they do not
 imply separate hardware, separate processes, or even separate lines of code---though
 they might be any of those.
 \end{definition}
@@ -593,7 +615,7 @@ fitting (applies edits to produce current state), and data sink (displays curren
 state in UI). These are all conceptually separate responsibilities that happen to be
 co-located.
 
-\subsection{Common Role Types}
+\subsection{Common Flow Role Types}
 
 \subsubsection{Data Source}
 
@@ -616,7 +638,7 @@ A data sink consumes data from a stream. Examples:
 
 \subsubsection{Memorization}
 
-A memorization role reliably stores and recalls data that was written to streams, so
+A memorization flow role reliably stores and recalls data that was written to streams, so
 that it can be retrieved later. This is often implemented as local file I/O, but the
 flow only specifies the \emph{what} (this data must be recallable under these
 conditions) and the \emph{policy} (how robust, how secure, how long), not the
@@ -681,6 +703,7 @@ not in code.
 \begin{center}
 \begin{tikzpicture}[
   stream/.style={draw=rimblue, thick, ->, >=Stealth},
+  optional/.style={draw=rimblue, thick, ->, >=Stealth, densely dotted},
   fitting/.style={draw=fittingcolor, fill=fittingcolor!10, rounded corners=3pt,
                   minimum width=2cm, minimum height=0.7cm, font=\small},
   role/.style={draw=rolecolor, fill=rolecolor!10, rounded corners=3pt,
@@ -689,33 +712,54 @@ not in code.
                     minimum width=2.5cm, minimum height=0.6cm, font=\small},
 ]
   % Sources
-  \node[role] (srcA) at (-4, 1) {Source (device A)};
-  \node[role] (srcB) at (-4, -1) {Source (device B)};
+  \node[role] (srcA) at (-5, 1.5) {Source (device A)};
+  \node[role] (srcB) at (-5, -1.5) {Source (device B)};
 
   % Edit streams
-  \node[streambox] (editA) at (-1, 1) {edit stream A};
-  \node[streambox] (editB) at (-1, -1) {edit stream B};
+  \node[streambox] (editA) at (-1.5, 1.5) {edit stream A};
+  \node[streambox] (editB) at (-1.5, -1.5) {edit stream B};
+
+  % Memorization (one per edit stream, forming triangles)
+  \node[role] (memA) at (1, 2.8) {\scriptsize Memorization};
+  \node[role] (memB) at (1, -2.8) {\scriptsize Memorization};
 
   % Fitting
-  \node[fitting] (fit) at (2.5, 0) {CRDT merge};
-
-  % Memorization
-  \node[role] (mem) at (2.5, -2) {Memorization};
+  \node[fitting] (fit) at (4, 0) {CRDT merge};
 
   % Drip
-  \node[streambox, fill=dripcolor!15] (drip) at (6, 0) {drip: current state};
+  \node[streambox, fill=dripcolor!15] (drip) at (7.5, 0) {drip: current state};
+
+  % Memorization (read-side, optional, between drip and sink)
+  \node[role] (memRead) at (7.5, -1.8) {\scriptsize Memorization};
 
   % Sink
-  \node[role] (sink) at (9, 0) {Sink (UI)};
+  \node[role] (sink) at (10.5, 0) {Sink (UI)};
 
-  % Arrows
+  % Source -> edit stream arrows
   \draw[stream] (srcA) -- (editA);
   \draw[stream] (srcB) -- (editB);
+
+  % Edit streams -> merge directly
   \draw[stream] (editA) -- (fit);
   \draw[stream] (editB) -- (fit);
+
+  % Edit stream A -> memorization A -> merge (triangle)
+  \draw[optional] (editA) -- (memA);
+  \draw[optional] (memA) -- (fit);
+
+  % Edit stream B -> memorization B -> merge (triangle)
+  \draw[optional] (editB) -- (memB);
+  \draw[optional] (memB) -- (fit);
+
+  % Merge -> drip
   \draw[stream, color=fittingcolor] (fit) -- (drip);
-  \draw[stream, dashed] (fit) -- (mem) node[midway, right, font=\scriptsize\color{gray}] {persist};
+
+  % Drip -> sink (direct)
   \draw[stream, color=dripcolor] (drip) -- (sink);
+
+  % Drip -> memorization -> sink (optional detour)
+  \draw[optional, color=dripcolor] (drip) -- (memRead);
+  \draw[optional, color=dripcolor] (memRead) -| (sink);
 \end{tikzpicture}
 \end{center}
 
@@ -755,17 +799,23 @@ Who performs transmissions and transformations? Delegation policies specify:
 
 \subsection{Discovery Policies}
 
-How do you find the parties filling roles for a flow? Discovery policies specify:
+How do pieces in a capsule find each other when they need to form an ensemble?
+Discovery policies specify:
 \begin{itemize}[leftmargin=2em]
-  \item \textbf{Simple}: The configuration contains a static list of hosts
-  \item \textbf{Referral}: A known host can provide addresses of others
-  \item \textbf{Registry}: A static remote host maintains a directory
-  \item \textbf{DHT}: Distributed hash table lookup
-  \item \textbf{Broadcast}: Local network discovery (BLE, mDNS)
+  \item \textbf{Proximity broadcast}: Pieces advertise presence and capsule membership
+    via encrypted BLE advertisements. Other pieces holding the capsule's key material
+    can detect and respond. This is the baseline discovery mechanism.
+  \item \textbf{Simple}: The flow configuration contains a static list of known pieces
+  \item \textbf{Referral}: A known piece can provide the identities of others
+  \item \textbf{Registry}: A remote directory service maintains a list of pieces
+    (an IP-based extension for when proximity alone is insufficient)
+  \item \textbf{DHT}: Distributed hash table lookup (another IP-based extension)
 \end{itemize}
 
 The policy also specifies what to do when discovery information is stale (retire the
-flow? attempt re-discovery? fall back to a different method?).
+flow? attempt re-discovery? fall back to a different method?). Because the baseline
+is proximity broadcast, staleness often resolves itself: a piece that walks back into
+range is rediscovered automatically.
 
 \subsection{Memorization Policies}
 
@@ -984,7 +1034,7 @@ This flow type has an unusually large number of streams:
     for new aligners catching up
 \end{itemize}
 
-\subsubsection{Roles}
+\subsubsection{Flow Roles}
 \begin{itemize}[leftmargin=2em]
   \item \textbf{Sensor}: Data source. Produces raw measurements in its local
     coordinate system.
@@ -1044,7 +1094,7 @@ managed by image flows or stored as opaque blobs).
     comment where, cursor positions. Prompt, non-consensus.
 \end{itemize}
 
-\subsubsection{Roles}
+\subsubsection{Flow Roles}
 \begin{itemize}[leftmargin=2em]
   \item Standard: data source (editor), data sink (viewer), memorization (stores album
     state and image blobs), fitting (applies edits to album CRDT).
@@ -1593,10 +1643,11 @@ advertising capabilities:
   struct/object in code. The code implementing a fitting is the code that takes data
   from one stream and produces data for another. \\[6pt]
 
-\textbf{Role} &
+\textbf{Flow Role} &
   A named set of responsibilities within a flow. Filled by parties (devices, processes)
   at runtime. A device can fill many roles; many devices can fill the same role.
-  Examples: data source, data sink, memorization, curator, aligner. \\[6pt]
+  Examples: data source, data sink, memorization, curator, aligner. Often shortened to
+  ``role'' in discussion. \\[6pt]
 
 \textbf{Policy} &
   A rule encoded in a flow's type definition or configuration governing stream behavior
@@ -1625,7 +1676,7 @@ advertising capabilities:
   \\[6pt]
 
 \textbf{Memorization} &
-  A role responsible for reliably storing and recalling stream data. Subject to
+  A flow role responsible for reliably storing and recalling stream data. Subject to
   security policies (plaintext, encrypted, dissolved) and robustness policies
   (ephemeral, replicated, reallocating). \\[6pt]
 
