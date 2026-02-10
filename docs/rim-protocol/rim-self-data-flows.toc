@@ -1,0 +1,104 @@
+\contentsline {section}{\numberline {1}Introduction}{4}{section.1}%
+\contentsline {subsection}{\numberline {1.1}What is Self-Data?}{4}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Design Philosophy}{4}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Scope of This Document}{4}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Relationship to Existing Code}{5}{subsection.1.4}%
+\contentsline {section}{\numberline {2}Self-Data Flows}{6}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Identity: The UUID}{6}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Flow Types}{6}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Type Identity via Content Hash}{6}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}Type Scope}{7}{subsubsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.3}Flow Configuration}{7}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Bootstrap Sequence}{8}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Streams}{9}{section.3}%
+\contentsline {subsection}{\numberline {3.1}What a Stream Is}{9}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Drips: Convergent Streams}{9}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Jets: Fast Streams}{10}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Stream Lifecycle}{10}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Data Geometry}{11}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Query Coordinates}{11}{subsection.4.1}%
+\contentsline {subsubsection}{\numberline {4.1.1}Properties of Query Coordinates}{11}{subsubsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.2}Data Coordinates}{11}{subsection.4.2}%
+\contentsline {subsubsection}{\numberline {4.2.1}Properties of Data Coordinates}{12}{subsubsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.3}Transforms}{12}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Sparsity and Density}{12}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Roles}{14}{section.5}%
+\contentsline {subsection}{\numberline {5.1}What a Role Is}{14}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Common Role Types}{14}{subsection.5.2}%
+\contentsline {subsubsection}{\numberline {5.2.1}Data Source}{14}{subsubsection.5.2.1}%
+\contentsline {subsubsection}{\numberline {5.2.2}Data Sink}{14}{subsubsection.5.2.2}%
+\contentsline {subsubsection}{\numberline {5.2.3}Memorization}{15}{subsubsection.5.2.3}%
+\contentsline {subsubsection}{\numberline {5.2.4}Curator}{15}{subsubsection.5.2.4}%
+\contentsline {subsubsection}{\numberline {5.2.5}Aligner}{15}{subsubsection.5.2.5}%
+\contentsline {subsection}{\numberline {5.3}Fittings}{15}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Policies}{17}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Error Policies}{17}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Delegation Policies}{17}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Discovery Policies}{17}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Memorization Policies}{18}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Retirement and Refresh}{18}{subsection.6.5}%
+\contentsline {section}{\numberline {7}Data Type Examples}{19}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Images}{19}{subsection.7.1}%
+\contentsline {subsubsection}{\numberline {7.1.1}Data Geometry}{19}{subsubsection.7.1.1}%
+\contentsline {subsubsection}{\numberline {7.1.2}Streams}{19}{subsubsection.7.1.2}%
+\contentsline {subsubsection}{\numberline {7.1.3}Key Policies}{19}{subsubsection.7.1.3}%
+\contentsline {subsection}{\numberline {7.2}Video}{19}{subsection.7.2}%
+\contentsline {subsubsection}{\numberline {7.2.1}Data Geometry}{20}{subsubsection.7.2.1}%
+\contentsline {subsubsection}{\numberline {7.2.2}Streams}{20}{subsubsection.7.2.2}%
+\contentsline {subsubsection}{\numberline {7.2.3}Relationship to Calls and Recordings}{20}{subsubsection.7.2.3}%
+\contentsline {subsection}{\numberline {7.3}Sound}{20}{subsection.7.3}%
+\contentsline {subsubsection}{\numberline {7.3.1}Data Geometry}{20}{subsubsection.7.3.1}%
+\contentsline {subsubsection}{\numberline {7.3.2}Streams}{20}{subsubsection.7.3.2}%
+\contentsline {subsubsection}{\numberline {7.3.3}Latency and Decompression}{21}{subsubsection.7.3.3}%
+\contentsline {subsection}{\numberline {7.4}Spatial Measurements}{21}{subsection.7.4}%
+\contentsline {subsubsection}{\numberline {7.4.1}Data Geometry}{21}{subsubsection.7.4.1}%
+\contentsline {subsubsection}{\numberline {7.4.2}Why Precision Matrices}{21}{subsubsection.7.4.2}%
+\contentsline {subsubsection}{\numberline {7.4.3}Coordinate Systems}{21}{subsubsection.7.4.3}%
+\contentsline {subsubsection}{\numberline {7.4.4}Streams}{22}{subsubsection.7.4.4}%
+\contentsline {subsubsection}{\numberline {7.4.5}Roles}{22}{subsubsection.7.4.5}%
+\contentsline {subsubsection}{\numberline {7.4.6}Flow Boundaries}{22}{subsubsection.7.4.6}%
+\contentsline {subsubsection}{\numberline {7.4.7}Relationship to Nestbox Twigs}{22}{subsubsection.7.4.7}%
+\contentsline {subsection}{\numberline {7.5}Photo Albums}{23}{subsection.7.5}%
+\contentsline {subsubsection}{\numberline {7.5.1}Streams}{23}{subsubsection.7.5.1}%
+\contentsline {subsubsection}{\numberline {7.5.2}Roles}{23}{subsubsection.7.5.2}%
+\contentsline {subsection}{\numberline {7.6}Binary Data}{23}{subsection.7.6}%
+\contentsline {subsubsection}{\numberline {7.6.1}Data Geometry}{23}{subsubsection.7.6.1}%
+\contentsline {subsubsection}{\numberline {7.6.2}Streams}{23}{subsubsection.7.6.2}%
+\contentsline {subsection}{\numberline {7.7}Structured Records: Inventory}{23}{subsection.7.7}%
+\contentsline {subsubsection}{\numberline {7.7.1}Data Geometry}{24}{subsubsection.7.7.1}%
+\contentsline {subsubsection}{\numberline {7.7.2}Current Implementation and Migration Path}{24}{subsubsection.7.7.2}%
+\contentsline {subsection}{\numberline {7.8}Task Graphs: Giantt}{24}{subsection.7.8}%
+\contentsline {subsubsection}{\numberline {7.8.1}Data Geometry}{24}{subsubsection.7.8.1}%
+\contentsline {subsubsection}{\numberline {7.8.2}Streams}{25}{subsubsection.7.8.2}%
+\contentsline {subsubsection}{\numberline {7.8.3}Current Implementation}{25}{subsubsection.7.8.3}%
+\contentsline {subsection}{\numberline {7.9}Text}{25}{subsection.7.9}%
+\contentsline {subsubsection}{\numberline {7.9.1}Data Geometry}{25}{subsubsection.7.9.1}%
+\contentsline {subsubsection}{\numberline {7.9.2}Starting Big: File Trees}{25}{subsubsection.7.9.2}%
+\contentsline {subsubsection}{\numberline {7.9.3}Streams}{25}{subsubsection.7.9.3}%
+\contentsline {subsection}{\numberline {7.10}Vector Images}{25}{subsection.7.10}%
+\contentsline {subsubsection}{\numberline {7.10.1}Open Question}{26}{subsubsection.7.10.1}%
+\contentsline {section}{\numberline {8}The Implementer's Perspective}{27}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Defining a New Flow Type}{27}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Cross-Language Implementation}{27}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Extending vs.\ Replacing}{27}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}What Ships with Soradyne}{28}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Security and Memorization}{29}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Data at Rest}{29}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Data Dissolution and Crystallization}{29}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Robustness to Loss}{29}{subsection.9.3}%
+\contentsline {subsection}{\numberline {9.4}Leakage Policies}{29}{subsection.9.4}%
+\contentsline {subsection}{\numberline {9.5}Authentication and Authorization}{29}{subsection.9.5}%
+\contentsline {section}{\numberline {10}Flow Boundaries}{31}{section.10}%
+\contentsline {subsection}{\numberline {10.1}Guidelines}{31}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Flow Mesh}{31}{subsection.10.2}%
+\contentsline {section}{\numberline {11}Device Topology: Capsules, Ensembles, and Pieces}{32}{section.11}%
+\contentsline {subsection}{\numberline {11.1}Pieces}{32}{subsection.11.1}%
+\contentsline {subsection}{\numberline {11.2}Capsules}{32}{subsection.11.2}%
+\contentsline {subsection}{\numberline {11.3}Ensembles}{32}{subsection.11.3}%
+\contentsline {subsection}{\numberline {11.4}Parures}{33}{subsection.11.4}%
+\contentsline {subsection}{\numberline {11.5}Accessories}{34}{subsection.11.5}%
+\contentsline {subsection}{\numberline {11.6}Transport Philosophy}{34}{subsection.11.6}%
+\contentsline {section}{\numberline {12}Terminology Reference}{35}{section.12}%
+\contentsline {section}{\numberline {13}Appendix: Comparison with Nestbox Twigs}{37}{section.13}%
+\contentsline {section}{\numberline {14}Appendix: Status of Current Implementation}{37}{section.14}%
+\contentsfinish 
