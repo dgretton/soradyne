@@ -689,16 +689,22 @@ A fitting is a transformation that connects streams to each other within a flow.
 Fittings describe how data from one stream is processed and made available on another.
 \end{definition}
 
-Fittings are abstract concepts in the current design. They do not need to be reified
-as structs or objects in code yet---the parties running the code implement the fittings
-described in the flow's policies. A fitting might be as simple as ``apply each edit
-operation from the edit stream to a CRDT, making the result available on the drip
-stream,'' or as complex as ``mix $n$ audio input streams into a single output stream,
-applying gain normalization and latency compensation.''
+A fitting's functionality is real and implemented in real code---the parties running the
+code \emph{are} implementing the fittings described in the flow's policies. But a fitting
+is not a first-class named entity at the same level as a stream. There is no fitting
+registry, no fitting UUID, no fitting interface that you call methods on. The fitting
+is implicit in its implementation: the code that reads from an edit stream, applies
+operations to a CRDT, and makes the result available on a drip stream \emph{is} a fitting,
+but it does not need to know that about itself.
 
-In the future, complex policies may require fitting objects that can be delegated,
-composed, and hot-swapped. For now, fittings are nouns in documentation and comments,
-not in code.
+A fitting might be as simple as ``apply each edit operation from the edit stream to a
+CRDT, making the result available on the drip stream,'' or as complex as ``mix $n$ audio
+input streams into a single output stream, applying gain normalization and latency
+compensation.'' In both cases, the fitting is a description of what the code does, not a
+separate object the code instantiates. Delegation policies (\S\ref{sec:policies})
+determine which party runs the code that implements a given fitting, and failover
+policies determine what happens when that party disappears---but the fitting itself
+remains a noun for talking about transformations, not a type for instantiating them.
 
 \begin{center}
 \begin{tikzpicture}[
@@ -863,11 +869,17 @@ structure is more about relationships and records than about coordinates.
 \subsection{Images}
 \label{sec:ex-images}
 
-An image has rich spatial structure. It can be treated as a block of binary data (and
-often is---editing locally always constitutes complete replacement on save), but a
-flow-aware image preserves the structure that makes it an image.
+An image has rich spatial structure. Rather than treating images as a single monolithic
+flow, the protocol decomposes image handling into three tiers of flows reflecting a key
+insight: raw image data, collaborative composition, and collection management have
+fundamentally different data characters and independent lifecycles. A photograph someone
+took and stores on their devices does not need multi-party consensus---it is spatial data
+you query at a resolution. A collaboratively edited composite (layers, transforms,
+annotations) does need consensus on the sequence of edits. A collection of composites
+(an album) needs consensus on membership and ordering. These are separate flows, linked
+by UUID references in a flow mesh (\S\ref{sec:boundaries}).
 
-\subsubsection{Data Geometry}
+\subsubsection{Data Geometry (Base Image)}
 \begin{itemize}[leftmargin=2em]
   \item \textbf{Query coordinates}: 2. Either discrete $(x, y)$ as integer pixel
     indices, or continuous $(u, v)$ as floats in $[0, 1]$.
@@ -875,28 +887,67 @@ flow-aware image preserves the structure that makes it an image.
     multispectral (up to 29 for some JWST images).
   \item \textbf{Ordered}: Yes, both query coordinates are ordered.
   \item \textbf{Dense}: Yes, every query point has a value.
-  \item \textbf{Transform support}: A $2 \times 2$ matrix and a pair of start/end
-    vectors can express any rotation, scale, flip, and crop. Most transforms are better
-    done on the receiving device, but for very large images, the query should support
-    spatial subsetting.
+  \item \textbf{Transform support}: The full query interface supports a $2 \times 2$
+    matrix and a pair of start/end vectors, expressing any rotation, scale, flip, and
+    crop. Most transforms are better done on the receiving device, but for very large
+    images, the query should support spatial subsetting. A valid starting implementation
+    may use discrete resolution tiers (thumbnail, preview, large, full) as the query
+    parameter, deferring continuous transform support to later iterations.
 \end{itemize}
 
-\subsubsection{Streams}
+\subsubsection{Three-Tier Decomposition}
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{Image flow} (query-response, neither jet nor drip). Stores raw image
+    data and serves it at a requested resolution. Memorization-backed, spatially aware.
+    Multiple pieces can memorize the same image; synchronization is ``do you have this
+    data?'' not ``what is the consensus state?'' There is no drip because there is no
+    multi-party state to converge---the image simply exists as spatial data.
+
+  \item \textbf{Image composite flow} (has a \textbf{drip}). Produces a rendered result
+    from one or more image sources plus transforms, overlays, and annotations. The drip
+    converges when multiple parties contribute edits---crops, rotations, layer operations,
+    filter applications. A simple composite might contain only a genesis operation (``load
+    from image flow $X$ at resolution $Y$''); a rich composite might contain dozens of
+    layer operations. The composite flow also returns non-image data (vector annotations,
+    text overlays) alongside the rendered pixels.
+
+  \item \textbf{Album flow} (has a \textbf{drip}). A convergent collection of composite
+    references. Each entry references a composite flow by UUID. The album's edits are
+    structural: add, remove, reorder entries, set captions and tags. Image transforms
+    (crop, rotate, filter) belong to the composite layer, not the album. See
+    \S\ref{sec:ex-albums}.
+\end{enumerate}
+
+\subsubsection{Image Flow Streams}
 \begin{itemize}[leftmargin=2em]
-  \item \textbf{Drip} (\texttt{pixel\_state}): The current pixel values of the
-    squashed consensus edit state. Queryable by region, resolution, and transform.
-  \item \textbf{Edit streams} (per-party): Layer operations---full replacement, overlay
-    with blend mode (normal, multiply, mask, etc.), transform-and-crop, filters. Each
-    edit references the drip state it was based on (causal context).
-  \item \textbf{Jet} (\texttt{viewport}): Per-party, what region of the image each
-    participant is currently viewing. Optional.
+  \item \textbf{Image data} (query-response, no category): Returns image data at a
+    requested resolution. The resolution parameter is part of the query. This is neither
+    a drip (no multi-party consensus to fuse) nor a jet (not continuous or lossy).
+  \item \textbf{Metadata} (read-once, no category): Dimensions, format, original size,
+    color space.
+\end{itemize}
+
+\subsubsection{Image Composite Flow Streams}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Drip} (\texttt{operations}): The convergent sequence of composition
+    operations. When multiple parties contribute edits (transforms, layers, annotations),
+    the drip ensures convergence via its backing CRDT.
+  \item \textbf{Rendered} (query-response, no category): The composited image data plus
+    extra data (annotations, vectors) at a requested resolution.
+  \item \textbf{Jet} (\texttt{viewport}): Per-party, what region of the composite each
+    participant is currently viewing. Optional; useful for collaborative editing UIs.
 \end{itemize}
 
 \subsubsection{Key Policies}
 \begin{itemize}[leftmargin=2em]
-  \item Conflict resolution for concurrent pixel edits: last-write-wins per region,
-    or layer stacking order defined by the type.
-  \item Large images: memorization roles may store tiles, serving subsets on query.
+  \item Conflict resolution for concurrent composition edits: operation ordering via the
+    drip's backing CRDT.
+  \item Large images: memorization roles may store tiles or resolution tiers, serving
+    subsets on query.
+  \item The image flow and the composite flow referencing it have independent lifecycles:
+    the same raw image can appear in many composites; retiring a composite does not affect
+    the underlying image data.
 \end{itemize}
 
 % -----------------------------------------------------------
@@ -1079,25 +1130,34 @@ the pattern.
 \subsection{Photo Albums}
 \label{sec:ex-albums}
 
-A photo album is a self-data flow whose data is a combination of structured metadata
-(order, annotations, crops) and references to binary image data (which may itself be
-managed by image flows or stored as opaque blobs).
+A photo album is a self-data flow whose data is a convergent collection of references
+to image composite flows (\S\ref{sec:ex-images}). Each album entry references a
+composite flow by UUID; the album reads from the composite to obtain image data for
+display, ignoring the composite's non-image data (annotations, vectors) unless the
+UI chooses to present it.
+
+The album's concerns are structural: what composites are in the collection, in what
+order, with what captions and tags. Image-level transforms (crop, rotate, filter)
+belong to the composite layer---the same image can appear in two albums with different
+crops, because the crops are properties of different composite flows, not of the album
+entries.
 
 \subsubsection{Streams}
 \begin{itemize}[leftmargin=2em]
   \item \textbf{Drip} (\texttt{album\_state}): The current structure of the album.
-    Queryable for the ordered list of photos, each photo's metadata (crop, rotation,
-    annotations, tags, faces). Backed by a ConvergentDocument.
-  \item \textbf{Edit streams} (per-party): Add photo, remove photo, reorder, crop,
-    rotate, annotate. These benefit from receipt confirmation.
+    Queryable for the ordered list of entries, each entry's composite flow UUID, caption,
+    tags, and album-level metadata. Backed by a ConvergentDocument.
+  \item \textbf{Edit streams} (per-party): Add entry (referencing a composite flow),
+    remove entry, reorder, set caption, add/remove tags. These are purely structural
+    operations on the collection; no image data passes through the album's edit streams.
   \item \textbf{Jets} (per-party): Who is currently viewing what, who is typing a
-    comment where, cursor positions. Prompt, non-consensus.
+    comment where. Prompt, non-consensus.
 \end{itemize}
 
 \subsubsection{Flow Roles}
 \begin{itemize}[leftmargin=2em]
   \item Standard: data source (editor), data sink (viewer), memorization (stores album
-    state and image blobs), fitting (applies edits to album CRDT).
+    state), fitting (applies structural edits to album CRDT).
 \end{itemize}
 
 % -----------------------------------------------------------
@@ -1449,6 +1509,29 @@ grouped, authorized, and tracked at the physical and network level. The terminol
 drawn from fashion and jewelry, where items are curated into coordinated sets, worn in
 varying combinations, and sometimes sold as matched collections.
 
+\subsection{Cryptographic Identity as Foundation}
+
+Everything in the device topology---capsule membership, encrypted advertisements,
+pairing verification, flow authentication---depends on cryptographic device identity.
+This is not a feature that can be added later; it is the non-negotiable foundation that
+all other layers build on.
+
+Each piece has an Ed25519 signing keypair (for authentication and signing operations)
+and an X25519 key-agreement keypair (for establishing shared secrets during pairing
+and encrypting communications). Together these form the cryptographic root of a piece's
+identity. The signing key proves ``I am who I claim to be''; the key-agreement key
+enables ``we can talk privately.''
+
+When a capsule is created, shared symmetric key material is established and distributed
+to all members during the pairing step. This key material enables encrypted BLE
+advertisements (so only capsule members can detect each other) and per-session encryption
+of data connections. Key material is bound to the capsule, not to individual connections.
+
+These primitives---per-device identity keypairs and per-capsule shared keys---are the
+minimum viable cryptographic infrastructure. They must exist before any capsule can be
+built, any ensemble can form, or any flow can authenticate its participants. The
+protocol treats their implementation as a prerequisite, not an extension.
+
 \subsection{Pieces}
 
 A \textbf{piece} is a device considered as a member of one or more device groupings. The
@@ -1487,6 +1570,22 @@ Capsules have the following properties:
     a laptop and audio interface, and a ``lab'' capsule with a set of sensors.
 \end{itemize}
 
+\subsubsection{Capsules as Pre-Flow Infrastructure}
+
+Capsules are not flows. They are infrastructure that flows depend on. A flow needs a
+capsule to know who the participants are, what keys to use for encrypted communication,
+and what the ensemble topology looks like. Making capsules a flow would create a
+bootstrapping dependency: you would need a working flow evaluation to load the capsule
+that tells you who to sync flows with.
+
+A capsule's piece set is add-only: pieces are authorized in but never individually
+removed (the capsule is retired whole instead). This means the merge function is set
+union---the simplest possible convergent data structure. Two pieces connect, exchange
+their piece sets, take the union, done. No operation logs, no causal tracking, no
+conflict resolution beyond deduplication by device identity. This simplicity is
+deliberate: it means the same data structure works on a full device and on a
+microcontroller with kilobytes of RAM.
+
 \subsection{Ensembles}
 \label{subsec:ensembles}
 
@@ -1512,7 +1611,9 @@ Ensembles have the following properties:
 \begin{itemize}[leftmargin=2em]
   \item \textbf{Real-time membership}: Pieces join and leave ensembles as they come
     online, move into range, or go to sleep. Every participating piece tracks the current
-    ensemble membership with both additions and subtractions.
+    ensemble membership with both additions and subtractions. A piece is a member of the
+    ensemble if it is \emph{reachable}---directly or through intermediaries---not only if
+    it has a direct transport-layer connection (see \S\ref{subsec:routing-fabric}).
   \item \textbf{Shared topology picture}: All pieces in an ensemble maintain a shared
     understanding of the current network topology---who is responding, what the
     connectivity graph looks like, and what routes are available. This picture is
@@ -1548,9 +1649,15 @@ In the Rim protocol, a parure is a set of devices that:
     known latency and bandwidth characteristics
 \end{itemize}
 
-A parure simplifies the ensemble's routing problem. When the ensemble's topology tracker
-sees that all members of a parure are present, it can treat them as a pre-solved cluster
-and focus routing decisions on the inter-parure links.
+A parure simplifies the ensemble's routing problem. Whenever two or more members of a
+parure appear in an ensemble, the topology tracker can treat them as a pre-solved
+clique---no discovery or route-finding needed among them---and focus routing decisions
+on the links between the parure cluster and the rest of the ensemble.
+
+The near-term hardware development path---starting with individual ESP32-S3
+microcontrollers as accessories---is heading toward parures: matched sets of custom
+hardware designed and built together, communicating over shared protocols, forming a
+pre-solved clique in any ensemble they join.
 
 \subsection{Accessories}
 
@@ -1563,15 +1670,20 @@ Examples of accessories:
 \begin{itemize}[leftmargin=2em]
   \item A microcontroller with storage (e.g., an ESP32 with an SD card) that holds
     dissolution shards
-  \item An actuator that receives commands from a flow but does not route traffic
+  \item An actuator that receives commands from a flow
   \item A simple bridge to a different device or protocol (e.g., a BLE-to-serial adapter)
 \end{itemize}
 
-An accessory may implement routing ``through'' itself (acting as a relay between two
-other pieces) or may simply offer its services without awareness of the broader topology.
-The key design constraint is that implementing an accessory should be straightforward:
-a small interface, minimal dependencies, no requirement for the full Soradyne library
-stack. This makes it feasible to build accessories on resource-constrained hardware.
+Most accessories participate in the transport fabric like any other piece---they route
+traffic through themselves when they sit between two other pieces in the topology
+(see \S\ref{subsec:routing-fabric}). Routing requires only forwarding opaque envelopes
+based on destination headers, which is cheap enough for most microcontrollers. A few
+genuinely constrained devices (e.g., an actuator with a unidirectional radio, or a
+sensor that can only transmit) may lack the capability to route; this is the exception,
+not the rule. The key design constraint is that implementing an accessory should be
+straightforward: a small interface, minimal dependencies, no requirement for the full
+Soradyne library stack. This makes it feasible to build accessories on
+resource-constrained hardware.
 
 \subsection{Transport Philosophy}
 \label{subsec:transport-philosophy}
@@ -1609,6 +1721,62 @@ advertising capabilities:
     they do not replace it.
 \end{itemize}
 
+\subsection{Routing as Transport Fabric}
+\label{subsec:routing-fabric}
+
+Routing data through intermediate pieces is a \textbf{transport-layer concern}, not a
+flow role. Every piece in an ensemble participates in routing: if piece A can reach
+piece B, and piece B can reach piece C, then B routes traffic between A and C
+transparently. This is analogous to how routers in IP networks forward packets without
+knowledge of the application-layer content they carry. A piece functioning as a relay
+has no responsibilities regarding the data it shuttles---it need not parse, store, or
+understand the flow-level content passing through it.
+
+This is a deliberate architectural separation. Contrast with \emph{memorization}, which
+is a flow role (\S\ref{sec:roles}): a memorization role stores data and makes it
+retrievable later, which requires understanding the flow's data model (at least enough to
+serialize and deserialize). A memorization role's implementation might involve multiple
+hops across routing nodes---the point-to-point character of ``store this, recall it
+later'' is abstract from the physical path the data takes through the network. The relay
+nodes on that path are part of the transport fabric, not participants in the flow.
+
+\subsubsection{Logical Addressing and Message Envelopes}
+
+The mechanism that makes routing invisible to flows is \textbf{logical addressing}.
+Messages between pieces are wrapped in envelopes that carry a source identifier, a
+destination identifier, and a time-to-live (TTL) counter. An intermediate piece
+receiving an envelope checks the destination: if it matches the local piece, the message
+is delivered locally; otherwise, the envelope is forwarded to the next hop with a
+decremented TTL. The intermediate piece never inspects the payload---it operates
+entirely on the envelope headers.
+
+This means a flow sending data to a remote piece uses the same interface regardless of
+whether the destination is one hop away or three: \emph{send to this UUID}. The
+messaging layer consults the ensemble's directed multigraph to determine the next hop,
+handles forwarding through intermediaries, and uses the TTL to break routing loops.
+Broadcast messages (destination = all) are forwarded to all neighbors, propagating
+through the mesh until TTL is exhausted.
+
+\subsubsection{Reachability vs.\ Direct Connection}
+
+An important consequence of multi-hop routing is that a piece's presence in the ensemble
+is determined by \textbf{reachability}, not by having a direct transport-layer connection.
+A piece is part of the ensemble if messages can reach it---whether directly (one hop) or
+through intermediaries (multiple hops). The ensemble's topology tracks both cases: for
+directly connected pieces, the next hop is the piece itself; for indirectly reachable
+pieces, the next hop is the neighbor that sits on the path toward them.
+
+This distinction matters because ensembles are often not fully connected. In a
+three-piece capsule where the phone and the accessory can each reach the laptop but not
+each other, both the phone and the accessory are full ensemble members---the laptop
+routes traffic between them. Neither the phone nor the accessory needs to know that
+the other is only indirectly reachable; from their perspective, messages simply arrive.
+
+Routing decisions are made by the ensemble's topology manager based on the directed
+multigraph of connectivity. The topology manager finds paths, manages retries, and
+handles link failures. From the flow's perspective, data written to a stream simply
+arrives at its destination; the hops in between are invisible.
+
 
 % ============================================================
 \newpage
@@ -1639,9 +1807,10 @@ advertising capabilities:
   non-consensus. Named after a fast water jet. \\[6pt]
 
 \textbf{Fitting} &
-  A transformation connecting streams to each other. Abstract concept; not yet a
-  struct/object in code. The code implementing a fitting is the code that takes data
-  from one stream and produces data for another. \\[6pt]
+  A transformation connecting streams to each other within a flow. A fitting's
+  functionality is real and implemented in real code, but a fitting is not a first-class
+  named entity at the same level as a stream---it is implicit in its implementation.
+  \\[6pt]
 
 \textbf{Flow Role} &
   A named set of responsibilities within a flow. Filled by parties (devices, processes)
@@ -1720,6 +1889,13 @@ advertising capabilities:
   full topology management. Implements a minimal interface; does not require the full
   Soradyne library stack. \\[6pt]
 
+\textbf{Routing} &
+  Transport-layer forwarding of data through intermediate pieces. Not a flow role---all
+  pieces route transparently, like IP routers, without knowledge of flow-level content.
+  Messages are wrapped in envelopes with source, destination, and TTL; intermediate
+  pieces forward envelopes without inspecting payloads.
+  Distinct from memorization, which is a flow role requiring data-model awareness. \\[6pt]
+
 \bottomrule
 \end{longtable}
 \end{center}
@@ -1774,13 +1950,14 @@ new bespoke plumbing.
 \texttt{BasicFlow} & Implemented & Schema-validated stream registration. \\
 \texttt{DataChannel<T>} & Implemented & Former \texttt{SelfDataFlow<T>}. In-memory pub/sub. \\
 \texttt{ConvergentDocument} & Implemented & CRDT engine. Giantt and Inventory schemas. \\
-Flow type definitions & Not started & Design documents per this spec. \\
-Real I/O through flows & Not started & Streams are in-memory only. \\
+Flow type definitions & Not started & Design documents per this spec. Detailed implementation plan exists (DripHostedFlow, image/composite/album flow types). \\
+Real I/O through flows & Not started & Streams are in-memory only. Plan specifies BLE GATT-based sync. \\
 Dissolution/crystallization & Partial & Reed-Solomon in storage module, not wired to flows. \\
 Nestbox integration & Not started & Twig replacement via spatial measurement flow type. \\
-Device topology (capsules) & Not started & Capsule creation, piece authorization, retirement. \\
-Ensemble tracking & Not started & Real-time membership, BLE advertisements, topology sync. \\
-BLE transport & Not started & Baseline BLE stream implementation. \\
+Cryptographic identity & Not started & Plan specifies Ed25519 + X25519 per-device identity, capsule shared keys. Positioned as Phase 0 (prerequisite for all else). \\
+Device topology (capsules) & Not started & Plan specifies add-only set with gossip merge. Pre-flow infrastructure (not a CRDT, not a flow). \\
+Ensemble tracking & Not started & Plan specifies directed multigraph, encrypted BLE advertisements, topology sync protocol, and a logical messaging layer for multi-hop routing (flows address peers by UUID; routing is invisible). \\
+BLE transport & Not started & Plan specifies btleplug (Rust-native) on all hosted platforms, simulated BLE for testing. BLE-first, transport-agnostic to frontends. \\
 \bottomrule
 \end{tabularx}
 \end{center}
