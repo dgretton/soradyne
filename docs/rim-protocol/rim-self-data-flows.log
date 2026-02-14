@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.3.8)  10 FEB 2026 11:08
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.3.8)  12 FEB 2026 22:17
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1014,7 +1014,7 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 [14]
 
 [15]
-Overfull \hbox (43.02483pt too wide) in paragraph at lines 763--764
+Overfull \hbox (43.02483pt too wide) in paragraph at lines 769--770
  [] 
  []
 
@@ -1023,7 +1023,7 @@ Overfull \hbox (43.02483pt too wide) in paragraph at lines 763--764
 [16]
 
 [17]
-Overfull \hbox (18.17958pt too wide) in paragraph at lines 845--847
+Overfull \hbox (18.17958pt too wide) in paragraph at lines 851--853
 []\TU/HelveticaNeue(0)/m/n/10.95 The flow’s type definition specifies whether r
 etirement is manual, automatic (time-based, inactivity-
  []
@@ -1031,35 +1031,28 @@ etirement is manual, automatic (time-based, inactivity-
 
 
 [18]
-Overfull \hbox (10.89516pt too wide) in paragraph at lines 886--888
-[]\TU/HelveticaNeue(0)/b/n/10.95 Drip \TU/HelveticaNeue(0)/m/n/10.95 (\TU/Menlo
-(0)/m/n/10.95 pixel_state\TU/HelveticaNeue(0)/m/n/10.95 ): The current pixel va
-lues of the squashed consensus edit state. Queryable
- []
-
-
 
 [19]
 
 [20]
 
 [21]
-Overfull \hbox (4.28813pt too wide) in paragraph at lines 1041--1043
+
+[22]
+Overfull \hbox (4.28813pt too wide) in paragraph at lines 1092--1094
 []\TU/HelveticaNeue(0)/b/n/10.95 Curator\TU/HelveticaNeue(0)/m/n/10.95 : Grooms
  measurements. Removes outliers, denoises, summarizes. Often co-located
  []
 
 
 
-[22]
-Overfull \hbox (28.3095pt too wide) in paragraph at lines 1130--1132
+[23]
+Overfull \hbox (28.3095pt too wide) in paragraph at lines 1190--1192
 \TU/HelveticaNeue(0)/m/n/10.95 A personal inventory is a collection of items wi
 th properties. It maps naturally to a ConvergentDocument-
  []
 
 
-
-[23]
 
 [24]
 
@@ -1076,7 +1069,9 @@ th properties. It maps naturally to a ConvergentDocument-
 [30]
 
 [31]
-Overfull \hbox (5.20775pt too wide) in paragraph at lines 1446--1451
+
+[32]
+Overfull \hbox (5.20775pt too wide) in paragraph at lines 1506--1511
 \TU/HelveticaNeue(0)/m/n/10.95 Previous sections describe flows, streams, roles
 , and policies in terms of abstract \TU/HelveticaNeue(0)/m/it/10.95 parties\TU/
 HelveticaNeue(0)/m/n/10.95 —anything
@@ -1084,39 +1079,57 @@ HelveticaNeue(0)/m/n/10.95 —anything
 
 
 
-[32]
-
 [33]
 
-[34] [35]
+[34]
+Overfull \hbox (3.5825pt too wide) in paragraph at lines 1657--1661
+[]\TU/HelveticaNeue(0)/m/n/10.95 The near-term hardware development path—starti
+ng with individual ESP32-S3 microcontrollers
+ []
+
+
+
+[35]
 
 [36]
-Underfull \hbox (badness 10000) in paragraph at lines 1752--1752
+
+[37] [38]
+
+[39]
+Underfull \hbox (badness 10000) in paragraph at lines 1928--1928
 []|\TU/HelveticaNeue(0)/m/n/10.95 Flow bundles all streams, multi-
  []
 
 
-Underfull \hbox (badness 6188) in paragraph at lines 1785--1785
-[]|\TU/HelveticaNeue(0)/m/n/10.95 Real-time membership, BLE advertisements,
+Underfull \hbox (badness 1571) in paragraph at lines 1962--1962
+[]|\TU/HelveticaNeue(0)/m/n/10.95 Plan specifies Ed25519 + X25519 per-device
+ []
+
+
+Underfull \hbox (badness 1735) in paragraph at lines 1962--1962
+[]|\TU/HelveticaNeue(0)/m/n/10.95 Plan specifies directed multigraph, encrypted
+
  []
 
 
 
-[37] (./rim-self-data-flows.aux)
+[40]
+
+[41] (./rim-self-data-flows.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
 Package rerunfilecheck Info: File `rim-self-data-flows.out' has not changed.
-(rerunfilecheck)             Checksum: 21F011F25D579454FF69D67856FE9C64;15269.
+(rerunfilecheck)             Checksum: 178ABD34DFB197586E3EABE53636B59F;17060.
  ) 
 Here is how much of TeX's memory you used:
- 26616 strings out of 475366
- 539001 string characters out of 5762340
- 987380 words of memory out of 5000000
- 49153 multiletter control sequences out of 15000+600000
+ 26619 strings out of 475366
+ 539058 string characters out of 5762340
+ 990277 words of memory out of 5000000
+ 49156 multiletter control sequences out of 15000+600000
  564125 words of font info for 90 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
  102i,13n,107p,492b,725s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on rim-self-data-flows.pdf (38 pages).
+Output written on rim-self-data-flows.pdf (42 pages).

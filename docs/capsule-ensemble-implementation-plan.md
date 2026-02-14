@@ -235,19 +235,25 @@ pub trait BleCentral: Send + Sync {
 }
 
 /// Peripheral role: advertise and accept connections
+///
+/// Note: the original design used `incoming_connections() -> broadcast::Receiver<Box<dyn BleConnection>>`,
+/// but `broadcast::Sender` requires `T: Clone` and `Box<dyn BleConnection>` cannot satisfy that.
+/// The implementation uses an `accept()` pattern (like `TcpListener::accept`) instead.
+/// Advertising methods take `Vec<u8>` (owned) rather than `&[u8]` to avoid lifetime issues
+/// in async contexts.
 #[async_trait]
 pub trait BlePeripheral: Send + Sync {
-    /// Start advertising with the given data
-    async fn start_advertising(&self, data: &[u8]) -> Result<(), BleError>;
+    /// Start advertising with the given data and begin accepting connections
+    async fn start_advertising(&self, data: Vec<u8>) -> Result<(), BleError>;
 
     /// Stop advertising
     async fn stop_advertising(&self) -> Result<(), BleError>;
 
     /// Update advertisement data (e.g., new encrypted payload)
-    async fn update_advertisement(&self, data: &[u8]) -> Result<(), BleError>;
+    async fn update_advertisement(&self, data: Vec<u8>) -> Result<(), BleError>;
 
-    /// Accept incoming connections
-    fn incoming_connections(&self) -> broadcast::Receiver<Box<dyn BleConnection>>;
+    /// Accept the next incoming connection from a central
+    async fn accept(&self) -> Result<Box<dyn BleConnection>, BleError>;
 }
 ```
 
@@ -260,28 +266,34 @@ An in-process BLE simulator that mimics BLE semantics: advertisements are broadc
 ```rust
 // ble/simulated.rs
 
-/// A simulated BLE environment. Multiple SimulatedBle instances
+/// A simulated BLE environment. Multiple SimBleDevice instances
 /// connected to the same SimBleNetwork can discover each other.
 pub struct SimBleNetwork {
     /// Shared bus for advertisements
     adv_tx: broadcast::Sender<BleAdvertisement>,
-    /// Registry of "peripherals" accepting connections
-    peripherals: Arc<Mutex<HashMap<BleAddress, mpsc::Sender<SimConnection>>>>,
+    /// Registry of "peripherals" accepting connections.
+    /// Each peripheral's conn_tx delivers Box<dyn BleConnection> on connect().
+    peripherals: Arc<Mutex<HashMap<BleAddress, mpsc::Sender<Box<dyn BleConnection>>>>>,
 }
 
 impl SimBleNetwork {
-    pub fn new() -> Self;
+    pub fn new() -> Arc<Self>;
     /// Create a new simulated device on this network
-    pub fn create_device(&self) -> SimBleDevice;
+    pub fn create_device(self: &Arc<Self>) -> SimBleDevice;
 }
 
 pub struct SimBleDevice {
     address: BleAddress,
     network: Arc<SimBleNetwork>,
+    mtu: usize,
+    /// Sender for delivering incoming connections (registered with the network)
+    conn_tx: mpsc::Sender<Box<dyn BleConnection>>,
+    /// Receiver for incoming connections (peripheral role)
+    conn_rx: Arc<Mutex<mpsc::Receiver<Box<dyn BleConnection>>>>,
 }
 
 impl BleCentral for SimBleDevice { /* ... */ }
-impl BlePeripheral for SimBleDevice { /* ... */ }
+impl BlePeripheral for SimBleDevice { /* accept() blocks until a central connects */ }
 ```
 
 The simulated accessory will be a `SimBleDevice` that runs in the same process as the Mac's soradyne_core instance. Data transfer uses tokio channels internally but respects BLE MTU chunking (to exercise the same code paths as real BLE).
@@ -464,14 +476,14 @@ impl RoutedEnvelope {
 
 ### 1.7 Deliverables
 
-- [ ] `BleCentral`, `BlePeripheral`, `BleConnection` trait definitions
-- [ ] `SimBleNetwork` + `SimBleDevice` simulated transport
-- [ ] `BtleplugCentral` + `BtleplugPeripheral` real BLE transport (macOS + Android via btleplug)
-- [ ] `encrypt_advertisement` / `try_decrypt_advertisement`
-- [ ] GATT service UUID definitions + `RoutedEnvelope` message format
-- [ ] Unit tests for simulated BLE (advertisement round-trip, connection, data transfer)
-- [ ] Unit test for advertisement encryption/decryption
-- [ ] Unit test for `RoutedEnvelope` forwarding logic (TTL decrement, source filtering, broadcast)
+- [x] `BleCentral`, `BlePeripheral`, `BleConnection` trait definitions
+- [x] `SimBleNetwork` + `SimBleDevice` simulated transport
+- [ ] `BtleplugCentral` + `BtleplugPeripheral` real BLE transport (macOS + Android via btleplug) — deferred to when physical device testing begins
+- [x] `encrypt_advertisement` / `try_decrypt_advertisement`
+- [x] GATT service UUID definitions + `RoutedEnvelope` message format
+- [x] Unit tests for simulated BLE (advertisement round-trip, connection, data transfer, disconnect, MTU, multi-device)
+- [x] Unit test for advertisement encryption/decryption
+- [x] Unit test for `RoutedEnvelope` forwarding logic (TTL decrement, source filtering, broadcast, serialization round-trip)
 
 ---
 
