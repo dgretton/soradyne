@@ -141,35 +141,21 @@ impl ShamirErasureEncoder {
                 format!("Not enough shards: {} < {}", shards.len(), self.threshold)
             ));
         }
-        
-        println!("🔧 Setting up decoding with {} shards", shards.len());
-        
+
         // Extract key shares and reconstruct the master encryption key
-        // IMPORTANT: Sort by Shamir index to ensure correct Lagrange interpolation
         let mut key_shares: Vec<KeyShare> = shards.values()
             .map(|s| s.key_share.clone())
             .collect();
-        
-        println!("🔧 Key shares before sorting:");
-        for (i, share) in key_shares.iter().enumerate() {
-            println!("   Share {}: index={}", i, share.index);
-        }
-        
-        // Sort by Shamir index to ensure deterministic reconstruction
+
+        // Sort by Shamir index to ensure correct Lagrange interpolation
         key_shares.sort_by_key(|share| share.index);
-        
-        println!("🔧 Key shares after sorting:");
-        for (i, share) in key_shares.iter().enumerate() {
-            println!("   Share {}: index={}", i, share.index);
-        }
-        
+
         let master_key = self.reconstruct_secret(&key_shares[..self.threshold])?;
-        
-        // Prepare for streaming RS reconstruction
+
         let rs_shards: HashMap<usize, Vec<u8>> = shards.into_iter()
             .map(|(i, shard)| (i, shard.shard_data))
             .collect();
-        
+
         Ok(StreamingDecoder::new(
             rs_shards,
             master_key,
@@ -189,41 +175,30 @@ impl ShamirErasureEncoder {
     
     /// Reed-Solomon encoding without length prefix (for encrypted data)
     fn encode_rs_raw(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
-        println!("🔧 Reed-Solomon encoding {} bytes with threshold={}, total_shards={}", 
-                 data.len(), self.threshold, self.total_shards);
-        
         let shard_size = (data.len() + self.threshold - 1) / self.threshold;
         let padded_size = shard_size * self.threshold;
-        
-        println!("🔧 Shard size: {}, padded size: {}", shard_size, padded_size);
-        
+
         let mut padded_data = data.to_vec();
         padded_data.resize(padded_size, 0);
-        
+
         let mut shards: Vec<Vec<u8>> = Vec::with_capacity(self.total_shards);
-        
-        // Create data shards
+
         for i in 0..self.threshold {
             let start = i * shard_size;
             let end = start + shard_size;
             shards.push(padded_data[start..end].to_vec());
         }
-        
-        // Create empty parity shards
+
         let parity_count = self.total_shards - self.threshold;
         for _ in 0..parity_count {
             shards.push(vec![0u8; shard_size]);
         }
-        
-        // Generate parity shards
+
         self.reed_solomon.encode(&mut shards)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Reed-Solomon encoding failed: {}", e)
             ))?;
-        
-        println!("🔧 Reed-Solomon encoding complete: {} shards of {} bytes each", 
-                 shards.len(), shard_size);
-        
+
         Ok(shards)
     }
     
@@ -238,110 +213,89 @@ impl ShamirErasureEncoder {
     }
     
     /// Legacy RS-only decode for backward compatibility
-    fn decode_rs_only(&self, shards: HashMap<usize, Vec<u8>>, expected_size: usize) -> Result<Vec<u8>, FlowError> {
+    fn decode_rs_only(&self, shards: HashMap<usize, Vec<u8>>, _expected_size: usize) -> Result<Vec<u8>, FlowError> {
         if shards.len() < self.threshold {
             return Err(FlowError::PersistenceError(
                 format!("Not enough shards: {} < {}", shards.len(), self.threshold)
             ));
         }
-        
+
         let shard_size = shards.values().next()
             .ok_or_else(|| FlowError::PersistenceError("No shards available".to_string()))?
             .len();
-        
+
         let mut reconstruction_shards: Vec<Option<Vec<u8>>> = vec![None; self.total_shards];
-        
+
         for (index, shard_data) in shards {
             if index >= self.total_shards {
                 return Err(FlowError::PersistenceError(
                     format!("Invalid shard index: {} >= {}", index, self.total_shards)
                 ));
             }
-            
+
             if shard_data.len() != shard_size {
                 return Err(FlowError::PersistenceError(
                     format!("Shard size mismatch: expected {}, got {}", shard_size, shard_data.len())
                 ));
             }
-            
+
             reconstruction_shards[index] = Some(shard_data);
         }
-        
+
         self.reed_solomon.reconstruct(&mut reconstruction_shards)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Reed-Solomon reconstruction failed: {}", e)
             ))?;
-        
-        // Extract the original length from the first 4 bytes
-        let mut full_encrypted_data = Vec::new();
+
+        // Concatenate data shards; first 4 bytes are a length prefix
+        let mut full_data = Vec::new();
         for i in 0..self.threshold {
             if let Some(ref shard) = reconstruction_shards[i] {
-                full_encrypted_data.extend_from_slice(shard);
+                full_data.extend_from_slice(shard);
             } else {
                 return Err(FlowError::PersistenceError(
                     "Failed to reconstruct data shard".to_string()
                 ));
             }
         }
-        
-        if full_encrypted_data.len() < 4 {
+
+        if full_data.len() < 4 {
             return Err(FlowError::PersistenceError(
                 "Reconstructed data too small to contain length prefix".to_string()
             ));
         }
-        
+
         let original_length = u32::from_le_bytes([
-            full_encrypted_data[0],
-            full_encrypted_data[1], 
-            full_encrypted_data[2],
-            full_encrypted_data[3]
+            full_data[0], full_data[1], full_data[2], full_data[3],
         ]) as usize;
-        
-        println!("🔧 Extracted original length: {} bytes", original_length);
-        
-        // Remove the length prefix
-        let result = full_encrypted_data[4..].to_vec();
-        
-        // Truncate to original length
-        let mut result = result;
+
+        // Strip length prefix, then truncate RS padding
+        let mut result = full_data[4..].to_vec();
         result.truncate(original_length);
-        
-        println!("🔧 After truncation: {} bytes", result.len());
         Ok(result)
     }
     
     fn encrypt_data_chunked(&self, data: &[u8], master_key: &[u8; 32], block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
-        println!("🔐 Encrypting {} bytes with master key[0..8]: {:02x?}", data.len(), &master_key[..8]);
-        
         let mut result = Vec::new();
-        
+
         for (chunk_index, chunk) in data.chunks(CHUNK_SIZE).enumerate() {
             let chunk_key = Self::derive_chunk_key(master_key, chunk_index, block_id);
-            println!("🔐 Chunk {}: size={}, key[0..8]={:02x?}", chunk_index, chunk.len(), &chunk_key[..8]);
-            
             let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&chunk_key));
-            
-            // Derive unique nonce for each chunk
+
             let chunk_nonce = Self::derive_chunk_nonce(block_id, chunk_index);
             let nonce = Nonce::from_slice(&chunk_nonce);
-            
-            println!("🔐 Chunk {} nonce: {:02x?}", chunk_index, &chunk_nonce);
-            
+
             let mut ciphertext = chunk.to_vec();
             let tag = cipher.encrypt_in_place_detached(nonce, b"", &mut ciphertext)
                 .map_err(|e| FlowError::PersistenceError(
                     format!("Encryption failed for chunk {}: {}", chunk_index, e)
                 ))?;
-            
-            println!("🔐 Chunk {} encrypted: tag={:02x?}, ciphertext[0..8]={:02x?}", 
-                     chunk_index, &tag[..8], &ciphertext[..8.min(ciphertext.len())]);
-            
-            // Store tag + ciphertext for this chunk
+
+            // Format: tag (16 bytes) || ciphertext (same length as plaintext)
             result.extend_from_slice(&tag);
             result.extend_from_slice(&ciphertext);
         }
-        
-        println!("🔐 Total encrypted size: {} bytes", result.len());
+
         Ok(result)
     }
     
@@ -383,44 +337,31 @@ impl ShamirErasureEncoder {
     
     fn reconstruct_secret(&self, shares: &[KeyShare]) -> Result<[u8; 32], FlowError> {
         use crate::storage::galois::GF256;
-        
+
         if shares.len() < self.threshold {
             return Err(FlowError::PersistenceError(
                 format!("Not enough key shares: {} < {}", shares.len(), self.threshold)
             ));
         }
-        
-        println!("🔑 Reconstructing secret from {} shares (threshold: {})", shares.len(), self.threshold);
-        for (i, share) in shares.iter().enumerate() {
-            println!("   Share {}: index={}, value[0..8]={:02x?}", i, share.index, &share.value[..8]);
-        }
-        
+
         let gf = GF256::new();
         let mut secret = [0u8; 32];
-        
-        // Use Lagrange interpolation to find f(0) = secret for each byte
+
         for byte_idx in 0..32 {
-            // Collect points (x_i, y_i) for this byte
             let points: Vec<(u8, u8)> = shares[..self.threshold]
                 .iter()
                 .map(|share| (share.index, share.value[byte_idx]))
                 .collect();
-            
-            if byte_idx < 8 { // Only debug first 8 bytes to avoid spam
-                println!("   Byte {}: points={:?}", byte_idx, points);
-            }
-            
+
             secret[byte_idx] = gf.lagrange_interpolate_at_zero(&points)
                 .map_err(|e| FlowError::PersistenceError(
                     format!("Lagrange interpolation failed for byte {}: {}", byte_idx, e)
                 ))?;
         }
-        
-        println!("🔑 Reconstructed master key[0..8]: {:02x?}", &secret[..8]);
+
         Ok(secret)
     }
-    
-    
+
     /// Calculate storage overhead factor
     pub fn storage_overhead(&self) -> f64 {
         self.total_shards as f64 / self.threshold as f64
@@ -440,7 +381,8 @@ pub struct StreamingDecoder {
     expected_size: usize,
     threshold: usize,
     total_shards: usize,
-    position: usize,
+    next_chunk: usize,
+    total_chunks: usize,
     chunk_cache: Arc<Mutex<HashMap<usize, Vec<u8>>>>,
     read_ahead_tasks: Vec<tokio::task::JoinHandle<()>>,
 }
@@ -454,6 +396,7 @@ impl StreamingDecoder {
         threshold: usize,
         total_shards: usize,
     ) -> Self {
+        let total_chunks = (expected_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
         Self {
             rs_shards,
             master_key,
@@ -461,37 +404,36 @@ impl StreamingDecoder {
             expected_size,
             threshold,
             total_shards,
-            position: 0,
+            next_chunk: 0,
+            total_chunks,
             chunk_cache: Arc::new(Mutex::new(HashMap::new())),
             read_ahead_tasks: Vec::new(),
         }
     }
-    
+
     /// Read next chunk and return decrypted data with read-ahead
     pub async fn read_chunk(&mut self) -> Result<Option<Vec<u8>>, FlowError> {
-        let chunk_index = self.position / CHUNK_SIZE;
-        let total_chunks = (self.expected_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        
-        if chunk_index >= total_chunks {
+        if self.next_chunk >= self.total_chunks {
             return Ok(None);
         }
-        
-        // Check cache first
+
+        let chunk_index = self.next_chunk;
+        self.next_chunk += 1;
+
+        // Check cache first (populated by read-ahead)
         {
             let cache = self.chunk_cache.lock().await;
             if let Some(chunk_data) = cache.get(&chunk_index) {
-                self.position += chunk_data.len();
                 return Ok(Some(chunk_data.clone()));
             }
         }
-        
+
         // Start read-ahead for next few chunks
-        self.start_read_ahead(chunk_index, total_chunks).await;
-        
+        self.start_read_ahead(chunk_index, self.total_chunks).await;
+
         // Reconstruct current chunk
         let chunk_data = self.reconstruct_chunk(chunk_index).await?;
-        self.position += chunk_data.len();
-        
+
         Ok(Some(chunk_data))
     }
     
@@ -546,6 +488,11 @@ impl StreamingDecoder {
         ).await
     }
     
+    /// Reconstruct a single chunk by performing full RS reconstruction, then
+    /// extracting and decrypting the requested chunk from the encrypted data.
+    ///
+    /// NOTE: This currently performs full RS reconstruction for every chunk.
+    /// A future optimization could cache the reconstructed encrypted data.
     async fn reconstruct_chunk_static(
         rs_shards: &HashMap<usize, Vec<u8>>,
         master_key: [u8; 32],
@@ -555,159 +502,123 @@ impl StreamingDecoder {
         total_shards: usize,
         expected_size: usize,
     ) -> Result<Vec<u8>, FlowError> {
-        let _shard_size = rs_shards.values().next()
-            .ok_or_else(|| FlowError::PersistenceError("No shards available".to_string()))?
-            .len();
-        
-        // Reconstruct all shards
+        if rs_shards.is_empty() {
+            return Err(FlowError::PersistenceError("No shards available".to_string()));
+        }
+
+        // Full RS reconstruction
         let mut reconstruction_shards: Vec<Option<Vec<u8>>> = vec![None; total_shards];
-        
         for (index, shard_data) in rs_shards {
             if *index < total_shards {
                 reconstruction_shards[*index] = Some(shard_data.clone());
             }
         }
-        
-        // Reconstruct using Reed-Solomon
+
         let reed_solomon = ReedSolomon::new(threshold, total_shards - threshold)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Failed to create Reed-Solomon decoder: {}", e)
             ))?;
-        
+
         reed_solomon.reconstruct(&mut reconstruction_shards)
             .map_err(|e| FlowError::PersistenceError(
                 format!("Reed-Solomon reconstruction failed: {}", e)
             ))?;
-        
-        // Concatenate the data shards to get the full encrypted data
+
+        // Concatenate data shards (RS may include padding beyond actual encrypted data)
         let mut full_encrypted_data = Vec::new();
         for i in 0..threshold {
             if let Some(ref shard) = reconstruction_shards[i] {
                 full_encrypted_data.extend_from_slice(shard);
             }
         }
-        
-        // CRITICAL FIX: Calculate the actual encrypted size and remove Reed-Solomon padding
+
+        // Calculate exact encrypted size: each chunk is tag (16) + ciphertext (plaintext len)
         let num_chunks = (expected_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        let mut total_encrypted_size = 0;
-        
-        for i in 0..num_chunks {
-            let chunk_start = i * CHUNK_SIZE;
-            let chunk_end = ((i + 1) * CHUNK_SIZE).min(expected_size);
-            let chunk_data_size = chunk_end - chunk_start;
-            total_encrypted_size += chunk_data_size + 16; // +16 for AES-GCM tag
-        }
-        
-        println!("🔧 Original data: {} bytes, {} chunks", expected_size, num_chunks);
-        println!("🔧 Expected encrypted size: {} bytes", total_encrypted_size);
-        println!("🔧 Reed-Solomon reconstructed: {} bytes", full_encrypted_data.len());
-        
-        // Truncate to remove Reed-Solomon padding
+        let total_encrypted_size: usize = (0..num_chunks)
+            .map(|i| {
+                let chunk_plaintext_size = CHUNK_SIZE.min(expected_size - i * CHUNK_SIZE);
+                chunk_plaintext_size + 16
+            })
+            .sum();
+
+        // Strip RS padding
         full_encrypted_data.truncate(total_encrypted_size);
-        println!("🔧 After truncation: {} bytes", full_encrypted_data.len());
-        
-        // CRITICAL FIX: Calculate chunk boundaries correctly
-        let mut current_pos = 0;
-        let mut current_chunk_idx = 0;
-        
-        // Skip to our target chunk
-        while current_chunk_idx < chunk_index && current_pos < full_encrypted_data.len() {
-            let chunk_start_in_original = current_chunk_idx * CHUNK_SIZE;
-            let chunk_end_in_original = ((current_chunk_idx + 1) * CHUNK_SIZE).min(expected_size);
-            let chunk_data_size = chunk_end_in_original - chunk_start_in_original;
-            let chunk_with_tag_size = chunk_data_size + 16;
-            
-            current_pos += chunk_with_tag_size;
-            current_chunk_idx += 1;
+
+        // Walk chunk boundaries to find our target chunk's offset.
+        // Each encrypted chunk is: tag (16 bytes) || ciphertext (plaintext_len bytes).
+        let mut offset = 0;
+        for i in 0..chunk_index {
+            let chunk_plaintext_size = CHUNK_SIZE.min(expected_size - i * CHUNK_SIZE);
+            offset += chunk_plaintext_size + 16;
         }
-        
-        if current_pos >= full_encrypted_data.len() {
-            println!("🔧 Chunk {} not found: pos={}, total_size={}", chunk_index, current_pos, full_encrypted_data.len());
-            return Ok(Vec::new());
+
+        if offset >= full_encrypted_data.len() {
+            return Err(FlowError::PersistenceError(
+                format!("Chunk {} not found: offset {} >= encrypted data size {}", chunk_index, offset, full_encrypted_data.len())
+            ));
         }
-        
-        // Calculate the size of our target chunk
-        let chunk_start_in_original = chunk_index * CHUNK_SIZE;
-        let chunk_end_in_original = ((chunk_index + 1) * CHUNK_SIZE).min(expected_size);
-        let chunk_data_size = chunk_end_in_original - chunk_start_in_original;
-        let chunk_with_tag_size = chunk_data_size + 16;
-        
-        let chunk_end_pos = (current_pos + chunk_with_tag_size).min(full_encrypted_data.len());
-        let encrypted_chunk = &full_encrypted_data[current_pos..chunk_end_pos];
-        
-        println!("🔧 Extracting chunk {}: pos={}-{}, size={}, data_size={}", 
-                 chunk_index, current_pos, chunk_end_pos, encrypted_chunk.len(), chunk_data_size);
-        
+
+        let chunk_plaintext_size = CHUNK_SIZE.min(expected_size - chunk_index * CHUNK_SIZE);
+        let chunk_encrypted_size = chunk_plaintext_size + 16;
+        let chunk_end = (offset + chunk_encrypted_size).min(full_encrypted_data.len());
+        let encrypted_chunk = &full_encrypted_data[offset..chunk_end];
+
         if encrypted_chunk.len() < 16 {
-            println!("🔧 Chunk {} too small after extraction: {} bytes", chunk_index, encrypted_chunk.len());
-            return Ok(Vec::new());
+            return Err(FlowError::PersistenceError(
+                format!("Encrypted chunk {} too small: {} bytes", chunk_index, encrypted_chunk.len())
+            ));
         }
-        
-        // Decrypt the chunk
+
         Self::decrypt_chunk(encrypted_chunk, &master_key, chunk_index, &block_id)
     }
-    
+
     fn decrypt_chunk(encrypted_chunk: &[u8], master_key: &[u8; 32], chunk_index: usize, block_id: &BlockId) -> Result<Vec<u8>, FlowError> {
-        println!("🔓 Decrypting chunk {}: {} bytes, master_key[0..8]={:02x?}", 
-                 chunk_index, encrypted_chunk.len(), &master_key[..8]);
-        
         if encrypted_chunk.len() < 16 {
-            println!("🔓 Chunk {} too small: {} bytes", chunk_index, encrypted_chunk.len());
-            return Ok(Vec::new()); // Empty chunk
+            return Err(FlowError::PersistenceError(
+                format!("Encrypted chunk {} too small to contain tag: {} bytes", chunk_index, encrypted_chunk.len())
+            ));
         }
-        
+
         let chunk_key = ShamirErasureEncoder::derive_chunk_key(master_key, chunk_index, block_id);
-        println!("🔓 Chunk {} key[0..8]: {:02x?}", chunk_index, &chunk_key[..8]);
-        
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&chunk_key));
-        
-        // Use the same chunk-specific nonce that was used for encryption
+
         let chunk_nonce = ShamirErasureEncoder::derive_chunk_nonce(block_id, chunk_index);
         let nonce = Nonce::from_slice(&chunk_nonce);
-        
-        println!("🔓 Chunk {} nonce: {:02x?}", chunk_index, &chunk_nonce);
-        
-        // Extract tag and ciphertext
+
         let (tag, ciphertext) = encrypted_chunk.split_at(16);
-        println!("🔓 Chunk {} tag: {:02x?}", chunk_index, &tag[..8]);
-        println!("🔓 Chunk {} ciphertext: {} bytes, [0..8]={:02x?}", 
-                 chunk_index, ciphertext.len(), &ciphertext[..8.min(ciphertext.len())]);
-        
         let mut plaintext = ciphertext.to_vec();
-        
-        match cipher.decrypt_in_place_detached(nonce, b"", &mut plaintext, tag.into()) {
-            Ok(()) => {
-                println!("🔓 Chunk {} decrypted successfully: {} bytes", chunk_index, plaintext.len());
-                Ok(plaintext)
-            }
-            Err(e) => {
-                println!("🔓 Chunk {} decryption failed: {}", chunk_index, e);
-                println!("🔓   Expected ciphertext size: {}", ciphertext.len());
-                println!("🔓   Tag: {:02x?}", tag);
-                println!("🔓   Nonce: {:02x?}", chunk_nonce);
-                println!("🔓   Key: {:02x?}", &chunk_key[..8]);
-                Err(FlowError::PersistenceError(
-                    format!("Decryption failed for chunk {}: {}", chunk_index, e)
-                ))
-            }
-        }
+
+        cipher.decrypt_in_place_detached(nonce, b"", &mut plaintext, tag.into())
+            .map_err(|e| FlowError::PersistenceError(
+                format!("Decryption failed for chunk {}: {}", chunk_index, e)
+            ))?;
+
+        Ok(plaintext)
     }
     
     /// Convenience method to reconstruct all data at once
     pub async fn reconstruct_all(&mut self) -> Result<Vec<u8>, FlowError> {
         let mut result = Vec::new();
-        
+
         while let Some(chunk) = self.read_chunk().await? {
             result.extend(chunk);
         }
-        
+
         // Wait for any remaining read-ahead tasks
         for task in self.read_ahead_tasks.drain(..) {
             let _ = task.await;
         }
-        
-        // Truncate to expected size
-        result.truncate(self.expected_size);
+
+        if result.len() != self.expected_size {
+            return Err(FlowError::PersistenceError(
+                format!(
+                    "Reconstructed size mismatch: got {} bytes, expected {}",
+                    result.len(),
+                    self.expected_size,
+                )
+            ));
+        }
+
         Ok(result)
     }
     
@@ -783,11 +694,8 @@ mod tests {
         ];
         
         for (i, &original_key) in test_keys.iter().enumerate() {
-            println!("Testing key {}: {:?}", i, &original_key[..8]);
-            
             let shares = encoder.split_secret(&original_key).unwrap();
             let reconstructed = encoder.reconstruct_secret(&shares[..3]).unwrap();
-            
             assert_eq!(reconstructed, original_key, "Failed for key {}", i);
         }
     }
