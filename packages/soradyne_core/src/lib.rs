@@ -1,14 +1,16 @@
 // Soradyne - Collaborative Media Album System
 
+pub mod album;
+pub mod ble;
 pub mod convergent;
+pub mod ffi;
 pub mod flow;
 pub mod identity;
 pub mod network;
-pub mod types;
 pub mod storage;
-pub mod album;
+pub mod topology;
+pub mod types;
 pub mod video;
-pub mod ffi;
 
 use crate::storage::device_identity::discover_soradyne_volumes;
 use std::sync::atomic::{AtomicBool, Ordering};

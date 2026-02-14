@@ -56,6 +56,9 @@ async-trait = "0.1.88"
 # Erasure coding
 reed-solomon-erasure = "6.0"
 
+# CBOR serialization (compact gossip payloads, BLE-friendly)
+ciborium = "0.2"
+
 # Cryptography
 rand = "0.8"
 aes-gcm = "0.10"
