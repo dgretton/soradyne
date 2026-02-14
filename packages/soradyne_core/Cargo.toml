@@ -59,6 +59,10 @@ reed-solomon-erasure = "6.0"
 # Cryptography
 rand = "0.8"
 aes-gcm = "0.10"
+ed25519-dalek = { version = "2", features = ["serde", "rand_core"] }
+x25519-dalek = { version = "2", features = ["static_secrets", "serde"] }
+zeroize = { version = "1", features = ["derive"] }
+hkdf = "0.12"
 
 # Platform-specific dependencies for device fingerprinting
 [target.'cfg(unix)'.dependencies]
