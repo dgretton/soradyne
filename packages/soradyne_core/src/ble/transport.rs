@@ -4,13 +4,14 @@
 //! and future real BLE (btleplug) implementations conform to.
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use super::BleError;
 
 /// A BLE device address.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BleAddress {
     /// A real 6-byte BLE MAC address.
     Real([u8; 6]),
