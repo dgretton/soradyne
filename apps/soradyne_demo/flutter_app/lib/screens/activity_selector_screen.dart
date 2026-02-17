@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'album_list_screen.dart';
+import 'capsule_list_screen.dart';
 
 class ActivitySelectorScreen extends StatelessWidget {
   const ActivitySelectorScreen({super.key});
@@ -87,10 +88,11 @@ class ActivitySelectorScreen extends StatelessWidget {
                         subtitle: 'Peer discovery & sync',
                         icon: Icons.network_check_rounded,
                         onTap: () {
-                          // TODO: Navigate to network demo
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Network demo coming soon!'),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const CapsuleListScreen(),
                             ),
                           );
                         },

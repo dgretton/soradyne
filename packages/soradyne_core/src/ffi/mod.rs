@@ -14,6 +14,9 @@ mod serializer;
 
 // Inventory Flow FFI module
 pub mod inventory_flow;
+
+// Pairing Bridge FFI module
+pub mod pairing_bridge;
 use crate::album::operations::*;
 use crate::album::crdt::{Crdt, CrdtCollection};
 use crate::storage::block_manager::BlockManager;

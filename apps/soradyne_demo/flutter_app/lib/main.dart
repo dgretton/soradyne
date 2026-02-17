@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/activity_selector_screen.dart';
 import 'services/album_service.dart';
+import 'services/pairing_service.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -16,6 +17,7 @@ class SoradyneApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AlbumService()),
+        ChangeNotifierProvider(create: (_) => PairingService()),
       ],
       child: MaterialApp(
         title: 'Soradyne',
