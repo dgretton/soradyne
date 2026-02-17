@@ -32,5 +32,14 @@ pub enum FlowError {
 
     #[error("Stream not implemented: {0}")]
     StreamNotImplemented(String),
+
+    #[error("Host unavailable: {0}")]
+    HostUnavailable(Uuid),
+
+    #[error("Not the host: {0}")]
+    NotHost(Uuid),
+
+    #[error("Sync error: {0}")]
+    SyncError(String),
 }
 

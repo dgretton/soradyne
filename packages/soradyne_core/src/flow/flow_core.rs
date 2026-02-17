@@ -27,6 +27,8 @@ use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 use super::stream::{Stream, StreamSpec};
 use super::FlowError;
+use crate::topology::ensemble::EnsembleTopology;
+use crate::topology::messenger::TopologyMessenger;
 
 /// Configuration for a flow instance.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -94,6 +96,19 @@ pub trait Flow: Send + Sync {
 
     /// List all registered stream names.
     fn stream_names(&self) -> Vec<String>;
+
+    /// Inject ensemble dependencies (messenger + topology) post-construction.
+    ///
+    /// Flow types that need ensemble awareness (like DripHostedFlow) override
+    /// this to store the references. The default is a no-op for flows that
+    /// don't need topology/messaging.
+    fn set_ensemble(
+        &mut self,
+        _messenger: Arc<TopologyMessenger>,
+        _topology: Arc<tokio::sync::RwLock<EnsembleTopology>>,
+    ) {
+        // No-op by default
+    }
 }
 
 /// Constructor function type for flow types.

@@ -6,10 +6,11 @@
 use super::horizon::{DeviceId, Horizon, SeqNum};
 use super::operation::{ItemId, OpEnvelope, OpId, Operation, Value};
 use super::schema::DocumentSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Materialized state of a single item
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ItemState {
     pub item_type: String,
     pub fields: HashMap<String, Value>,
@@ -18,7 +19,7 @@ pub struct ItemState {
 }
 
 /// Materialized state of the entire document
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct DocumentState {
     pub items: HashMap<ItemId, ItemState>,
 }

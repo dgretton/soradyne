@@ -38,12 +38,18 @@ pub mod traits;
 pub mod examples;
 pub mod stream;
 pub mod flow_core;
+pub mod types;
 
 pub use conflict::{ConflictResolver, LastWriteWins};
 pub use error::FlowError;
 pub use traits::{StorageBackend, FlowAuthenticator, FlowType, Diffable};
 pub use stream::{Stream, StreamSpec, StreamCardinality, TypedStream};
 pub use flow_core::{Flow, FlowConfig, FlowSchema, FlowRegistry, FlowConfigStorage, InMemoryConfigStorage, BasicFlow};
+pub use types::{
+    DripHostedFlow, DripHostPolicy, HostSelectionStrategy, HostScoreWeights,
+    HostFailoverPolicy, FlowSyncMessage, HostAssignment, ConvergentDocumentStream,
+    AccessoryMemorizer, register_drip_hosted_flows,
+};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
