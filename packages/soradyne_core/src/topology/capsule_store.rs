@@ -74,6 +74,18 @@ impl CapsuleStore {
         write_capsule(&self.storage_path, capsule)
     }
 
+    /// Insert a fully-formed capsule (e.g. received during pairing).
+    /// Saves to disk and inserts into cache. Returns AlreadyExists if a
+    /// capsule with the same id is already present.
+    pub fn insert_capsule(&mut self, capsule: Capsule) -> Result<(), TopologyError> {
+        if self.capsules.contains_key(&capsule.id) {
+            return Err(TopologyError::AlreadyExists(format!("capsule {}", capsule.id)));
+        }
+        self.save_capsule(&capsule)?;
+        self.capsules.insert(capsule.id, capsule);
+        Ok(())
+    }
+
     /// Create a new capsule, insert into cache, save to disk, return its id.
     pub fn create_capsule(
         &mut self,

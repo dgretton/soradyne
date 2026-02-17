@@ -10,6 +10,7 @@ pub mod capsule_store;
 pub mod ensemble;
 pub mod manager;
 pub mod messenger;
+pub mod pairing;
 pub mod sync;
 
 pub use capsule::{Capsule, CapsuleStatus, FlowConfig, PieceCapabilities, PieceRecord, PieceRole};
@@ -20,6 +21,7 @@ pub use ensemble::{
 };
 pub use manager::{EnsembleConfig, EnsembleManager};
 pub use messenger::{RoutingError, TopologyMessenger};
+pub use pairing::{PairingEngine, PairingError, PairingResult, PairingState};
 pub use sync::{PeerInfo, TopologySyncMessage};
 
 use thiserror::Error;
