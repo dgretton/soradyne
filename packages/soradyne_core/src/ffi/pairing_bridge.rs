@@ -12,6 +12,7 @@
 //! `submit_pin()` hold the lock across `.await` points, and `tokio::spawn`
 //! requires `Send` futures. `std::sync::MutexGuard` is not `Send`.
 
+use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::PathBuf;
@@ -25,6 +26,9 @@ use crate::ble::simulated::SimBleNetwork;
 use crate::identity::{CapsuleKeyBundle, DeviceIdentity};
 use crate::topology::capsule::{PieceCapabilities, PieceRole};
 use crate::topology::capsule_store::CapsuleStore;
+use crate::topology::ensemble::EnsembleTopology;
+use crate::topology::manager::{EnsembleConfig, EnsembleManager};
+use crate::topology::messenger::TopologyMessenger;
 use crate::topology::pairing::{pair_simulated_accessory, PairingEngine, PairingState};
 
 // ---------------------------------------------------------------------------
@@ -37,6 +41,8 @@ struct PairingBridge {
     capsule_store: Arc<TokioMutex<CapsuleStore>>,
     engine: Arc<PairingEngine>,
     sim_network: Arc<SimBleNetwork>,
+    /// EnsembleManagers keyed by capsule ID, shared across all flows in a capsule.
+    ensemble_managers: TokioMutex<HashMap<Uuid, Arc<EnsembleManager>>>,
 }
 
 static PAIRING_BRIDGE: RwLock<Option<PairingBridge>> = RwLock::new(None);
@@ -46,7 +52,7 @@ static PAIRING_BRIDGE: RwLock<Option<PairingBridge>> = RwLock::new(None);
 // ---------------------------------------------------------------------------
 
 /// Read a `*const c_char` into a `&str`. Returns `None` if null or invalid UTF-8.
-unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> Option<&'a str> {
+pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> Option<&'a str> {
     if ptr.is_null() {
         return None;
     }
@@ -54,13 +60,71 @@ unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> Option<&'a str> {
 }
 
 /// Allocate a C string from a Rust `String`. Caller must free via `soradyne_free_string`.
-fn to_c_string(s: String) -> *mut c_char {
+pub(crate) fn to_c_string(s: String) -> *mut c_char {
     CString::new(s).unwrap_or_default().into_raw()
 }
 
 /// Return a JSON error string.
-fn error_json(msg: &str) -> *mut c_char {
+pub(crate) fn error_json(msg: &str) -> *mut c_char {
     to_c_string(serde_json::json!({"error": msg}).to_string())
+}
+
+/// Get or create an EnsembleManager for a capsule, returning its
+/// (messenger, topology) for calling `set_ensemble` on a flow.
+pub(crate) fn bridge_get_ensemble(
+    capsule_id: Uuid,
+) -> Result<
+    (
+        Arc<TopologyMessenger>,
+        Arc<tokio::sync::RwLock<EnsembleTopology>>,
+    ),
+    String,
+> {
+    let guard = PAIRING_BRIDGE
+        .read()
+        .map_err(|_| "bridge lock poisoned".to_string())?;
+    let bridge = guard
+        .as_ref()
+        .ok_or_else(|| "pairing bridge not initialized".to_string())?;
+
+    bridge.runtime.block_on(async {
+        let store = bridge.capsule_store.lock().await;
+        let capsule = store
+            .get_capsule(&capsule_id)
+            .ok_or_else(|| format!("capsule {} not found", capsule_id))?;
+
+        let mut managers = bridge.ensemble_managers.lock().await;
+
+        if let Some(manager) = managers.get(&capsule_id) {
+            let topo = Arc::clone(manager.topology());
+            let messenger = Arc::clone(manager.messenger());
+            return Ok((messenger, topo));
+        }
+
+        // Collect piece device_ids for the capsule
+        let piece_ids: Vec<Uuid> = capsule
+            .pieces
+            .iter()
+            .map(|p| p.device_id)
+            .collect();
+
+        // Get the capsule's key bundle
+        let keys = capsule.keys.clone();
+
+        let manager = EnsembleManager::new(
+            bridge.identity.device_id(),
+            keys,
+            piece_ids,
+            EnsembleConfig::default(),
+        );
+
+        let topo = Arc::clone(manager.topology());
+        let messenger = Arc::clone(manager.messenger());
+
+        managers.insert(capsule_id, manager);
+
+        Ok((messenger, topo))
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +186,7 @@ pub extern "C" fn soradyne_pairing_init(data_dir: *const c_char) -> i32 {
         capsule_store: Arc::new(TokioMutex::new(capsule_store)),
         engine,
         sim_network,
+        ensemble_managers: TokioMutex::new(HashMap::new()),
     };
 
     match PAIRING_BRIDGE.write() {

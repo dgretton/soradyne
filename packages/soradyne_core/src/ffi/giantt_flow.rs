@@ -4,6 +4,7 @@
 //! - Flow lifecycle (open/close)
 //! - Operations (write_op)
 //! - State access (read_drip returns .giantt text)
+//! - Ensemble sync (connect_ensemble, start_sync, stop_sync, get_sync_status)
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -11,8 +12,12 @@ use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
+use uuid::Uuid;
+
 use crate::convergent::giantt::{GianttSchema, GianttState};
-use crate::convergent::{ConvergentDocument, DeviceId, OpEnvelope, Operation};
+use crate::convergent::{DeviceId, OpEnvelope, Operation};
+use crate::flow::flow_core::FlowConfig;
+use crate::flow::types::drip_hosted::{DripHostPolicy, DripHostedFlow};
 
 use super::serializer::serialize_giantt_state;
 
@@ -79,9 +84,21 @@ impl FlowRegistry {
     }
 }
 
-/// A Giantt-specific flow wrapping a ConvergentDocument
+/// Derive a stable device UUID from a string device_id.
+///
+/// Uses SHA-256 to hash the device_id and takes the first 16 bytes
+/// as a UUID. This is deterministic and stable across app restarts.
+fn device_uuid_from_id(device_id: &str) -> Uuid {
+    use sha2::{Digest, Sha256};
+    let hash = Sha256::digest(device_id.as_bytes());
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&hash[..16]);
+    Uuid::from_bytes(bytes)
+}
+
+/// A Giantt-specific flow wrapping a DripHostedFlow
 pub struct GianttFlow {
-    document: ConvergentDocument<GianttSchema>,
+    flow: DripHostedFlow<GianttSchema>,
     storage_path: Option<PathBuf>,
     dirty: bool,
 }
@@ -89,8 +106,20 @@ pub struct GianttFlow {
 impl GianttFlow {
     /// Create a new in-memory flow (for testing)
     pub fn new_in_memory(device_id: DeviceId) -> Self {
+        let device_uuid = device_uuid_from_id(&device_id);
+        let config = FlowConfig {
+            id: Uuid::new_v4(),
+            type_name: "drip_hosted:giantt".to_string(),
+            params: serde_json::json!({}),
+        };
         Self {
-            document: ConvergentDocument::new(GianttSchema, device_id),
+            flow: DripHostedFlow::new(
+                config,
+                GianttSchema,
+                DripHostPolicy::default(),
+                device_uuid,
+                device_id,
+            ),
             storage_path: None,
             dirty: false,
         }
@@ -98,21 +127,32 @@ impl GianttFlow {
 
     /// Create a new persistent flow
     pub fn new_persistent(device_id: DeviceId, storage_path: PathBuf) -> Self {
+        let device_uuid = device_uuid_from_id(&device_id);
+        let config = FlowConfig {
+            id: Uuid::new_v4(),
+            type_name: "drip_hosted:giantt".to_string(),
+            params: serde_json::json!({}),
+        };
         let mut flow = Self {
-            document: ConvergentDocument::new(GianttSchema, device_id),
-            storage_path: Some(storage_path.clone()),
+            flow: DripHostedFlow::new(
+                config,
+                GianttSchema,
+                DripHostPolicy::default(),
+                device_uuid,
+                device_id,
+            ),
+            storage_path: Some(storage_path),
             dirty: false,
         };
 
-        // Load existing operations from disk
         flow.load_from_disk();
-
         flow
     }
 
     /// Apply a local operation
     pub fn apply_operation(&mut self, op: Operation) -> OpEnvelope {
-        let envelope = self.document.apply_local(op);
+        // OfflineMerge never fails for apply_edit
+        let envelope = self.flow.apply_edit(op).unwrap();
         self.dirty = true;
 
         // Auto-persist on each operation for durability
@@ -123,18 +163,28 @@ impl GianttFlow {
 
     /// Apply a remote operation (received from another device)
     pub fn apply_remote(&mut self, envelope: OpEnvelope) {
-        self.document.apply_remote(envelope);
+        self.flow
+            .document()
+            .write()
+            .unwrap()
+            .apply_remote(envelope);
         self.dirty = true;
     }
 
     /// Get all operations (for syncing to other devices)
     pub fn all_operations(&self) -> Vec<OpEnvelope> {
-        self.document.all_operations().cloned().collect()
+        self.flow
+            .document()
+            .read()
+            .unwrap()
+            .all_operations()
+            .cloned()
+            .collect()
     }
 
     /// Materialize and serialize to .giantt text format
     pub fn read_drip(&self) -> String {
-        let doc_state = self.document.materialize();
+        let doc_state = self.flow.document().read().unwrap().materialize();
         let giantt_state = GianttState::from_document_state(&doc_state);
         serialize_giantt_state(&giantt_state)
     }
@@ -146,12 +196,11 @@ impl GianttFlow {
         }
 
         if let Some(ref path) = self.storage_path {
-            // Ensure directory exists
             let _ = std::fs::create_dir_all(path);
 
-            // Write operations as JSONL
             let ops_path = path.join("operations.jsonl");
-            let ops: Vec<_> = self.document.all_operations().collect();
+            let doc = self.flow.document().read().unwrap();
+            let ops: Vec<_> = doc.all_operations().collect();
 
             if let Ok(file) = std::fs::File::create(&ops_path) {
                 use std::io::Write;
@@ -175,12 +224,26 @@ impl GianttFlow {
                 if let Ok(content) = std::fs::read_to_string(&ops_path) {
                     for line in content.lines() {
                         if let Ok(envelope) = serde_json::from_str::<OpEnvelope>(line) {
-                            self.document.apply_remote(envelope);
+                            self.flow
+                                .document()
+                                .write()
+                                .unwrap()
+                                .apply_remote(envelope);
                         }
                     }
                 }
             }
         }
+    }
+
+    /// Get a reference to the underlying DripHostedFlow
+    pub fn drip_flow(&self) -> &DripHostedFlow<GianttSchema> {
+        &self.flow
+    }
+
+    /// Get a mutable reference to the underlying DripHostedFlow
+    pub fn drip_flow_mut(&mut self) -> &mut DripHostedFlow<GianttSchema> {
+        &mut self.flow
     }
 }
 
@@ -425,6 +488,129 @@ pub extern "C" fn soradyne_flow_cleanup() {
     }
 }
 
+// ============================================================================
+// Sync FFI Functions
+// ============================================================================
+
+/// Connect a giantt flow to an ensemble for sync.
+///
+/// capsule_id_ptr: UUID string of the capsule to sync within.
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_flow_connect_ensemble(
+    handle: *mut std::ffi::c_void,
+    capsule_id_ptr: *const c_char,
+) -> i32 {
+    if handle.is_null() || capsule_id_ptr.is_null() {
+        return -1;
+    }
+
+    let capsule_id_str = unsafe {
+        match CStr::from_ptr(capsule_id_ptr).to_str() {
+            Ok(s) => s,
+            Err(_) => return -1,
+        }
+    };
+
+    let capsule_id = match Uuid::parse_str(capsule_id_str) {
+        Ok(u) => u,
+        Err(_) => return -1,
+    };
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<GianttFlow>) };
+
+    match super::pairing_bridge::bridge_get_ensemble(capsule_id) {
+        Ok((messenger, topology)) => {
+            if let Ok(mut flow) = flow_arc.lock() {
+                use crate::flow::flow_core::Flow;
+                flow.drip_flow_mut().set_ensemble(messenger, topology);
+                0
+            } else {
+                -1
+            }
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Start background sync for a giantt flow.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_flow_start_sync(handle: *mut std::ffi::c_void) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<GianttFlow>) };
+
+    match flow_arc.lock() {
+        Ok(flow) => match flow.drip_flow().start() {
+            Ok(()) => 0,
+            Err(_) => -1,
+        },
+        Err(_) => -1,
+    }
+}
+
+/// Stop background sync for a giantt flow.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_flow_stop_sync(handle: *mut std::ffi::c_void) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<GianttFlow>) };
+
+    match flow_arc.lock() {
+        Ok(flow) => {
+            flow.drip_flow().stop();
+            0
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Get the sync status of a giantt flow as JSON.
+///
+/// Returns JSON: {"is_host": bool, "host_id": "uuid"|null, "epoch": n, "connected": bool}
+/// Caller must free via soradyne_free_string.
+#[no_mangle]
+pub extern "C" fn soradyne_flow_get_sync_status(handle: *mut std::ffi::c_void) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<GianttFlow>) };
+
+    match flow_arc.lock() {
+        Ok(flow) => {
+            let drip = flow.drip_flow();
+            let is_host = drip.is_current_host();
+            let ha = drip.host_assignment().read().ok();
+            let (host_id, epoch) = match ha.as_ref() {
+                Some(ha) => (ha.current_host.map(|h| h.to_string()), ha.epoch),
+                None => (None, 0),
+            };
+
+            let json = serde_json::json!({
+                "is_host": is_host,
+                "host_id": host_id,
+                "epoch": epoch,
+                "connected": drip.is_current_host() || host_id.is_some(),
+            });
+
+            match CString::new(json.to_string()) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            }
+        }
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -498,5 +684,73 @@ mod tests {
         assert!(text.contains("Tagged Task"));
         // Tags should appear in the output
         assert!(text.contains("important") || text.contains("urgent"));
+    }
+
+    #[test]
+    fn test_drip_hosted_local_edits_equivalent() {
+        // Verify DripHostedFlow-backed GianttFlow produces identical output
+        let mut flow = GianttFlow::new_in_memory("device_equiv".into());
+
+        flow.apply_operation(Operation::add_item("task_1", "GianttItem"));
+        flow.apply_operation(Operation::set_field(
+            "task_1",
+            "title",
+            Value::string("Equivalence Test"),
+        ));
+        flow.apply_operation(Operation::set_field(
+            "task_1",
+            "status",
+            Value::string("TODO"),
+        ));
+
+        // Verify the DripHostedFlow internals are accessible
+        let doc = flow.drip_flow().document().read().unwrap();
+        let state = doc.materialize();
+        assert!(state.get(&"task_1".into()).is_some());
+        drop(doc);
+
+        // Verify text output contains expected content
+        let text = flow.read_drip();
+        assert!(text.contains("task_1"));
+        assert!(text.contains("Equivalence Test"));
+
+        // Verify ops count
+        let ops = flow.all_operations();
+        assert_eq!(ops.len(), 3); // add_item + 2 set_field
+    }
+
+    #[test]
+    fn test_drip_hosted_persistence() {
+        let temp_dir =
+            std::env::temp_dir().join("soradyne_test_drip_hosted_giantt_persistence");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        // Create a persistent DripHostedFlow-backed flow and add data
+        {
+            let mut flow =
+                GianttFlow::new_persistent("test_device_dhf".into(), temp_dir.clone());
+            flow.apply_operation(Operation::add_item("task_1", "GianttItem"));
+            flow.apply_operation(Operation::set_field(
+                "task_1",
+                "title",
+                Value::string("Persistent Task"),
+            ));
+            flow.apply_operation(Operation::set_field(
+                "task_1",
+                "status",
+                Value::string("DONE"),
+            ));
+        }
+
+        // Reopen and verify data persisted through DripHostedFlow
+        {
+            let flow =
+                GianttFlow::new_persistent("test_device_dhf".into(), temp_dir.clone());
+            let text = flow.read_drip();
+            assert!(text.contains("task_1"));
+            assert!(text.contains("Persistent Task"));
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

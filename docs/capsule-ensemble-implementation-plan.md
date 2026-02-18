@@ -1,6 +1,6 @@
 # Capsule & Ensemble Implementation Plan
 
-**Goal**: Build and persist a 3-piece capsule (2020 MacBook, simulated BLE accessory, Android phone over real BLE), discover subsets as ensembles, synchronize BLE connection info between pieces, and implement a flow type with drip-host-assignment policy. The concrete target is syncing Giantt task state and Inventory state between devices as the first demo, followed by photo flows and photo album flows.
+**Goal**: Build and persist a 3-piece capsule (2020 MacBook, simulated BLE accessory, Android phone over real BLE), discover subsets as ensembles, synchronize BLE connection info between pieces, and implement a flow type with drip-host-assignment policy. The concrete target is syncing Giantt task state and Inventory state between devices as the first demo, followed by photo flows, photo album flows, and PickPlaceFlow — a fully-transient jet flow for cross-device spatial interaction that completes the design trifecta (drip text sync, drip+query-response images, jet-only spatial interaction).
 
 **Target topology**:
 ```
@@ -29,9 +29,10 @@ All three are pieces in one capsule. When any 2+ come online, they form an ensem
 7. [Phase 5.5: Giantt & Inventory Sync Demo](#phase-55-giantt--inventory-sync-demo)
 8. [Phase 6: Integration Testing & End-to-End Demo](#phase-6-integration-testing--end-to-end-demo)
 9. [Phase 7: Photo Flows & Album Port](#phase-7-photo-flows--album-port)
-10. [Appendix A: Crate/Module Layout Decisions](#appendix-a-cratemodule-layout-decisions)
-11. [Appendix B: Dependency Inventory](#appendix-b-dependency-inventory)
-12. [Appendix C: Open Questions & Future Context](#appendix-c-open-questions--future-context)
+10. [Phase 8: PickPlaceFlow — Transient Multi-Device Spatial Interaction](#phase-8-pickplaceflow--transient-multi-device-spatial-interaction)
+11. [Appendix A: Crate/Module Layout Decisions](#appendix-a-cratemodule-layout-decisions)
+12. [Appendix B: Dependency Inventory](#appendix-b-dependency-inventory)
+13. [Appendix C: Open Questions & Future Context](#appendix-c-open-questions--future-context)
 
 ---
 
@@ -1965,6 +1966,69 @@ For existing album data (stored via `BlockManager` + `MediaAlbum`):
 
 ---
 
+## Phase 8: PickPlaceFlow — Transient Multi-Device Spatial Interaction
+
+PickPlaceFlow is a fully-transient jet flow for cross-device spatial interaction using the hand as a pointing tool. Devices with front-facing cameras point toward a shared space. A hand moves above the devices; each camera tracks the hand and estimates where a ray from the palm center intersects its screen. As the hand moves, a marker appears on whichever device the hand is over. Closing the hand triggers a "pick" action (grab whatever is under the marker); opening it triggers a "place" action (deposit it on the current device at the current point).
+
+This completes a design trifecta:
+
+| | Giantt/Inventory | Photo Albums | PickPlaceFlow |
+|---|---|---|---|
+| Data | Structured text | Binary/spatial | Signal/ephemeral |
+| Temporal | Persistent, intermittent | Persistent, occasional | Fully transient, continuous |
+| Latency | High (seconds OK) | Medium | Very low (<100ms) |
+| Resolution | Convergent (CRDT) | Convergent (CRDT) | Consensus (agreement) |
+| Streams | Drip | Drip + query-response | Jet (first real jet flow) |
+
+### 8.1 Streams
+
+**`hand_signal` (jet, PerParty)** — Each device contributes:
+- Screen intersection point (2D nullable — None if hand not facing this device)
+- Hand state (open/closed/confidence)
+- Motion correlation signal (scalar — frame-averaged pixel delta, for covariance matching across devices)
+- Device orientation (int-valued orthogonal 2x2 — 90° rotation + mirror)
+- Camera-to-screen-center offset (2D vector)
+
+**`consensus` (jet, Singleton)** — Emergent shared state:
+- Is there "a" hand? (correlated/undefined)
+- Which device has focus? (device_id or none)
+- Intersection point on the focused device's screen
+- Hand state (consensus open/closed)
+
+**`actions` (jet, Singleton)** — Discrete events:
+- Pick: {device_id, screen_point, app_context}
+- Place: {device_id, screen_point, app_context}
+
+### 8.2 Policies
+
+- **Correlation**: How to agree cameras see the same hand (covariance threshold on motion signals; a finger wiggle forces agreement). Frame-averaged-absolute-pixel-delta-over-time fed to covariance should work even in noisy conditions.
+- **Focus**: Which device "has" the hand (strongest palm-facing confidence; undefined if ambiguous — user adjusts by moving closer).
+- **Action threshold**: How many devices must agree a pick/place occurred.
+- **Staleness**: Signals expire in ~100ms.
+- **Orientation**: Each device supplies a 2x2 int-valued orthogonal matrix for rotation/mirror. Forward hand motion that moves down on one rotated device moves up on the other — orientation shows up naturally from the wrist-knuckle vector without explicit modeling.
+
+### 8.3 Fittings
+
+- **App-context fitting**: "point on screen" → "what the app has at that point" (a photo, file, link). Bridges from PickPlaceFlow to domain flows.
+- **Action-to-transfer fitting**: pick-on-device-A + place-on-device-B → concrete intent (file transfer, photo copy between albums, link share). Connects PickPlaceFlow to other flows.
+- **Signal conditioning fitting**: Normalizes per-device contributions (camera offset, rotation) before consensus.
+
+### 8.4 Correlation Without Shared 3D Frame
+
+Rather than establishing a common 3D coordinate frame (overkill, unstable), PickPlaceFlow relies on the human users to create an oriented pseudo-manifold from their devices — a conceptual flexible extended screen. Each device contributes a 1D motion correlation signal over time; covariance across devices determines which cameras track the same hand. This achieves coherence without literalism.
+
+### 8.5 Deliverables
+
+- [ ] JetFlow base type (the jet counterpart to DripHostedFlow)
+- [ ] PickPlaceFlow implementation with hand_signal, consensus, and actions streams
+- [ ] Correlation engine (covariance-based hand identity matching)
+- [ ] Focus resolution (per-device confidence → single focus device)
+- [ ] Action-to-transfer fitting connecting pick/place to other flows
+- [ ] FFI bridge for PickPlaceFlow
+- [ ] Demo: 2 phones, sort photos between them by hand
+
+---
+
 ## Appendix A: Crate/Module Layout Decisions
 
 ### New modules within `soradyne_core`:
@@ -2186,7 +2250,8 @@ This is a rough guide for how many Claude Code sessions each phase might take, a
 | 5.5: Giantt & Inventory Sync | 2–3 | Phases 3, 5 | **Giantt + Inventory synced between Mac & Android** |
 | 6: Integration | 2–3 | All above | |
 | 7: Photo Flows & Album Port | 3–5 | Phases 5.5, 6 | **Photo sharing + album sync** |
-| **Total** | **~20–31** | | |
+| 8: PickPlaceFlow | 3–5 | Phases 6, 7 | **Cross-device spatial interaction via hand** |
+| **Total** | **~23–36** | | |
 
 Phases 1 and 2 can partially overlap since BLE transport and topology data structures are independent (though ensemble discovery needs both). Phase 5.5 is the first major payoff — after that, real data syncs between real devices.
 
@@ -2205,6 +2270,7 @@ This plan takes the codebase from its current state (in-memory flows, no device 
 - **Accessory support** for memorization role without hosting capability (routing is transport-layer, handled by all pieces)
 - **Giantt & Inventory sync** as the first concrete demo (both already use ConvergentDocument, minimal wiring needed)
 - **Photo album port** from the legacy `LogCrdt`/`EditOp` system to `ConvergentDocument<AlbumSchema>`, enabling album sync through the same flow infrastructure
+- **PickPlaceFlow** — a fully-transient jet flow for cross-device spatial interaction, completing the design trifecta (drip text sync, drip+query-response images, jet-only spatial interaction)
 
 The plan builds incrementally on the existing architecture patterns (traits, ConvergentDocument, Flow/Stream, FFI bridge) and introduces no unnecessary abstractions. iPad/iOS support is bookmarked for after the Android path is proven.
 

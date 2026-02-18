@@ -183,6 +183,80 @@ class FlowClient {
     _initialized = false;
   }
 
+  // ===========================================================================
+  // Inventory Flow Sync FFI
+  // ===========================================================================
+
+  /// Connect an inventory flow to an ensemble for sync.
+  ///
+  /// [capsuleId] is the UUID string of the capsule to sync within.
+  /// The pairing bridge must be initialized first.
+  void inventoryConnectEnsemble(Pointer<Void> handle, String capsuleId) {
+    final func = _lib.lookupFunction<
+        Int32 Function(Pointer<Void>, Pointer<Utf8>),
+        int Function(Pointer<Void>, Pointer<Utf8>)>('soradyne_inventory_connect_ensemble');
+
+    final capsuleIdPtr = capsuleId.toNativeUtf8();
+    try {
+      final result = func(handle, capsuleIdPtr);
+      if (result != 0) {
+        throw Exception('Failed to connect inventory flow to ensemble');
+      }
+    } finally {
+      calloc.free(capsuleIdPtr);
+    }
+  }
+
+  /// Start background sync for an inventory flow.
+  ///
+  /// The flow must be connected to an ensemble first via
+  /// [inventoryConnectEnsemble].
+  void inventoryStartSync(Pointer<Void> handle) {
+    final func = _lib.lookupFunction<
+        Int32 Function(Pointer<Void>),
+        int Function(Pointer<Void>)>('soradyne_inventory_start_sync');
+
+    final result = func(handle);
+    if (result != 0) {
+      throw Exception('Failed to start inventory sync');
+    }
+  }
+
+  /// Stop background sync for an inventory flow.
+  void inventoryStopSync(Pointer<Void> handle) {
+    final func = _lib.lookupFunction<
+        Int32 Function(Pointer<Void>),
+        int Function(Pointer<Void>)>('soradyne_inventory_stop_sync');
+
+    final result = func(handle);
+    if (result != 0) {
+      throw Exception('Failed to stop inventory sync');
+    }
+  }
+
+  /// Get the sync status of an inventory flow.
+  ///
+  /// Returns a JSON string with structure:
+  /// ```json
+  /// {"is_host": false, "host_id": "uuid-or-null", "epoch": 0, "connected": false}
+  /// ```
+  String inventoryGetSyncStatus(Pointer<Void> handle) {
+    final func = _lib.lookupFunction<
+        Pointer<Utf8> Function(Pointer<Void>),
+        Pointer<Utf8> Function(Pointer<Void>)>('soradyne_inventory_get_sync_status');
+
+    final resultPtr = func(handle);
+    if (resultPtr == nullptr) {
+      throw Exception('Failed to get inventory sync status');
+    }
+
+    try {
+      return resultPtr.toDartString();
+    } finally {
+      _freeString(resultPtr);
+    }
+  }
+
   /// Free a string allocated by the Rust side.
   void _freeString(Pointer<Utf8> ptr) {
     final func = _lib.lookupFunction<

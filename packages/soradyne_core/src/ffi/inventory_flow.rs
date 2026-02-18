@@ -5,6 +5,7 @@
 //! - Operations (write_op)
 //! - State access (read_drip returns JSON)
 //! - Sync (get_operations, apply_remote)
+//! - Ensemble sync (connect_ensemble, start_sync, stop_sync, get_sync_status)
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -12,8 +13,12 @@ use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
+use uuid::Uuid;
+
 use crate::convergent::inventory::{InventorySchema, InventoryState};
-use crate::convergent::{ConvergentDocument, DeviceId, OpEnvelope, Operation};
+use crate::convergent::{DeviceId, OpEnvelope, Operation};
+use crate::flow::flow_core::FlowConfig;
+use crate::flow::types::drip_hosted::{DripHostPolicy, DripHostedFlow};
 
 /// Global registry of open inventory flows
 static INVENTORY_REGISTRY: RwLock<Option<InventoryRegistry>> = RwLock::new(None);
@@ -72,9 +77,21 @@ impl InventoryRegistry {
     }
 }
 
-/// An Inventory-specific flow wrapping a ConvergentDocument
+/// Derive a stable device UUID from a string device_id.
+///
+/// Uses SHA-256 to hash the device_id and takes the first 16 bytes
+/// as a UUID. This is deterministic and stable across app restarts.
+fn device_uuid_from_id(device_id: &str) -> Uuid {
+    use sha2::{Digest, Sha256};
+    let hash = Sha256::digest(device_id.as_bytes());
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&hash[..16]);
+    Uuid::from_bytes(bytes)
+}
+
+/// An Inventory-specific flow wrapping a DripHostedFlow
 pub struct InventoryFlow {
-    document: ConvergentDocument<InventorySchema>,
+    flow: DripHostedFlow<InventorySchema>,
     storage_path: Option<PathBuf>,
     dirty: bool,
 }
@@ -82,8 +99,20 @@ pub struct InventoryFlow {
 impl InventoryFlow {
     /// Create a new in-memory flow (for testing)
     pub fn new_in_memory(device_id: DeviceId) -> Self {
+        let device_uuid = device_uuid_from_id(&device_id);
+        let config = FlowConfig {
+            id: Uuid::new_v4(),
+            type_name: "drip_hosted:inventory".to_string(),
+            params: serde_json::json!({}),
+        };
         Self {
-            document: ConvergentDocument::new(InventorySchema, device_id),
+            flow: DripHostedFlow::new(
+                config,
+                InventorySchema,
+                DripHostPolicy::default(),
+                device_uuid,
+                device_id,
+            ),
             storage_path: None,
             dirty: false,
         }
@@ -91,8 +120,20 @@ impl InventoryFlow {
 
     /// Create a new persistent flow
     pub fn new_persistent(device_id: DeviceId, storage_path: PathBuf) -> Self {
+        let device_uuid = device_uuid_from_id(&device_id);
+        let config = FlowConfig {
+            id: Uuid::new_v4(),
+            type_name: "drip_hosted:inventory".to_string(),
+            params: serde_json::json!({}),
+        };
         let mut flow = Self {
-            document: ConvergentDocument::new(InventorySchema, device_id),
+            flow: DripHostedFlow::new(
+                config,
+                InventorySchema,
+                DripHostPolicy::default(),
+                device_uuid,
+                device_id,
+            ),
             storage_path: Some(storage_path),
             dirty: false,
         };
@@ -114,9 +155,12 @@ impl InventoryFlow {
                 ref element,
                 ref observed_add_ids,
             } if observed_add_ids.is_empty() => {
-                let add_ids =
-                    self.document
-                        .get_add_ids_for_element(item_id, set_name, element);
+                let add_ids = self
+                    .flow
+                    .document()
+                    .read()
+                    .unwrap()
+                    .get_add_ids_for_element(item_id, set_name, element);
                 Operation::remove_from_set(
                     item_id.clone(),
                     set_name.clone(),
@@ -127,7 +171,8 @@ impl InventoryFlow {
             other => other,
         };
 
-        let envelope = self.document.apply_local(op);
+        // OfflineMerge never fails for apply_edit
+        let envelope = self.flow.apply_edit(op).unwrap();
         self.dirty = true;
         self.flush();
         envelope
@@ -135,18 +180,28 @@ impl InventoryFlow {
 
     /// Apply a remote operation (received from another device)
     pub fn apply_remote(&mut self, envelope: OpEnvelope) {
-        self.document.apply_remote(envelope);
+        self.flow
+            .document()
+            .write()
+            .unwrap()
+            .apply_remote(envelope);
         self.dirty = true;
     }
 
     /// Get all operations (for syncing to other devices)
     pub fn all_operations(&self) -> Vec<OpEnvelope> {
-        self.document.all_operations().cloned().collect()
+        self.flow
+            .document()
+            .read()
+            .unwrap()
+            .all_operations()
+            .cloned()
+            .collect()
     }
 
     /// Materialize and serialize to JSON format
     pub fn read_drip(&self) -> String {
-        let doc_state = self.document.materialize();
+        let doc_state = self.flow.document().read().unwrap().materialize();
         let inventory_state = InventoryState::from_document_state(&doc_state);
         serialize_inventory_state(&inventory_state)
     }
@@ -162,12 +217,16 @@ impl InventoryFlow {
         };
 
         if let Err(e) = std::fs::create_dir_all(path) {
-            eprintln!("[inventory_flow] flush: failed to create dir {:?}: {}", path, e);
+            eprintln!(
+                "[inventory_flow] flush: failed to create dir {:?}: {}",
+                path, e
+            );
             return;
         }
 
         let ops_path = path.join("operations.jsonl");
-        let ops: Vec<_> = self.document.all_operations().collect();
+        let doc = self.flow.document().read().unwrap();
+        let ops: Vec<_> = doc.all_operations().collect();
         let op_count = ops.len();
 
         // Write to a temp file first, then rename for atomicity
@@ -220,14 +279,20 @@ impl InventoryFlow {
 
         let ops_path = path.join("operations.jsonl");
         if !ops_path.exists() {
-            eprintln!("[inventory_flow] load: no operations file at {:?}", ops_path);
+            eprintln!(
+                "[inventory_flow] load: no operations file at {:?}",
+                ops_path
+            );
             return;
         }
 
         let content = match std::fs::read_to_string(&ops_path) {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[inventory_flow] load: failed to read {:?}: {}", ops_path, e);
+                eprintln!(
+                    "[inventory_flow] load: failed to read {:?}: {}",
+                    ops_path, e
+                );
                 return;
             }
         };
@@ -237,13 +302,19 @@ impl InventoryFlow {
         for (i, line) in content.lines().enumerate() {
             match serde_json::from_str::<OpEnvelope>(line) {
                 Ok(envelope) => {
-                    self.document.apply_remote(envelope);
+                    self.flow
+                        .document()
+                        .write()
+                        .unwrap()
+                        .apply_remote(envelope);
                     loaded += 1;
                 }
                 Err(e) => {
                     eprintln!(
                         "[inventory_flow] load: skipping line {} in {:?}: {}",
-                        i + 1, ops_path, e
+                        i + 1,
+                        ops_path,
+                        e
                     );
                     skipped += 1;
                 }
@@ -254,6 +325,16 @@ impl InventoryFlow {
             "[inventory_flow] load: {} ops loaded, {} skipped from {:?}",
             loaded, skipped, ops_path
         );
+    }
+
+    /// Get a reference to the underlying DripHostedFlow
+    pub fn drip_flow(&self) -> &DripHostedFlow<InventorySchema> {
+        &self.flow
+    }
+
+    /// Get a mutable reference to the underlying DripHostedFlow
+    pub fn drip_flow_mut(&mut self) -> &mut DripHostedFlow<InventorySchema> {
+        &mut self.flow
     }
 }
 
@@ -494,6 +575,134 @@ pub extern "C" fn soradyne_inventory_apply_remote(
 pub extern "C" fn soradyne_inventory_cleanup() {
     if let Ok(mut registry) = INVENTORY_REGISTRY.write() {
         *registry = None;
+    }
+}
+
+// ============================================================================
+// Sync FFI Functions
+// ============================================================================
+
+/// Connect an inventory flow to an ensemble for sync.
+///
+/// capsule_id_ptr: UUID string of the capsule to sync within.
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_inventory_connect_ensemble(
+    handle: *mut std::ffi::c_void,
+    capsule_id_ptr: *const c_char,
+) -> i32 {
+    if handle.is_null() || capsule_id_ptr.is_null() {
+        return -1;
+    }
+
+    let capsule_id_str = unsafe {
+        match CStr::from_ptr(capsule_id_ptr).to_str() {
+            Ok(s) => s,
+            Err(_) => return -1,
+        }
+    };
+
+    let capsule_id = match Uuid::parse_str(capsule_id_str) {
+        Ok(u) => u,
+        Err(_) => return -1,
+    };
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<InventoryFlow>) };
+
+    match super::pairing_bridge::bridge_get_ensemble(capsule_id) {
+        Ok((messenger, topology)) => {
+            if let Ok(mut flow) = flow_arc.lock() {
+                use crate::flow::flow_core::Flow;
+                flow.drip_flow_mut().set_ensemble(messenger, topology);
+                0
+            } else {
+                -1
+            }
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Start background sync for an inventory flow.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_inventory_start_sync(handle: *mut std::ffi::c_void) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<InventoryFlow>) };
+
+    match flow_arc.lock() {
+        Ok(flow) => match flow.drip_flow().start() {
+            Ok(()) => 0,
+            Err(_) => -1,
+        },
+        Err(_) => -1,
+    }
+}
+
+/// Stop background sync for an inventory flow.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_inventory_stop_sync(handle: *mut std::ffi::c_void) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<InventoryFlow>) };
+
+    match flow_arc.lock() {
+        Ok(flow) => {
+            flow.drip_flow().stop();
+            0
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Get the sync status of an inventory flow as JSON.
+///
+/// Returns JSON: {"is_host": bool, "host_id": "uuid"|null, "epoch": n, "connected": bool}
+/// Caller must free via soradyne_free_string.
+#[no_mangle]
+pub extern "C" fn soradyne_inventory_get_sync_status(
+    handle: *mut std::ffi::c_void,
+) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<InventoryFlow>) };
+
+    match flow_arc.lock() {
+        Ok(flow) => {
+            let drip = flow.drip_flow();
+            let is_host = drip.is_current_host();
+            let ha = drip.host_assignment().read().ok();
+            let (host_id, epoch) = match ha.as_ref() {
+                Some(ha) => (
+                    ha.current_host.map(|h| h.to_string()),
+                    ha.epoch,
+                ),
+                None => (None, 0),
+            };
+
+            let json = serde_json::json!({
+                "is_host": is_host,
+                "host_id": host_id,
+                "epoch": epoch,
+                "connected": drip.is_current_host() || host_id.is_some(),
+            });
+
+            match CString::new(json.to_string()) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            }
+        }
+        Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -755,5 +964,89 @@ mod tests {
             .as_array()
             .unwrap()
             .contains(&serde_json::json!("workshop")));
+    }
+
+    #[test]
+    fn test_drip_hosted_local_edits_equivalent() {
+        // Verify DripHostedFlow-backed InventoryFlow produces identical output
+        // to what the old ConvergentDocument-backed version would produce.
+        let mut flow = InventoryFlow::new_in_memory("device_equiv".into());
+
+        flow.apply_operation(Operation::add_item("item_1", "InventoryItem"));
+        flow.apply_operation(Operation::set_field(
+            "item_1",
+            "category",
+            Value::string("Electronics"),
+        ));
+        flow.apply_operation(Operation::set_field(
+            "item_1",
+            "description",
+            Value::string("Multimeter"),
+        ));
+        flow.apply_operation(Operation::set_field(
+            "item_1",
+            "location",
+            Value::string("Workbench"),
+        ));
+        flow.apply_operation(Operation::add_to_set(
+            "item_1",
+            "tags",
+            Value::string("precision"),
+        ));
+
+        // Verify the DripHostedFlow internals are accessible
+        let doc = flow.drip_flow().document().read().unwrap();
+        let state = doc.materialize();
+        assert!(state.get(&"item_1".into()).is_some());
+        drop(doc);
+
+        // Verify JSON output is correct
+        let json = flow.read_drip();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["items"]["item_1"]["category"], "Electronics");
+        assert_eq!(parsed["items"]["item_1"]["description"], "Multimeter");
+        assert_eq!(parsed["items"]["item_1"]["location"], "Workbench");
+
+        // Verify ops count via all_operations
+        let ops = flow.all_operations();
+        assert_eq!(ops.len(), 5); // add_item + 3 set_field + 1 add_to_set
+    }
+
+    #[test]
+    fn test_drip_hosted_persistence() {
+        let temp_dir =
+            std::env::temp_dir().join("soradyne_test_drip_hosted_inventory_persistence");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        // Create a persistent DripHostedFlow-backed flow and add data
+        {
+            let mut flow =
+                InventoryFlow::new_persistent("test_device_dhf".into(), temp_dir.clone());
+            flow.apply_operation(Operation::add_item("item_1", "InventoryItem"));
+            flow.apply_operation(Operation::set_field(
+                "item_1",
+                "description",
+                Value::string("Oscilloscope"),
+            ));
+            flow.apply_operation(Operation::set_field(
+                "item_1",
+                "location",
+                Value::string("Lab"),
+            ));
+        }
+
+        // Reopen and verify data persisted through DripHostedFlow
+        {
+            let flow =
+                InventoryFlow::new_persistent("test_device_dhf".into(), temp_dir.clone());
+            let json = flow.read_drip();
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            let item = &parsed["items"]["item_1"];
+            assert_eq!(item["description"], "Oscilloscope");
+            assert_eq!(item["location"], "Lab");
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
