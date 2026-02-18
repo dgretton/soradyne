@@ -11,6 +11,14 @@ Soradyne is a proof-of-concept protocol for secure, peer-to-peer Self-Data Flows
 - `docs/port_reference/` - Python source files being ported (`giantt_core.py`, `giantt_cli.py`)
 - `giantt-design-notes/` - Feature specs, notation docs, CLI manual
 
+## Brand & Naming Conventions
+
+**rim** is the project's brand name and must always appear all-lowercase in public-facing contexts. Two rules apply:
+
+1. **Documentation and public API surfaces**: Always `rim` — never `Rim` or `RIM`. This covers markdown docs, Rust doc comments (`///`, `//!`), README files, BLE service/characteristic names, and any interface exposed to other developers.
+
+2. **Internal code identifiers**: Follow language conventions (PascalCase for types, SCREAMING_SNAKE_CASE for constants). However, **prefer namespacing over concatenation** where possible — e.g., `rim::Protocol` rather than `RimProtocol` — so the brand name stays lowercase in the identifier itself. Language-forced capitalization deep inside internal identifiers is acceptable; public API surfaces are not.
+
 ## Monorepo Structure
 
 ```

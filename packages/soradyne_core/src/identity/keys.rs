@@ -35,7 +35,7 @@ impl Drop for DeviceIdentityStore {
 
 /// A device's cryptographic identity.
 ///
-/// This is the cryptographic root of a "piece" in the Rim protocol.
+/// This is the cryptographic root of a "piece" in the rim protocol.
 /// It is distinct from the storage-device fingerprinting in `storage/device_identity.rs`,
 /// which identifies physical storage media (SD cards). This identifies the device itself.
 pub struct DeviceIdentity {

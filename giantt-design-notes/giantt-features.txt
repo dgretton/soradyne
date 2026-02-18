@@ -28,9 +28,9 @@ There is a big button at the bottom that you can tap to open the AI chat. When o
 
 Basically the same as the phone gui, horizontal scroll at the top to flip through the cards but if selected no need to scroll down, the cards can just be at the top (unless collapsed). Same horizontal and vertical scroll options but vertical is connected to the pinch zoom vertical direction rather than a vertical-zoom slider. Main difference is that all the durations can be modified by clicking and dragging handles on sides of the rectangles for items and moving them around. (remains to be seen whether this can be incorporated in a cohesive way into the phone gui.)
 
---- Rim integration ---
+--- rim integration ---
 
-Rim will enable syncing Giantt items across different users. The items file (and occluded items file) will still be replicated to all of a user's devices running Giantt, but there will be some rim data objects that can optionally feed into and modify the graph. The flow will be, load up the graph from the items file, go query for new rim data object updates (which might include redirect tables of obfuscated item IDs to control privacy) and build new items and new graphs to the extent possible with available information, merge the graphs into the current items file, and if that succeeds, use that as the items in memory for display, etc. and also save it to disk with backups as usual. The items file itself might be synced around with rim but that's optional. 
+rim will enable syncing Giantt items across different users. The items file (and occluded items file) will still be replicated to all of a user's devices running Giantt, but there will be some rim data objects that can optionally feed into and modify the graph. The flow will be, load up the graph from the items file, go query for new rim data object updates (which might include redirect tables of obfuscated item IDs to control privacy) and build new items and new graphs to the extent possible with available information, merge the graphs into the current items file, and if that succeeds, use that as the items in memory for display, etc. and also save it to disk with backups as usual. The items file itself might be synced around with rim but that's optional. 
 
 --- Development Plan ---
 

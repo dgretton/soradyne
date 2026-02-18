@@ -402,7 +402,7 @@ The lean beacon design means advertisements are fast to encrypt/decrypt and chea
 Define a custom GATT service for Soradyne data transfer. **All non-pairing data flows through a unified routed message envelope** — the GATT layer doesn't distinguish topology sync from flow data. This is critical for multi-hop routing: an intermediate piece forwarding a message doesn't need to know whether it's a topology update or a flow operation.
 
 ```
-Service: Soradyne Rim Protocol
+Service: Soradyne rim Protocol
 UUID: [custom 128-bit UUID based on soradyne namespace]
 
 Characteristics:
@@ -1686,7 +1686,7 @@ This phase extends the working sync infrastructure to media, which is more deman
 
 ### Instructive Example: Three Tiers of Image-Related Flows
 
-Before detailing each sub-phase, it's worth laying out how images, composites, and albums relate as flows — because this is an instructive example of how the Rim protocol's flow/stream vocabulary handles a domain where the natural abstractions are **neither jets nor drips**.
+Before detailing each sub-phase, it's worth laying out how images, composites, and albums relate as flows — because this is an instructive example of how the rim protocol's flow/stream vocabulary handles a domain where the natural abstractions are **neither jets nor drips**.
 
 **Key insight: not every stream is a jet or a drip.** The rim-protocol spec defines jets (continuous/event-driven, lossy, per-observer) and drips (convergent, consensus, authoritative) as _descriptive hints_, not an exhaustive taxonomy. A stream can have no category at all. An image is the clearest example: you query it for data at a resolution, and data comes back. It's not streaming continuously (jet), and there's no multi-party consensus to fuse (drip, in the base case). It's a **query-response stream** — a memorization-backed spatial data source that you read from.
 
@@ -2157,7 +2157,7 @@ With BLE 5.0 targeted, the default ATT MTU is still 23 bytes but can be negotiat
 
 ### C.3 Capsule Retirement vs. Piece Removal
 
-The Rim spec says "retired whole rather than shrunk." This means if a device is compromised, you retire the entire capsule and create a new one with the remaining devices. This is clean but operationally heavy. For the POC:
+The rim spec says "retired whole rather than shrunk." This means if a device is compromised, you retire the entire capsule and create a new one with the remaining devices. This is clean but operationally heavy. For the POC:
 - Implement single-piece removal as a convenience operation
 - Also implement full capsule retirement
 - Document that single-piece removal is weaker security

@@ -1,6 +1,6 @@
 //! Cryptographic identity for devices and capsules
 //!
-//! This module provides the cryptographic foundation for the Rim protocol:
+//! This module provides the cryptographic foundation for the rim protocol:
 //! - `DeviceIdentity`: Per-device Ed25519 signing + X25519 key-agreement keypairs
 //! - `CapsuleKeyBundle`: Shared symmetric key material for capsule membership
 //! - `DeviceAuthenticator`: `FlowAuthenticator` implementation backed by device identity

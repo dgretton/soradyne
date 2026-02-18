@@ -1,4 +1,4 @@
-//! BLE transport layer for the Rim protocol
+//! BLE transport layer for the rim protocol
 //!
 //! Provides BLE abstraction traits, a simulated transport for testing,
 //! encrypted advertisement payloads, and the RoutedEnvelope message format.
