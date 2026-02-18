@@ -24,6 +24,8 @@ dependencies:
   path: ^1.8.3
   desktop_drop: ^0.4.4
   permission_handler: ^11.0.0
+  soradyne_flutter:
+    path: ../../../packages/soradyne_flutter
 
 dev_dependencies:
   flutter_test:

@@ -30,6 +30,7 @@ flutter:
       linux:
         ffiPlugin: true
       macos:
+        pluginClass: SoradyneFlutterPlugin
         ffiPlugin: true
       windows:
         ffiPlugin: true
