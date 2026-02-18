@@ -23,6 +23,7 @@ flutter:
   plugin:
     platforms:
       android:
+        pluginClass: SoradyneFlutterPlugin
         ffiPlugin: true
       ios:
         ffiPlugin: true

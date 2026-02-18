@@ -713,14 +713,15 @@ pub extern "C" fn soradyne_pairing_add_sim_accessory(
 /// Store the Android `Context` object so that `soradyne_pairing_start_invite`
 /// can pass it to `AndroidBlePeripheral`.
 ///
-/// Must be called from a JNI context (e.g. from `SoradyneFlutterPlugin.onAttachedToEngine`)
-/// before invoking `soradyne_pairing_start_invite`.
+/// Called from Kotlin `SoradyneFlutterPlugin.nativeSetContext(context)` via
+/// `private external fun nativeSetContext(context: Context)`.
+/// Must be called before `soradyne_pairing_start_invite`.
 ///
 /// Returns 0 on success, -1 on error.
 #[cfg(target_os = "android")]
 #[no_mangle]
-pub extern "system" fn soradyne_set_android_context(
-    mut env: jni::JNIEnv,
+pub extern "system" fn Java_com_soradyne_flutter_SoradyneFlutterPlugin_nativeSetContext(
+    env: jni::JNIEnv,
     _class: jni::objects::JClass,
     context: jni::objects::JObject,
 ) -> jni::sys::jint {

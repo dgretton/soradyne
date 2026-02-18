@@ -12,13 +12,13 @@
 
 use async_trait::async_trait;
 use jni::objects::{GlobalRef, JByteArray, JClass, JObject, JString, JValue};
-use jni::sys::{jint, jsize};
+use jni::sys::jsize;
 use jni::JNIEnv;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 use tokio::sync::{mpsc, Mutex as TokioMutex};
 
-use super::transport::{BleAddress, BleAdvertisement, BleConnection, BlePeripheral};
+use super::transport::{BleAddress, BleConnection, BlePeripheral};
 use super::BleError;
 use crate::ble::gatt::{envelope_char_uuid, soradyne_service_uuid};
 use crate::android_init::get_jvm;
@@ -542,11 +542,15 @@ pub extern "system" fn Java_com_soradyne_flutter_SoradyneGattCallback_nativeOnCo
         None => return,
     };
 
-    // Retrieve the address string for this device
-    let addr_str: String = env
+    // Retrieve the address string for this device.
+    // JString::from(jobject) must outlive the get_string borrow, so we bind it first.
+    let addr_jobj = env
         .call_method(&device, "getAddress", "()Ljava/lang/String;", &[])
         .and_then(|v| v.l())
-        .and_then(|s| env.get_string(&JString::from(s)))
+        .unwrap_or_else(|_| jni::objects::JObject::null());
+    let addr_jstring = JString::from(addr_jobj);
+    let addr_str: String = env
+        .get_string(&addr_jstring)
         .map(|s| s.into())
         .unwrap_or_default();
 
