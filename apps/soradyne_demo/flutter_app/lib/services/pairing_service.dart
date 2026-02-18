@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import '../ffi/pairing_bindings.dart';
 
 /// Typed representation of the pairing engine state.
@@ -127,22 +129,37 @@ class PairingService extends ChangeNotifier {
     _initializeBindings();
   }
 
-  void _initializeBindings() {
+  Future<void> _initializeBindings() async {
     try {
       debugPrint('PairingService: creating bindings...');
       _bindings = PairingBindings();
-      final result = _bindings.init();
+
+      // Resolve a writable data directory appropriate for the platform.
+      // On Android, getApplicationDocumentsDirectory() returns the app's
+      // internal storage — the only place the process is allowed to write.
+      // On other platforms we let Rust pick its own default (pass null).
+      String? dataDir;
+      if (Platform.isAndroid || Platform.isIOS) {
+        final dir = await getApplicationDocumentsDirectory();
+        dataDir = dir.path;
+        debugPrint('PairingService: using dataDir=$dataDir');
+      }
+
+      final result = _bindings.init(dataDir: dataDir);
       if (result == 0) {
         _initialized = true;
         debugPrint('PairingService: initialized successfully');
         refreshCapsules();
+        notifyListeners();
       } else {
         _error = 'Failed to initialize pairing bridge (code: $result)';
         debugPrint('PairingService: init failed: $_error');
+        notifyListeners();
       }
     } catch (e) {
       _error = 'FFI initialization error: $e';
       debugPrint('PairingService: $_error');
+      notifyListeners();
     }
   }
 

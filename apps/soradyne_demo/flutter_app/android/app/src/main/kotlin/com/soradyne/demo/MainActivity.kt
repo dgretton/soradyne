@@ -1,0 +1,5 @@
+package com.soradyne.demo
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
