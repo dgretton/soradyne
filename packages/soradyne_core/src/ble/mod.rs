@@ -8,6 +8,12 @@ pub mod gatt;
 pub mod simulated;
 pub mod transport;
 
+#[cfg(feature = "ble-central")]
+pub mod btleplug_central;
+
+#[cfg(target_os = "android")]
+pub mod android_peripheral;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]

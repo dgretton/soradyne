@@ -43,6 +43,10 @@ struct PairingBridge {
     sim_network: Arc<SimBleNetwork>,
     /// EnsembleManagers keyed by capsule ID, shared across all flows in a capsule.
     ensemble_managers: TokioMutex<HashMap<Uuid, Arc<EnsembleManager>>>,
+    /// Android application Context, needed for BLE advertising.
+    /// Set via `soradyne_set_android_context`; None on non-Android platforms.
+    #[cfg(target_os = "android")]
+    android_context: Option<jni::objects::GlobalRef>,
 }
 
 static PAIRING_BRIDGE: RwLock<Option<PairingBridge>> = RwLock::new(None);
@@ -187,6 +191,8 @@ pub extern "C" fn soradyne_pairing_init(data_dir: *const c_char) -> i32 {
         engine,
         sim_network,
         ensemble_managers: TokioMutex::new(HashMap::new()),
+        #[cfg(target_os = "android")]
+        android_context: None,
     };
 
     match PAIRING_BRIDGE.write() {
@@ -373,8 +379,11 @@ pub extern "C" fn soradyne_pairing_get_capsule(capsule_id: *const c_char) -> *mu
     })
 }
 
-/// Start the inviter flow: advertise via sim BLE, accept connection, perform
+/// Start the inviter flow: advertise via BLE, accept connection, perform
 /// ECDH key exchange. Runs asynchronously on the persistent runtime.
+///
+/// On Android: uses `AndroidBlePeripheral` (real BLE via JNI).
+/// On all other platforms: falls back to `SimBleNetwork` (for local testing).
 ///
 /// The engine state transitions to `AwaitingVerification` when the PIN is ready.
 /// The UI should poll `soradyne_pairing_get_state` to detect this.
@@ -401,23 +410,63 @@ pub extern "C" fn soradyne_pairing_start_invite(capsule_id: *const c_char) -> i3
         None => return -1,
     };
 
-    let device = bridge.sim_network.create_device();
     let engine = Arc::clone(&bridge.engine);
     let capsule_store = Arc::clone(&bridge.capsule_store);
 
-    bridge.runtime.spawn(async move {
-        let store = capsule_store.lock().await;
+    #[cfg(target_os = "android")]
+    {
+        use crate::ble::android_peripheral::AndroidBlePeripheral;
 
-        if let Err(e) = engine.invite(uuid, &*store, &device).await {
-            println!("soradyne_pairing_start_invite: invite failed: {}", e);
+        // The Android Context is injected by Flutter's plugin architecture.
+        // For Phase 6.2 we attempt to retrieve it from the global bridge.
+        // A null context here will cause AndroidBlePeripheral::new() to fail
+        // gracefully with an error log.
+        let context_ref = match bridge.android_context.as_ref() {
+            Some(r) => r.clone(),
+            None => {
+                eprintln!("soradyne_pairing_start_invite: android_context not set");
+                return -1;
+            }
+        };
+
+        match AndroidBlePeripheral::new(context_ref) {
+            Ok(peripheral) => {
+                let peripheral = Arc::new(peripheral);
+                bridge.runtime.spawn(async move {
+                    let store = capsule_store.lock().await;
+                    if let Err(e) = engine.invite(uuid, &*store, &*peripheral).await {
+                        eprintln!("soradyne_pairing_start_invite: invite failed: {}", e);
+                    }
+                });
+            }
+            Err(e) => {
+                eprintln!("soradyne_pairing_start_invite: BLE init failed: {}", e);
+                return -1;
+            }
         }
-    });
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        // Non-Android: use the in-process SimBleNetwork (for tests and macOS demo
+        // when the Mac is acting as the inviter in a purely simulated scenario).
+        let device = bridge.sim_network.create_device();
+        bridge.runtime.spawn(async move {
+            let store = capsule_store.lock().await;
+            if let Err(e) = engine.invite(uuid, &*store, &device).await {
+                println!("soradyne_pairing_start_invite: invite failed: {}", e);
+            }
+        });
+    }
 
     0
 }
 
 /// Start the joiner flow: scan for pairing advertisements, connect, perform
 /// ECDH key exchange. Runs asynchronously on the persistent runtime.
+///
+/// On macOS/Linux/Windows with the `ble-central` feature: uses `BtleplugCentral`.
+/// Otherwise: falls back to `SimBleNetwork` (for local testing and Android side).
 ///
 /// `piece_name`: name for this device in the capsule.
 ///
@@ -438,17 +487,41 @@ pub extern "C" fn soradyne_pairing_start_join(piece_name: *const c_char) -> i32 
         None => return -1,
     };
 
-    let device = bridge.sim_network.create_device();
     let engine = Arc::clone(&bridge.engine);
 
-    bridge.runtime.spawn(async move {
-        if let Err(e) = engine
-            .join(name, PieceCapabilities::full(), PieceRole::Full, &device)
-            .await
-        {
-            println!("soradyne_pairing_start_join: join failed: {}", e);
-        }
-    });
+    #[cfg(feature = "ble-central")]
+    {
+        use crate::ble::btleplug_central::BtleplugCentral;
+
+        bridge.runtime.spawn(async move {
+            match BtleplugCentral::new().await {
+                Ok(central) => {
+                    if let Err(e) = engine
+                        .join(name, PieceCapabilities::full(), PieceRole::Full, &central)
+                        .await
+                    {
+                        eprintln!("soradyne_pairing_start_join: join failed: {}", e);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("soradyne_pairing_start_join: BLE central init failed: {}", e);
+                }
+            }
+        });
+    }
+
+    #[cfg(not(feature = "ble-central"))]
+    {
+        let device = bridge.sim_network.create_device();
+        bridge.runtime.spawn(async move {
+            if let Err(e) = engine
+                .join(name, PieceCapabilities::full(), PieceRole::Full, &device)
+                .await
+            {
+                println!("soradyne_pairing_start_join: join failed: {}", e);
+            }
+        });
+    }
 
     0
 }
@@ -635,4 +708,39 @@ pub extern "C" fn soradyne_pairing_add_sim_accessory(
             Err(e) => error_json(&format!("failed to add simulated accessory: {}", e)),
         }
     })
+}
+
+/// Store the Android `Context` object so that `soradyne_pairing_start_invite`
+/// can pass it to `AndroidBlePeripheral`.
+///
+/// Must be called from a JNI context (e.g. from `SoradyneFlutterPlugin.onAttachedToEngine`)
+/// before invoking `soradyne_pairing_start_invite`.
+///
+/// Returns 0 on success, -1 on error.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn soradyne_set_android_context(
+    mut env: jni::JNIEnv,
+    _class: jni::objects::JClass,
+    context: jni::objects::JObject,
+) -> jni::sys::jint {
+    let global_ref = match env.new_global_ref(&context) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("soradyne_set_android_context: {}", e);
+            return -1;
+        }
+    };
+
+    match PAIRING_BRIDGE.write() {
+        Ok(mut guard) => {
+            if let Some(bridge) = guard.as_mut() {
+                bridge.android_context = Some(global_ref);
+                0
+            } else {
+                -1
+            }
+        }
+        Err(_) => -1,
+    }
 }

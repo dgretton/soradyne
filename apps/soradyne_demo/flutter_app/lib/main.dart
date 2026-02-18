@@ -1,11 +1,25 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'screens/activity_selector_screen.dart';
 import 'services/album_service.dart';
 import 'services/pairing_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> _requestBlePermissions() async {
+  if (!Platform.isAndroid) return;
+  await [
+    Permission.bluetoothScan,
+    Permission.bluetoothConnect,
+    Permission.bluetoothAdvertise,
+  ].request();
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _requestBlePermissions();
   runApp(const SoradyneApp());
 }
 

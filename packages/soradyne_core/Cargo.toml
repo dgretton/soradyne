@@ -67,12 +67,19 @@ x25519-dalek = { version = "2", features = ["static_secrets", "serde"] }
 zeroize = { version = "1", features = ["derive"] }
 hkdf = "0.12"
 
+# BLE central (Mac/Linux/Windows) — opt-in via --features ble-central
+btleplug = { version = "0.11", optional = true }
+
 # Platform-specific dependencies for device fingerprinting
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["fileapi", "handleapi", "winioctl"] }
+
+# Android peripheral — JNI bridge for BluetoothLeAdvertiser + BluetoothGattServer
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.21", features = ["invocation"] }
 
 # [build-dependencies]
 # ffmpeg-next = { version = "7.0", features = ["build"] }
@@ -87,6 +94,9 @@ tokio = { version = "1.28", features = ["test-util"] }
 default = ["video-thumbnails"]
 image-processing = ["base64"]
 video-thumbnails = ["ffmpeg-next"]
+# Enable btleplug-based BLE Central scanning (Mac/Linux/Windows).
+# Android peripheral support is compiled unconditionally on Android via cfg.
+ble-central = ["btleplug"]
 
 [profile.release]
 lto = true
