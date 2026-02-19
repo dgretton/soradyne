@@ -130,6 +130,11 @@ class PairingService extends ChangeNotifier {
   }
 
   Future<void> _initializeBindings() async {
+    // Yield immediately so this always runs after the first build frame.
+    // Without this, notifyListeners() could be called during build (e.g. on
+    // macOS where no await precedes it), which is a framework violation that
+    // silently corrupts gesture recogniser state.
+    await Future.microtask(() {});
     try {
       debugPrint('PairingService: creating bindings...');
       _bindings = PairingBindings();
