@@ -19,31 +19,64 @@ use super::transport::{BleAddress, BleAdvertisement, BleCentral, BleConnection};
 use super::BleError;
 use crate::ble::gatt::{envelope_char_uuid, soradyne_service_uuid};
 
+/// Maximum bytes per GATT write or notification chunk.
+/// Android caps GATT attribute values at 512 bytes, so we stay comfortably below.
+const BLE_CHUNK_SIZE: usize = 500;
+
 // ---------------------------------------------------------------------------
 // BtleplugGattConnection
 // ---------------------------------------------------------------------------
+
+/// Reassembly state for length-framed BLE messages.
+struct RecvState {
+    buf: Vec<u8>,
+    rx: mpsc::Receiver<Vec<u8>>,
+}
 
 /// An active GATT connection to a rim peripheral.
 pub struct BtleplugGattConnection {
     peripheral: Peripheral,
     char: btleplug::api::Characteristic,
-    /// Receives notification payloads forwarded by the background pump task.
-    /// Wrapped in a Mutex so `recv` can take `&mut Receiver` through a `&self` trait method.
-    notif_rx: TokioMutex<mpsc::Receiver<Vec<u8>>>,
+    /// Reassembly buffer + notification channel, shared under one mutex.
+    recv_state: TokioMutex<RecvState>,
     address: BleAddress,
 }
 
 #[async_trait]
 impl BleConnection for BtleplugGattConnection {
+    /// Send `data` as a length-prefixed, BLE-chunked sequence of GATT writes.
+    ///
+    /// Frame format: `[u32 LE total_len][data...]` split into BLE_CHUNK_SIZE chunks.
     async fn send(&self, data: &[u8]) -> Result<(), BleError> {
-        self.peripheral
-            .write(&self.char, data, WriteType::WithoutResponse)
-            .await
-            .map_err(|e| BleError::ConnectionError(e.to_string()))
+        let mut frame = Vec::with_capacity(4 + data.len());
+        frame.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        frame.extend_from_slice(data);
+        for chunk in frame.chunks(BLE_CHUNK_SIZE) {
+            self.peripheral
+                .write(&self.char, chunk, WriteType::WithoutResponse)
+                .await
+                .map_err(|e| BleError::ConnectionError(e.to_string()))?;
+        }
+        Ok(())
     }
 
+    /// Receive one complete length-framed message, reassembling across chunks.
     async fn recv(&self) -> Result<Vec<u8>, BleError> {
-        self.notif_rx.lock().await.recv().await.ok_or(BleError::Disconnected)
+        let mut st = self.recv_state.lock().await;
+        loop {
+            if st.buf.len() >= 4 {
+                let len = u32::from_le_bytes([
+                    st.buf[0], st.buf[1], st.buf[2], st.buf[3],
+                ]) as usize;
+                if st.buf.len() >= 4 + len {
+                    let msg = st.buf[4..4 + len].to_vec();
+                    st.buf = st.buf[4 + len..].to_vec();
+                    return Ok(msg);
+                }
+            }
+            let chunk = st.rx.recv().await.ok_or(BleError::Disconnected)?;
+            st.buf.extend_from_slice(&chunk);
+        }
     }
 
     async fn disconnect(&self) -> Result<(), BleError> {
@@ -134,51 +167,76 @@ impl BtleplugCentral {
 #[async_trait]
 impl BleCentral for BtleplugCentral {
     async fn start_scan(&self) -> Result<(), BleError> {
-        let filter = ScanFilter {
-            services: vec![soradyne_service_uuid()],
-        };
+        let filter = ScanFilter::default();
         self.adapter
             .start_scan(filter)
             .await
             .map_err(|e| BleError::ScanError(e.to_string()))?;
+        crate::ffi::pairing_bridge::ble_log("[btleplug] scan started");
 
-        // Pump newly discovered peripherals into the advertisement broadcast channel.
+        // Pump BLE events into the advertisement broadcast channel.
+        // We handle three event types because CoreBluetooth behaves differently
+        // depending on whether the peripheral is newly seen or cached:
+        //   • DeviceDiscovered  — first sighting (peripheral not in CoreBluetooth cache)
+        //   • DeviceUpdated     — scan-response packet on an active scan (may carry services)
+        //   • ServicesAdvertisement — CoreBluetooth reports services for a *cached* peripheral;
+        //                            DeviceDiscovered never re-fires for these between runs.
         let adapter = self.adapter.clone();
         let adv_tx = self.adv_tx.clone();
         let service_uuid = soradyne_service_uuid();
 
         tokio::spawn(async move {
             use btleplug::api::Central as _;
+            use btleplug::api::CentralEvent::{
+                DeviceDiscovered, DeviceUpdated, ServicesAdvertisement,
+            };
             use futures_util::StreamExt;
 
-            // btleplug emits events via a stream on the adapter.
             let mut events = match adapter.events().await {
                 Ok(s) => s,
-                Err(_) => return,
+                Err(e) => {
+                    crate::ffi::pairing_bridge::ble_log(&format!(
+                        "[btleplug] pump: events() failed: {}", e
+                    ));
+                    return;
+                }
             };
 
             while let Some(event) = events.next().await {
-                if let btleplug::api::CentralEvent::DeviceDiscovered(id) = event {
-                    if let Ok(p) = adapter.peripheral(&id).await {
-                        if let Ok(Some(props)) = p.properties().await {
-                            if props.services.contains(&service_uuid) {
-                                let addr_bytes = props
-                                    .address
-                                    .into_inner();
-                                let adv = BleAdvertisement {
-                                    data: props.manufacturer_data
-                                        .values()
-                                        .flat_map(|v| v.iter().copied())
-                                        .collect(),
-                                    rssi: props.rssi.map(|r| r as i16),
-                                    source_address: BleAddress::Real(addr_bytes),
-                                };
-                                let _ = adv_tx.send(adv);
-                            }
+                // Extract the peripheral ID from the event types we care about.
+                // For ServicesAdvertisement we can check the service list directly
+                // before doing an extra peripheral lookup.
+                let id = match &event {
+                    DeviceDiscovered(id) | DeviceUpdated(id) => id.clone(),
+                    ServicesAdvertisement { id, services } => {
+                        if services.contains(&service_uuid) {
+                            id.clone()
+                        } else {
+                            continue;
+                        }
+                    }
+                    _ => continue,
+                };
+
+                if let Ok(p) = adapter.peripheral(&id).await {
+                    if let Ok(Some(props)) = p.properties().await {
+                        if props.services.contains(&service_uuid) {
+                            let addr_bytes = props.address.into_inner();
+                            crate::ffi::pairing_bridge::ble_log(&format!(
+                                "[btleplug] found inviter at {:?}", props.address
+                            ));
+                            let adv = BleAdvertisement {
+                                data: crate::topology::pairing::PAIRING_ADV_MARKER
+                                    .to_vec(),
+                                rssi: props.rssi.map(|r| r as i16),
+                                source_address: BleAddress::Real(addr_bytes),
+                            };
+                            let _ = adv_tx.send(adv);
                         }
                     }
                 }
             }
+            crate::ffi::pairing_bridge::ble_log("[btleplug] pump: stream ended");
         });
 
         Ok(())
@@ -211,29 +269,49 @@ impl BleCentral for BtleplugCentral {
             .unwrap_or([0u8; 6]);
         let ble_addr = BleAddress::Real(addr_bytes);
 
+        crate::ffi::pairing_bridge::ble_log("[btleplug] connecting to peripheral...");
         peripheral
             .connect()
             .await
-            .map_err(|e| BleError::ConnectionError(e.to_string()))?;
+            .map_err(|e| {
+                crate::ffi::pairing_bridge::ble_log(&format!(
+                    "[btleplug] connect failed: {}", e
+                ));
+                BleError::ConnectionError(e.to_string())
+            })?;
 
         peripheral
             .discover_services()
             .await
-            .map_err(|e| BleError::GattError(e.to_string()))?;
+            .map_err(|e| {
+                crate::ffi::pairing_bridge::ble_log(&format!(
+                    "[btleplug] discover_services failed: {}", e
+                ));
+                BleError::GattError(e.to_string())
+            })?;
 
         let char_uuid = envelope_char_uuid();
-        let characteristics = peripheral.characteristics();
-        let gatt_char = characteristics
+        let gatt_char = peripheral
+            .characteristics()
             .into_iter()
             .find(|c| c.uuid == char_uuid)
             .ok_or_else(|| {
-                BleError::GattError(format!("envelope characteristic {} not found", char_uuid))
+                let msg = format!("envelope characteristic {} not found", char_uuid);
+                crate::ffi::pairing_bridge::ble_log(&format!("[btleplug] {}", msg));
+                BleError::GattError(msg)
             })?;
 
         peripheral
             .subscribe(&gatt_char)
             .await
-            .map_err(|e| BleError::GattError(e.to_string()))?;
+            .map_err(|e| {
+                crate::ffi::pairing_bridge::ble_log(&format!(
+                    "[btleplug] subscribe failed: {}", e
+                ));
+                BleError::GattError(e.to_string())
+            })?;
+
+        crate::ffi::pairing_bridge::ble_log("[btleplug] connected and subscribed");
 
         // Pump notification stream into an mpsc channel.
         let (notif_tx, notif_rx) = mpsc::channel::<Vec<u8>>(64);
@@ -247,12 +325,13 @@ impl BleCentral for BtleplugCentral {
                     }
                 }
             }
+            crate::ffi::pairing_bridge::ble_log("[btleplug] notification stream ended");
         });
 
         Ok(Box::new(BtleplugGattConnection {
             peripheral,
             char: gatt_char,
-            notif_rx: TokioMutex::new(notif_rx),
+            recv_state: TokioMutex::new(RecvState { buf: Vec::new(), rx: notif_rx }),
             address: ble_addr,
         }))
     }
