@@ -125,6 +125,13 @@ class PairingService extends ChangeNotifier {
   bool get initialized => _initialized;
   String? get error => _error;
 
+  /// The raw FFI bindings — used by other services (e.g. NotesService) to
+  /// share the DynamicLibrary without opening it a second time.
+  PairingBindings? get bindings => _initialized ? _bindings : null;
+
+  /// This device's UUID as a string, or null before init completes.
+  String? get deviceId => _initialized ? _bindings.getDeviceId() : null;
+
   PairingService() {
     _initializeBindings();
   }
@@ -242,6 +249,9 @@ class PairingService extends ChangeNotifier {
   /// Poll the pairing state once.
   void _pollState() {
     if (!_initialized) return;
+    // Drain any BLE debug log lines from Rust (invisible on macOS otherwise).
+    final bleLog = _bindings.bleDebug();
+    if (bleLog.isNotEmpty) debugPrint('BLE: $bleLog');
     try {
       final json = _bindings.getState();
       final result = jsonDecode(json) as Map<String, dynamic>;
@@ -272,7 +282,13 @@ class PairingService extends ChangeNotifier {
     if (!_initialized) return;
     _pairingState = const PairingStateData(type: PairingStateType.idle);
     notifyListeners();
-    _bindings.startInvite(capsuleId);
+    final result = _bindings.startInvite(capsuleId);
+    debugPrint('PairingService.startInvite: FFI returned $result');
+    if (result != 0) {
+      _error = 'BLE peripheral init failed (code: $result)';
+      notifyListeners();
+      return;
+    }
     _startPolling();
   }
 
@@ -281,7 +297,13 @@ class PairingService extends ChangeNotifier {
     if (!_initialized) return;
     _pairingState = const PairingStateData(type: PairingStateType.idle);
     notifyListeners();
-    _bindings.startJoin(pieceName);
+    final result = _bindings.startJoin(pieceName);
+    debugPrint('PairingService.startJoin: FFI returned $result');
+    if (result != 0) {
+      _error = 'BLE central init failed (code: $result)';
+      notifyListeners();
+      return;
+    }
     _startPolling();
   }
 

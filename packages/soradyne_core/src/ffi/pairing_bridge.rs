@@ -43,13 +43,39 @@ struct PairingBridge {
     sim_network: Arc<SimBleNetwork>,
     /// EnsembleManagers keyed by capsule ID, shared across all flows in a capsule.
     ensemble_managers: TokioMutex<HashMap<Uuid, Arc<EnsembleManager>>>,
-    /// Android application Context, needed for BLE advertising.
-    /// Set via `soradyne_set_android_context`; None on non-Android platforms.
-    #[cfg(target_os = "android")]
-    android_context: Option<jni::objects::GlobalRef>,
 }
 
 static PAIRING_BRIDGE: RwLock<Option<PairingBridge>> = RwLock::new(None);
+
+/// Append-only debug log visible to Dart via `soradyne_ble_debug()`.
+/// Used to surface Rust log lines that cannot reach the Flutter terminal
+/// on macOS (where native stdout is detached from the `flutter run` console).
+pub(crate) static BLE_DEBUG: std::sync::Mutex<String> =
+    std::sync::Mutex::new(String::new());
+
+/// Append a line to the in-process debug log.
+pub(crate) fn ble_log(msg: &str) {
+    if let Ok(mut s) = BLE_DEBUG.lock() {
+        if !s.is_empty() {
+            s.push('\n');
+        }
+        s.push_str(msg);
+        // Keep last 4 KB so the buffer doesn't grow unboundedly.
+        let len = s.len();
+        if len > 4096 {
+            *s = s[len - 4096..].to_string();
+        }
+    }
+}
+
+/// Android application Context stored independently of `PAIRING_BRIDGE`.
+///
+/// `onAttachedToEngine` fires ~10 s before Dart calls `soradyne_pairing_init`,
+/// so the bridge does not exist yet when the context arrives. Storing it in a
+/// separate `OnceLock` avoids the race entirely.
+#[cfg(target_os = "android")]
+static ANDROID_CONTEXT: std::sync::OnceLock<jni::objects::GlobalRef> =
+    std::sync::OnceLock::new();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -191,8 +217,6 @@ pub extern "C" fn soradyne_pairing_init(data_dir: *const c_char) -> i32 {
         engine,
         sim_network,
         ensemble_managers: TokioMutex::new(HashMap::new()),
-        #[cfg(target_os = "android")]
-        android_context: None,
     };
 
     match PAIRING_BRIDGE.write() {
@@ -417,14 +441,14 @@ pub extern "C" fn soradyne_pairing_start_invite(capsule_id: *const c_char) -> i3
     {
         use crate::ble::android_peripheral::AndroidBlePeripheral;
 
-        // The Android Context is injected by Flutter's plugin architecture.
-        // For Phase 6.2 we attempt to retrieve it from the global bridge.
-        // A null context here will cause AndroidBlePeripheral::new() to fail
-        // gracefully with an error log.
-        let context_ref = match bridge.android_context.as_ref() {
+        // The Android Context arrives via `nativeSetContext` which is called by
+        // `onAttachedToEngine` — well before Dart calls `soradyne_pairing_init`.
+        // It is stored in a separate OnceLock so that the timing gap between
+        // plugin attach and bridge init doesn't cause it to be lost.
+        let context_ref = match ANDROID_CONTEXT.get() {
             Some(r) => r.clone(),
             None => {
-                eprintln!("soradyne_pairing_start_invite: android_context not set");
+                eprintln!("[soradyne] startInvite: ANDROID_CONTEXT not set");
                 return -1;
             }
         };
@@ -493,19 +517,25 @@ pub extern "C" fn soradyne_pairing_start_join(piece_name: *const c_char) -> i32 
     {
         use crate::ble::btleplug_central::BtleplugCentral;
 
+        // On macOS, CBCentralManager must be initialized from the main thread so
+        // that CoreBluetooth can trigger the TCC Bluetooth permission dialog.
+        // We call block_on here (FFI entry point = main thread on Flutter macOS)
+        // to drive the async init synchronously, then hand the ready central
+        // off to the tokio task for the actual join work.
+        let central = match bridge.runtime.block_on(BtleplugCentral::new()) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("soradyne_pairing_start_join: BLE central init failed: {}", e);
+                return -1;
+            }
+        };
+
         bridge.runtime.spawn(async move {
-            match BtleplugCentral::new().await {
-                Ok(central) => {
-                    if let Err(e) = engine
-                        .join(name, PieceCapabilities::full(), PieceRole::Full, &central)
-                        .await
-                    {
-                        eprintln!("soradyne_pairing_start_join: join failed: {}", e);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("soradyne_pairing_start_join: BLE central init failed: {}", e);
-                }
+            if let Err(e) = engine
+                .join(name, PieceCapabilities::full(), PieceRole::Full, &central)
+                .await
+            {
+                eprintln!("soradyne_pairing_start_join: join failed: {}", e);
             }
         });
     }
@@ -664,6 +694,41 @@ pub extern "C" fn soradyne_pairing_cancel() -> i32 {
     0
 }
 
+/// Return the current device's UUID as a string.
+///
+/// The inventory system uses this as the CRDT author ID, ensuring
+/// operations are attributed to the right device for cross-device sync.
+/// Caller must free via `soradyne_free_string`.
+#[no_mangle]
+pub extern "C" fn soradyne_pairing_get_device_id() -> *mut c_char {
+    let guard = match PAIRING_BRIDGE.read() {
+        Ok(g) => g,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    match guard.as_ref() {
+        Some(bridge) => to_c_string(bridge.identity.device_id().to_string()),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Return and clear the in-process BLE debug log as a plain string.
+///
+/// Called from Dart's poll loop to surface Rust log lines that cannot reach
+/// the `flutter run` terminal on macOS (native stdout is detached there).
+/// Caller must free the returned string via `soradyne_free_string`.
+#[no_mangle]
+pub extern "C" fn soradyne_ble_debug() -> *mut c_char {
+    let log = BLE_DEBUG
+        .lock()
+        .map(|mut g| {
+            let content = g.clone();
+            g.clear();
+            content
+        })
+        .unwrap_or_default();
+    to_c_string(log)
+}
+
 /// Add a simulated accessory to a capsule (for testing/demo).
 ///
 /// Returns JSON `{"device_id": "uuid"}` or `{"error": "..."}`.
@@ -715,33 +780,46 @@ pub extern "C" fn soradyne_pairing_add_sim_accessory(
 ///
 /// Called from Kotlin `SoradyneFlutterPlugin.nativeSetContext(context)` via
 /// `private external fun nativeSetContext(context: Context)`.
-/// Must be called before `soradyne_pairing_start_invite`.
 ///
-/// Returns 0 on success, -1 on error.
+/// This is intentionally decoupled from `PAIRING_BRIDGE`: `onAttachedToEngine`
+/// fires ~10 s before Dart calls `soradyne_pairing_init`, so the bridge does
+/// not exist yet when the context arrives. Storing it in `ANDROID_CONTEXT`
+/// (a separate `OnceLock`) makes the call succeed unconditionally.
+///
+/// Returns 0 on success, -1 if the JNI global ref could not be created.
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "system" fn Java_com_soradyne_flutter_SoradyneFlutterPlugin_nativeSetContext(
-    env: jni::JNIEnv,
+    mut env: jni::JNIEnv,
     _class: jni::objects::JClass,
     context: jni::objects::JObject,
 ) -> jni::sys::jint {
     let global_ref = match env.new_global_ref(&context) {
         Ok(r) => r,
-        Err(e) => {
-            eprintln!("soradyne_set_android_context: {}", e);
-            return -1;
-        }
+        Err(_) => return -1,
     };
 
-    match PAIRING_BRIDGE.write() {
-        Ok(mut guard) => {
-            if let Some(bridge) = guard.as_mut() {
-                bridge.android_context = Some(global_ref);
-                0
-            } else {
-                -1
-            }
-        }
-        Err(_) => -1,
+    // OnceLock::set fails silently if already set — that's fine, the first
+    // context is the one we want (application context, set at engine attach).
+    let _ = ANDROID_CONTEXT.set(global_ref);
+
+    // Cache JNI class GlobalRefs for the two app-defined callback classes while
+    // we are still on the Android main thread where the application class loader
+    // is active. find_class on Tokio worker threads uses the bootstrap loader
+    // and cannot see app classes, causing ClassNotFoundException.
+    if let Err(e) = crate::ble::android_peripheral::cache_classes(&mut env) {
+        // Log via logcat — eprintln is invisible on Android.
+        let tag = env.new_string("soradyne").unwrap_or_default();
+        let msg = env.new_string(format!("cache_classes failed: {}", e)).unwrap_or_default();
+        let _ = env.call_static_method(
+            "android/util/Log",
+            "e",
+            "(Ljava/lang/String;Ljava/lang/String;)I",
+            &[jni::objects::JValue::Object(&tag.into()),
+              jni::objects::JValue::Object(&msg.into())],
+        );
+        return -1;
     }
+
+    0
 }

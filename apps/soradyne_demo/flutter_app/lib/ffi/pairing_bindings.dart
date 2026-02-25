@@ -48,12 +48,22 @@ typedef SoradynePairingAddSimAccessory = Pointer<Utf8> Function(
 typedef SoradyneFreeStringC = Void Function(Pointer<Utf8>);
 typedef SoradyneFreeString = void Function(Pointer<Utf8>);
 
+typedef SoradyneBleDebugC = Pointer<Utf8> Function();
+typedef SoradyneBleDebug = Pointer<Utf8> Function();
+
+typedef SoradynePairingGetDeviceIdC = Pointer<Utf8> Function();
+typedef SoradynePairingGetDeviceId = Pointer<Utf8> Function();
+
 // ---------------------------------------------------------------------------
 // Dart bindings class
 // ---------------------------------------------------------------------------
 
 class PairingBindings {
   late final DynamicLibrary _lib;
+
+  /// The underlying native library — shared with InventoryBindings so only
+  /// one DynamicLibrary.open() call is needed.
+  DynamicLibrary get lib => _lib;
   late final SoradynePairingInit _init;
   late final SoradynePairingCleanup _cleanup;
   late final SoradynePairingCreateCapsule _createCapsule;
@@ -67,6 +77,8 @@ class PairingBindings {
   late final SoradynePairingCancel _cancel;
   late final SoradynePairingAddSimAccessory _addSimAccessory;
   late final SoradyneFreeString _freeString;
+  SoradyneBleDebug? _bleDebug; // optional — absent in builds before this symbol was added
+  SoradynePairingGetDeviceId? _getDeviceId;
 
   PairingBindings() {
     if (Platform.isMacOS) {
@@ -118,6 +130,18 @@ class PairingBindings {
     _freeString =
         _lib.lookupFunction<SoradyneFreeStringC, SoradyneFreeString>(
             'soradyne_free_string');
+    try {
+      _bleDebug = _lib.lookupFunction<SoradyneBleDebugC, SoradyneBleDebug>(
+          'soradyne_ble_debug');
+    } catch (_) {
+      _bleDebug = null; // symbol absent in pre-debug builds
+    }
+    try {
+      _getDeviceId = _lib.lookupFunction<SoradynePairingGetDeviceIdC,
+          SoradynePairingGetDeviceId>('soradyne_pairing_get_device_id');
+    } catch (_) {
+      _getDeviceId = null;
+    }
   }
 
   int init({String? dataDir}) {
@@ -190,6 +214,28 @@ class PairingBindings {
 
   int cancel() {
     return _cancel();
+  }
+
+  /// Drain and return any pending BLE debug log lines from Rust.
+  /// Returns empty string if the symbol is not present in this build.
+  String bleDebug() {
+    final fn = _bleDebug;
+    if (fn == null) return '';
+    final ptr = fn();
+    final result = ptr.toDartString();
+    _freeString(ptr);
+    return result;
+  }
+
+  /// Returns the current device UUID (from the pairing identity), or null.
+  String? getDeviceId() {
+    final fn = _getDeviceId;
+    if (fn == null) return null;
+    final ptr = fn();
+    if (ptr.address == 0) return null;
+    final result = ptr.toDartString();
+    _freeString(ptr);
+    return result;
   }
 
   String addSimAccessory(String capsuleId, String name) {
