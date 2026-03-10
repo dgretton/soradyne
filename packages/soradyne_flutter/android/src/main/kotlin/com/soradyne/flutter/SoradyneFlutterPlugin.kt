@@ -1,6 +1,7 @@
 package com.soradyne.flutter
 
 import android.content.Context
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 
 /**
@@ -16,6 +17,12 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 class SoradyneFlutterPlugin : FlutterPlugin {
 
     companion object {
+        init {
+            // Load the Rust library here so nativeSetContext is resolvable when
+            // onAttachedToEngine fires — before Flutter's FFI loader has run.
+            System.loadLibrary("soradyne")
+        }
+
         /**
          * Passes the Android Context to Rust.
          * Implemented in `src/ffi/pairing_bridge.rs` as
@@ -31,7 +38,9 @@ class SoradyneFlutterPlugin : FlutterPlugin {
         // libsoradyne.so is already mapped by Flutter's FFI loader at this point.
         // Hand the application context to Rust so it can open a BluetoothGattServer
         // and BluetoothLeAdvertiser when the inviter flow starts.
-        nativeSetContext(binding.applicationContext)
+        Log.d("SoradynePlugin", "onAttachedToEngine: calling nativeSetContext")
+        val result = nativeSetContext(binding.applicationContext)
+        Log.d("SoradynePlugin", "nativeSetContext returned $result")
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {

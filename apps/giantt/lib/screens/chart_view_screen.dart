@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:giantt_core/giantt_core.dart';
 import '../services/giantt_service.dart';
-import '../widgets/item_card.dart';
+import '../layout/gantt_layout.dart';
+import '../widgets/gantt_chart.dart';
 
 class ChartViewScreen extends StatefulWidget {
   const ChartViewScreen({super.key});
@@ -12,10 +12,14 @@ class ChartViewScreen extends StatefulWidget {
 
 class _ChartViewScreenState extends State<ChartViewScreen> {
   final GianttService _gianttService = GianttService();
-  
+
   List<String> _charts = [];
   String? _selectedChart;
-  List<GianttItem> _chartItems = [];
+  GanttLayout _layout = const GanttLayout(
+    rows: [],
+    dependencies: [],
+    totalSpanSeconds: 0,
+  );
   bool _isLoading = true;
 
   @override
@@ -25,10 +29,7 @@ class _ChartViewScreenState extends State<ChartViewScreen> {
   }
 
   Future<void> _loadCharts() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
       final charts = await _gianttService.getAllCharts();
       setState(() {
@@ -36,155 +37,196 @@ class _ChartViewScreenState extends State<ChartViewScreen> {
         _isLoading = false;
         if (charts.isNotEmpty && _selectedChart == null) {
           _selectedChart = charts.first;
-          _loadChartItems();
         }
       });
+      await _computeLayout();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
+      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading charts: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading charts: $e')));
       }
     }
   }
 
-  Future<void> _loadChartItems() async {
-    if (_selectedChart == null) return;
-
+  Future<void> _computeLayout() async {
+    final chart = _selectedChart;
+    if (chart == null) return;
     try {
-      final items = await _gianttService.getItemsByChart(_selectedChart!);
+      final items = await _gianttService.getItemsByChart(chart);
       setState(() {
-        _chartItems = items;
+        _layout = GanttLayout.compute(items);
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading chart items: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error computing layout: $e')));
       }
     }
+  }
+
+  Future<void> _computeLayoutAllCharts() async {
+    try {
+      final graph = await _gianttService.getGraph();
+      final items = graph.includedItems.values.toList();
+      setState(() {
+        _layout = GanttLayout.compute(items);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error computing layout: $e')));
+      }
+    }
+  }
+
+  Future<void> _reload() async {
+    await _gianttService.refresh();
+    await _loadCharts();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Charts'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await _gianttService.refresh();
-              await _loadCharts();
-            },
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _charts.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.timeline,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No charts yet',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add items with charts to see them here',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : Column(
-                  children: [
-                    // Chart selector
-                    Container(
-                      height: 60,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _charts.length,
-                        itemBuilder: (context, index) {
-                          final chart = _charts[index];
-                          final isSelected = chart == _selectedChart;
-                          
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: FilterChip(
-                              label: Text(chart),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    _selectedChart = chart;
-                                  });
-                                  _loadChartItems();
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    
-                    const Divider(),
-                    
-                    // Chart items
-                    Expanded(
-                      child: _chartItems.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.inbox,
-                                    size: 64,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No items in "$_selectedChart"',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              itemCount: _chartItems.length,
-                              itemBuilder: (context, index) {
-                                final item = _chartItems[index];
-                                return ItemCard(
-                                  item: item,
-                                  onTap: () {
-                                    Navigator.pushNamed(context, '/item/${item.id}');
-                                  },
-                                );
-                              },
-                            ),
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        final isLandscape = orientation == Orientation.landscape;
+        return Scaffold(
+          // In landscape, drop the AppBar entirely so the chart fills the screen.
+          appBar: isLandscape
+              ? null
+              : AppBar(
+                  title: Text(_selectedChart ?? 'All Charts'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Reload',
+                      onPressed: _reload,
                     ),
                   ],
                 ),
+          body: isLandscape
+              ? SafeArea(
+                  bottom: false,
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildContent(isLandscape),
+                )
+              : (_isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildContent(isLandscape)),
+        );
+      },
+    );
+  }
+
+  Widget _buildContent(bool isLandscape) {
+    if (_charts.isEmpty) return _buildEmptyState();
+
+    return Column(
+      children: [
+        _buildChartChips(isLandscape),
+        const Divider(height: 1, thickness: 1),
+        Expanded(
+          child: GanttChart(
+            key: ValueKey(_selectedChart),
+            layout: _layout,
+            compact: isLandscape,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartChips(bool isLandscape) {
+    // In landscape: very compact strip (32 dp) with the refresh icon folded in.
+    final rowHeight = isLandscape ? 40.0 : 52.0;
+    final vertPad = isLandscape ? 2.0 : 8.0;
+    final horizPad = isLandscape ? 6.0 : 12.0;
+    final chipPadding = isLandscape
+        ? const EdgeInsets.symmetric(horizontal: 6, vertical: 0)
+        : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
+
+    Widget chip(String label, bool selected, VoidCallback onTap) {
+      return Padding(
+        padding: EdgeInsets.only(right: isLandscape ? 4 : 8),
+        child: FilterChip(
+          label: Text(label, style: TextStyle(fontSize: isLandscape ? 11 : 14)),
+          labelPadding: chipPadding,
+          padding: isLandscape ? EdgeInsets.zero : null,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          selected: selected,
+          onSelected: (_) => onTap(),
+          visualDensity: isLandscape ? VisualDensity.compact : null,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: rowHeight,
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(
+                horizontal: horizPad,
+                vertical: vertPad,
+              ),
+              children: [
+                chip('All', _selectedChart == null, () {
+                  setState(() => _selectedChart = null);
+                  _computeLayoutAllCharts();
+                }),
+                ..._charts.map((chart) => chip(
+                      chart,
+                      chart == _selectedChart,
+                      () {
+                        setState(() => _selectedChart = chart);
+                        _computeLayout();
+                      },
+                    )),
+              ],
+            ),
+          ),
+          // In landscape the AppBar is gone, so tuck refresh here.
+          if (isLandscape)
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              constraints: const BoxConstraints(),
+              tooltip: 'Reload',
+              onPressed: _reload,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.timeline, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No charts yet',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add items with charts to see them here',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

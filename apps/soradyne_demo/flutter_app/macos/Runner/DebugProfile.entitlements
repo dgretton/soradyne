@@ -36,5 +36,9 @@
 	
 	<key>com.apple.security.device.camera</key>
 	<true/>
+
+	<!-- BLE central (btleplug / CoreBluetooth) -->
+	<key>com.apple.security.device.bluetooth</key>
+	<true/>
 </dict>
 </plist>

@@ -274,7 +274,7 @@ class GianttChatProcessor implements ChatCommandProcessor {
       relations: relations,
     );
 
-    if (!result.success) throw StateError(result.message);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _modify(Map<String, dynamic> args) async {
@@ -299,7 +299,7 @@ class GianttChatProcessor implements ChatCommandProcessor {
     );
 
     final result = await _service.updateItem(id, updated);
-    if (!result.success) throw StateError(result.message);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _remove(Map<String, dynamic> args) async {
@@ -321,7 +321,7 @@ class GianttChatProcessor implements ChatCommandProcessor {
 
     final updated = item.copyWith(status: GianttStatus.fromName(statusName));
     final result = await _service.updateItem(id, updated);
-    if (!result.success) throw StateError(result.message);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _insert(Map<String, dynamic> args) async {
@@ -347,13 +347,13 @@ class GianttChatProcessor implements ChatCommandProcessor {
   Future<void> _occlude(Map<String, dynamic> args) async {
     final id = _requireArg<String>(args, 'id');
     final result = await _service.occludeItem(id);
-    if (!result.success) throw StateError(result.message);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _include(Map<String, dynamic> args) async {
     final id = _requireArg<String>(args, 'id');
     final result = await _service.includeItem(id);
-    if (!result.success) throw StateError(result.message);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _addRelation(Map<String, dynamic> args) async {

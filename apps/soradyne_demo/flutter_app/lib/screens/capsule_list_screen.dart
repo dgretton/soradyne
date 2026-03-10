@@ -65,11 +65,27 @@ class _CapsuleListScreenState extends State<CapsuleListScreen> {
     );
   }
 
+  void _startJoin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PairingScreen(isInviter: false),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Capsules'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.login),
+            tooltip: 'Join a capsule',
+            onPressed: _startJoin,
+          ),
+        ],
       ),
       body: Consumer<PairingService>(
         builder: (context, service, _) {

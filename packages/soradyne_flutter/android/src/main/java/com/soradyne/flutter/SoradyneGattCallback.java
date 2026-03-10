@@ -7,15 +7,14 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothProfile;
-import android.bluetooth.le.AdvertiseCallback;
-import android.bluetooth.le.AdvertiseSettings;
+import android.util.Log;
 
 /**
  * GATT server callback that bridges BLE events to Rust via JNI.
  *
- * Extends {@link BluetoothGattServerCallback} to receive GATT events and
- * extends {@link AdvertiseCallback} so the same instance can be passed to
- * {@code BluetoothLeAdvertiser.startAdvertising()}.
+ * Constructed before the GATT server is opened (to break the chicken-and-egg
+ * dependency), then wired up via {@link #setGattServer} once the server handle
+ * is available.
  *
  * The native methods are implemented in
  * {@code packages/soradyne_core/src/ble/android_peripheral.rs}.
@@ -26,11 +25,15 @@ public class SoradyneGattCallback extends BluetoothGattServerCallback {
         System.loadLibrary("soradyne");
     }
 
+    private static final String TAG = "SoradyneGattCallback";
+    // CCCD descriptor UUID (notify enable/disable)
+    private static final String CCCD_UUID = "00002902-0000-1000-8000-00805f9b34fb";
+
     // -----------------------------------------------------------------------
     // Native method declarations (implemented in Rust)
     // -----------------------------------------------------------------------
 
-    /** Called when a BLE central device connects. */
+    /** Called when a BLE central has enabled notifications and is ready. */
     private static native void nativeOnConnected(BluetoothDevice device,
                                                   BluetoothGattServer server);
 
@@ -40,13 +43,23 @@ public class SoradyneGattCallback extends BluetoothGattServerCallback {
     /** Called when a central disconnects. */
     private static native void nativeOnDisconnected(String deviceKey);
 
+    /**
+     * Called by Android after a notification has been transmitted to the central.
+     * Rust uses this as a flow-control signal between multi-chunk sends.
+     */
+    private static native void nativeOnNotificationSent(String deviceKey, int status);
+
     // -----------------------------------------------------------------------
-    // Constructor
+    // Constructor + server wiring
     // -----------------------------------------------------------------------
 
-    private final BluetoothGattServer gattServer;
+    private BluetoothGattServer gattServer;
 
-    public SoradyneGattCallback(BluetoothGattServer server) {
+    /** No-arg constructor — call {@link #setGattServer} immediately after openGattServer. */
+    public SoradyneGattCallback() {}
+
+    /** Wire up the server handle after it has been obtained from openGattServer. */
+    public void setGattServer(BluetoothGattServer server) {
         this.gattServer = server;
     }
 
@@ -56,11 +69,26 @@ public class SoradyneGattCallback extends BluetoothGattServerCallback {
 
     @Override
     public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-        if (newState == BluetoothProfile.STATE_CONNECTED) {
-            nativeOnConnected(device, gattServer);
-        } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+        Log.i(TAG, "onConnectionStateChange: device=" + device.getAddress()
+                + " status=" + status + " newState=" + newState);
+        // NOTE: nativeOnConnected is called from onDescriptorWriteRequest (CCCD=0x01),
+        // not here. This ensures notifications are enabled before the inviter calls
+        // notifyCharacteristicChanged for the first protocol message.
+        if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+            Log.i(TAG, "disconnected: " + device.getAddress());
             nativeOnDisconnected(device.getAddress());
         }
+    }
+
+    @Override
+    public void onMtuChanged(BluetoothDevice device, int mtu) {
+        Log.i(TAG, "onMtuChanged: device=" + device.getAddress() + " mtu=" + mtu);
+    }
+
+    @Override
+    public void onNotificationSent(BluetoothDevice device, int status) {
+        Log.i(TAG, "onNotificationSent: device=" + device.getAddress() + " status=" + status);
+        nativeOnNotificationSent(device.getAddress(), status);
     }
 
     @Override
@@ -71,8 +99,10 @@ public class SoradyneGattCallback extends BluetoothGattServerCallback {
                                               boolean responseNeeded,
                                               int offset,
                                               byte[] value) {
+        Log.i(TAG, "onCharacteristicWriteRequest: device=" + device.getAddress()
+                + " len=" + (value != null ? value.length : 0));
         nativeOnWrite(device.getAddress(), value);
-        if (responseNeeded) {
+        if (responseNeeded && gattServer != null) {
             gattServer.sendResponse(device, requestId,
                     BluetoothGatt.GATT_SUCCESS, 0, null);
         }
@@ -86,23 +116,20 @@ public class SoradyneGattCallback extends BluetoothGattServerCallback {
                                           boolean responseNeeded,
                                           int offset,
                                           byte[] value) {
-        // Accept CCCD enable/disable writes unconditionally.
-        if (responseNeeded) {
+        Log.i(TAG, "onDescriptorWriteRequest: device=" + device.getAddress()
+                + " uuid=" + descriptor.getUuid()
+                + " value=" + (value != null && value.length >= 1 ? value[0] : "null"));
+        if (responseNeeded && gattServer != null) {
             gattServer.sendResponse(device, requestId,
                     BluetoothGatt.GATT_SUCCESS, 0, null);
         }
-    }
-
-    // -----------------------------------------------------------------------
-    // AdvertiseCallback methods (no-op stubs; errors surface via logcat)
-    // -----------------------------------------------------------------------
-
-    public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-        // Advertising started successfully — nothing to do.
-    }
-
-    public void onStartFailure(int errorCode) {
-        android.util.Log.e("SoradyneGattCallback",
-                "BLE advertising failed: errorCode=" + errorCode);
+        // Start the protocol only after the central has enabled notifications
+        // (CCCD = 0x01). This prevents notifyCharacteristicChanged from being
+        // called before the central is subscribed, which would silently drop data.
+        if (descriptor.getUuid().toString().equalsIgnoreCase(CCCD_UUID)
+                && value != null && value.length >= 1 && value[0] == 0x01) {
+            Log.i(TAG, "CCCD enabled by " + device.getAddress() + " — starting protocol");
+            nativeOnConnected(device, gattServer);
+        }
     }
 }

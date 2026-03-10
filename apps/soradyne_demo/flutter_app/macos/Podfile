@@ -39,4 +39,39 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
   end
+
+  # Add a shell-script build phase to the main Runner target (in
+  # Runner.xcodeproj) that copies libsoradyne.dylib into the app bundle's
+  # Contents/Frameworks/ directory.  This runs in the right target context
+  # so TARGET_BUILD_DIR/CONTENTS_FOLDER_PATH resolve to the main app bundle.
+  main_project_path = File.join(File.dirname(File.realpath(__FILE__)), 'Runner.xcodeproj')
+  main_project = Xcodeproj::Project.open(main_project_path)
+
+  runner_target = main_project.targets.find { |t| t.name == 'Runner' }
+  if runner_target
+    # Remove any phase we added in a previous pod install to avoid duplicates.
+    runner_target.build_phases.delete_if do |p|
+      p.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase) &&
+        p.name == 'Copy libsoradyne.dylib'
+    end
+
+    phase = runner_target.new_shell_script_build_phase('Copy libsoradyne.dylib')
+    # SRCROOT for the Runner target is the macos/ directory.
+    # The plugin source lives two directories up: ../../packages/soradyne_flutter/macos/
+    phase.shell_script = <<~'SH'
+      DYLIB="${SRCROOT}/../../../../packages/soradyne_flutter/macos/libsoradyne.dylib"
+      DEST="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Frameworks/libsoradyne.dylib"
+      mkdir -p "$(dirname "$DEST")"
+      if [ -f "$DYLIB" ]; then
+        cp -f "$DYLIB" "$DEST"
+        codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:-}" \
+                 --timestamp=none "$DEST" 2>/dev/null || true
+        echo "rim: copied libsoradyne.dylib → $DEST"
+      else
+        echo "rim WARNING: $DYLIB not found" >&2
+      fi
+    SH
+
+    main_project.save
+  end
 end

@@ -28,6 +28,8 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>rim uses Bluetooth to pair and sync with nearby devices.</string>
 </dict>
 </plist>
 <?xml version="1.0" encoding="UTF-8"?>
