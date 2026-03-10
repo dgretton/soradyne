@@ -15,13 +15,10 @@ use btleplug::platform::{Adapter, Manager, Peripheral};
 use tokio::sync::{broadcast, mpsc, Mutex as TokioMutex};
 use tokio::time::{sleep, Duration};
 
+use super::framing::{build_frame, FrameReassembler, BLE_CHUNK_SIZE};
 use super::transport::{BleAddress, BleAdvertisement, BleCentral, BleConnection};
 use super::BleError;
 use crate::ble::gatt::{envelope_char_uuid, soradyne_service_uuid};
-
-/// Maximum bytes per GATT write or notification chunk.
-/// Android caps GATT attribute values at 512 bytes, so we stay comfortably below.
-const BLE_CHUNK_SIZE: usize = 500;
 
 // ---------------------------------------------------------------------------
 // BtleplugGattConnection
@@ -29,7 +26,7 @@ const BLE_CHUNK_SIZE: usize = 500;
 
 /// Reassembly state for length-framed BLE messages.
 struct RecvState {
-    buf: Vec<u8>,
+    reassembler: FrameReassembler,
     rx: mpsc::Receiver<Vec<u8>>,
 }
 
@@ -45,12 +42,8 @@ pub struct BtleplugGattConnection {
 #[async_trait]
 impl BleConnection for BtleplugGattConnection {
     /// Send `data` as a length-prefixed, BLE-chunked sequence of GATT writes.
-    ///
-    /// Frame format: `[u32 LE total_len][data...]` split into BLE_CHUNK_SIZE chunks.
     async fn send(&self, data: &[u8]) -> Result<(), BleError> {
-        let mut frame = Vec::with_capacity(4 + data.len());
-        frame.extend_from_slice(&(data.len() as u32).to_le_bytes());
-        frame.extend_from_slice(data);
+        let frame = build_frame(data);
         for chunk in frame.chunks(BLE_CHUNK_SIZE) {
             self.peripheral
                 .write(&self.char, chunk, WriteType::WithoutResponse)
@@ -64,18 +57,11 @@ impl BleConnection for BtleplugGattConnection {
     async fn recv(&self) -> Result<Vec<u8>, BleError> {
         let mut st = self.recv_state.lock().await;
         loop {
-            if st.buf.len() >= 4 {
-                let len = u32::from_le_bytes([
-                    st.buf[0], st.buf[1], st.buf[2], st.buf[3],
-                ]) as usize;
-                if st.buf.len() >= 4 + len {
-                    let msg = st.buf[4..4 + len].to_vec();
-                    st.buf = st.buf[4 + len..].to_vec();
-                    return Ok(msg);
-                }
+            if let Some(msg) = st.reassembler.try_extract() {
+                return Ok(msg);
             }
             let chunk = st.rx.recv().await.ok_or(BleError::Disconnected)?;
-            st.buf.extend_from_slice(&chunk);
+            st.reassembler.push(&chunk);
         }
     }
 
@@ -331,7 +317,7 @@ impl BleCentral for BtleplugCentral {
         Ok(Box::new(BtleplugGattConnection {
             peripheral,
             char: gatt_char,
-            recv_state: TokioMutex::new(RecvState { buf: Vec::new(), rx: notif_rx }),
+            recv_state: TokioMutex::new(RecvState { reassembler: FrameReassembler::new(), rx: notif_rx }),
             address: ble_addr,
         }))
     }

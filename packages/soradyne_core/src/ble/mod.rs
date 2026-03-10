@@ -4,6 +4,7 @@
 //! encrypted advertisement payloads, and the RoutedEnvelope message format.
 
 pub mod encrypted_adv;
+pub mod framing;
 pub mod gatt;
 pub mod simulated;
 pub mod transport;
@@ -13,6 +14,9 @@ pub mod btleplug_central;
 
 #[cfg(target_os = "android")]
 pub mod android_peripheral;
+
+#[cfg(feature = "tcp-transport")]
+pub mod tcp_transport;
 
 use thiserror::Error;
 

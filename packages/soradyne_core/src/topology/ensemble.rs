@@ -64,6 +64,7 @@ pub enum TransportType {
     BleDirect,
     BleRelayed { via: Uuid },
     SimulatedBle,
+    TcpDirect,
 }
 
 /// Quality metrics for a connection.
@@ -92,6 +93,7 @@ fn transport_discriminant(t: &TransportType) -> u8 {
         TransportType::BleDirect => 0,
         TransportType::BleRelayed { .. } => 1,
         TransportType::SimulatedBle => 2,
+        TransportType::TcpDirect => 3,
     }
 }
 

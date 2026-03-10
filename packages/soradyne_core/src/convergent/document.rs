@@ -102,6 +102,11 @@ impl<S: DocumentSchema> ConvergentDocument<S> {
         if self.operations.contains_key(&key) {
             return;
         }
+        // Advance next_seq if this is our own op loaded from persistent storage,
+        // so new apply_local calls don't collide with previously persisted seqs.
+        if envelope.author == self.device_id && envelope.seq >= self.next_seq {
+            self.next_seq = envelope.seq + 1;
+        }
         self.store_operation(envelope);
     }
 

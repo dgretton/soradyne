@@ -6,6 +6,7 @@
 library;
 
 import 'dart:io';
+import 'dart:math' as math;
 import '../ffi/flow_client.dart';
 import '../graph/giantt_graph.dart';
 import '../parser/giantt_parser.dart';
@@ -48,6 +49,99 @@ class FlowRepository {
     if (_initialized) return;
     FlowClient.initialize(deviceId);
     _initialized = true;
+  }
+
+  /// Try to initialize the flow system; returns true if successful.
+  ///
+  /// Unlike [initialize], this does not throw if the native library is
+  /// unavailable. Returns false instead, allowing callers to fall back to
+  /// file-based storage.
+  static bool initializeIfAvailable(String deviceId) {
+    if (_initialized) return true;
+    try {
+      FlowClient.initialize(deviceId);
+      _initialized = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Return the default .giantt workspace directory path for the current
+  /// working directory or the user's home directory.
+  static String getDefaultWorkspacePath() {
+    // Prefer local .giantt directory
+    if (Directory('.giantt').existsSync()) {
+      return '.giantt';
+    }
+    final homeDir =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (homeDir != null) {
+      final homeGiantt = Directory('$homeDir/.giantt');
+      if (homeGiantt.existsSync()) {
+        return '$homeDir/.giantt';
+      }
+    }
+    return '.giantt';
+  }
+
+  /// Return (or create) a stable flow UUID for the given workspace directory.
+  ///
+  /// On the first call for a workspace the method:
+  /// 1. Generates a new UUID.
+  /// 2. Imports any existing `include/items.txt` and `occlude/items.txt`.
+  /// 3. Persists the UUID to `<workspacePath>/.flow_id`.
+  ///
+  /// Subsequent calls simply read `<workspacePath>/.flow_id`.
+  static String getOrCreateFlowId(String workspacePath) {
+    _ensureInitialized();
+
+    final flowIdFile = File('$workspacePath/.flow_id');
+    if (flowIdFile.existsSync()) {
+      return flowIdFile.readAsStringSync().trim();
+    }
+
+    // First run: create UUID, import legacy files, persist UUID
+    final uuid = _generateUuid();
+
+    final itemsPath = '$workspacePath/include/items.txt';
+    if (File(itemsPath).existsSync()) {
+      try {
+        importLegacyFile(uuid, itemsPath);
+      } catch (e) {
+        // Non-fatal: log and continue
+        stderr.writeln('[soradyne] Warning: failed to import $itemsPath: $e');
+      }
+    }
+
+    final occludeItemsPath = '$workspacePath/occlude/items.txt';
+    if (File(occludeItemsPath).existsSync()) {
+      try {
+        importLegacyFile(uuid, occludeItemsPath);
+      } catch (e) {
+        stderr.writeln(
+            '[soradyne] Warning: failed to import $occludeItemsPath: $e');
+      }
+    }
+
+    flowIdFile.writeAsStringSync(uuid);
+    return uuid;
+  }
+
+  /// Generate a cryptographically random UUID v4.
+  static String _generateUuid() {
+    final rng = math.Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    // Set version 4 bits
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    // Set variant bits
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+        '${hex.substring(20, 32)}';
   }
 
   /// Load a graph from a flow.
@@ -182,6 +276,35 @@ class FlowRepository {
     final client = FlowClient.open(flowUuid);
     try {
       client.applyRemoteOperations(operationsJson);
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Connect a flow to a TCP peer for direct CRDT sync (no pairing needed).
+  ///
+  /// [flowUuid]  — the flow to sync (both devices must use the same UUID).
+  /// [peerAddr]  — "ip:port" string (Tailscale IP, LAN IP, etc.).
+  /// [listen]    — if true, bind and wait for the peer (server role);
+  ///               if false, connect out to the peer (client role).
+  ///
+  /// Blocks until the TCP connection is established and the background sync
+  /// loop is started. The caller can then read/write operations normally and
+  /// they will be replicated to the peer automatically.
+  ///
+  /// Example (two terminals):
+  /// ```
+  /// # Device A (server — run first)
+  /// FlowRepository.connectTcp(flowId, '0.0.0.0:7979', listen: true);
+  ///
+  /// # Device B (client)
+  /// FlowRepository.connectTcp(flowId, '100.64.x.y:7979', listen: false);
+  /// ```
+  static void connectTcp(String flowUuid, String peerAddr, {bool listen = false}) {
+    _ensureInitialized();
+    final client = FlowClient.open(flowUuid);
+    try {
+      client.connectTcp(peerAddr, listen: listen);
     } finally {
       client.close();
     }

@@ -29,6 +29,8 @@ struct FlowRegistry {
     flows: HashMap<String, Arc<Mutex<GianttFlow>>>,
     device_id: DeviceId,
     data_dir: PathBuf,
+    /// Tokio runtime for async operations (TCP connect, flow start).
+    runtime: tokio::runtime::Runtime,
 }
 
 impl FlowRegistry {
@@ -45,10 +47,18 @@ impl FlowRegistry {
         // Ensure directory exists
         let _ = std::fs::create_dir_all(&data_dir);
 
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .thread_name("giantt-flow")
+            .build()
+            .expect("failed to build Tokio runtime for GianttFlow");
+
         Self {
             flows: HashMap::new(),
             device_id,
             data_dir,
+            runtime,
         }
     }
 
@@ -150,7 +160,34 @@ impl GianttFlow {
     }
 
     /// Apply a local operation
+    ///
+    /// For RemoveFromSet with empty observed_add_ids, automatically fills in
+    /// the add IDs from the document. This lets the Dart side send a simple
+    /// RemoveFromSet without needing to track add IDs.
     pub fn apply_operation(&mut self, op: Operation) -> OpEnvelope {
+        let op = match op {
+            Operation::RemoveFromSet {
+                ref item_id,
+                ref set_name,
+                ref element,
+                ref observed_add_ids,
+            } if observed_add_ids.is_empty() => {
+                let add_ids = self
+                    .flow
+                    .document()
+                    .read()
+                    .unwrap()
+                    .get_add_ids_for_element(item_id, set_name, element);
+                Operation::remove_from_set(
+                    item_id.clone(),
+                    set_name.clone(),
+                    element.clone(),
+                    add_ids,
+                )
+            }
+            other => other,
+        };
+
         // OfflineMerge never fails for apply_edit
         let envelope = self.flow.apply_edit(op).unwrap();
         self.dirty = true;
@@ -189,30 +226,113 @@ impl GianttFlow {
         serialize_giantt_state(&giantt_state)
     }
 
-    /// Persist operations to disk
+    /// Persist operations to disk and write a rolling .giantt backup snapshot.
     fn flush(&mut self) {
         if !self.dirty {
             return;
         }
 
-        if let Some(ref path) = self.storage_path {
-            let _ = std::fs::create_dir_all(path);
+        let Some(ref path) = self.storage_path else {
+            return;
+        };
 
-            let ops_path = path.join("operations.jsonl");
+        if let Err(e) = std::fs::create_dir_all(path) {
+            eprintln!("[giantt_flow] flush: failed to create dir {:?}: {}", path, e);
+            return;
+        }
+
+        // Write operations.jsonl atomically
+        let ops_path = path.join("operations.jsonl");
+        let tmp_path = path.join("operations.jsonl.tmp");
+
+        let result = (|| -> std::io::Result<()> {
+            use std::io::Write;
             let doc = self.flow.document().read().unwrap();
             let ops: Vec<_> = doc.all_operations().collect();
+            let file = std::fs::File::create(&tmp_path)?;
+            let mut writer = std::io::BufWriter::new(file);
+            for op in ops {
+                let json = serde_json::to_string(op)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                writeln!(writer, "{}", json)?;
+            }
+            writer.flush()
+        })();
 
-            if let Ok(file) = std::fs::File::create(&ops_path) {
-                use std::io::Write;
-                let mut writer = std::io::BufWriter::new(file);
-                for op in ops {
-                    if let Ok(json) = serde_json::to_string(op) {
-                        let _ = writeln!(writer, "{}", json);
-                    }
+        match result {
+            Ok(()) => {
+                if let Err(e) = std::fs::rename(&tmp_path, &ops_path) {
+                    eprintln!("[giantt_flow] flush: rename failed: {}", e);
+                    let _ = std::fs::remove_file(&tmp_path);
+                    return;
                 }
             }
+            Err(e) => {
+                eprintln!("[giantt_flow] flush: write failed: {}", e);
+                let _ = std::fs::remove_file(&tmp_path);
+                return;
+            }
+        }
 
-            self.dirty = false;
+        self.dirty = false;
+
+        // Write rolling .giantt backup snapshot
+        self.write_backup(path);
+    }
+
+    /// Write a timestamped .giantt snapshot to the backups/ subdirectory.
+    ///
+    /// Keeps the last MAX_BACKUPS files. Skips if the current state is empty
+    /// (guards against overwriting good backups with an empty state during
+    /// development).
+    fn write_backup(&self, path: &std::path::Path) {
+
+        const MAX_BACKUPS: usize = 5;
+
+        // Materialize current state
+        let doc_state = self.flow.document().read().unwrap().materialize();
+        let giantt_state = GianttState::from_document_state(&doc_state);
+
+        // Skip empty states — protects against overwriting good backups
+        if giantt_state.items.is_empty() {
+            return;
+        }
+
+        let text = serialize_giantt_state(&giantt_state);
+
+        let backup_dir = path.join("backups");
+        if let Err(e) = std::fs::create_dir_all(&backup_dir) {
+            eprintln!("[giantt_flow] backup: failed to create dir: {}", e);
+            return;
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let backup_file = backup_dir.join(format!("giantt_{}.txt", timestamp));
+
+        if let Err(e) = std::fs::write(&backup_file, &text) {
+            eprintln!("[giantt_flow] backup: write failed: {}", e);
+            return;
+        }
+
+        // Rotate: collect all backup files, sort, remove oldest beyond MAX_BACKUPS
+        if let Ok(entries) = std::fs::read_dir(&backup_dir) {
+            let mut files: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    let name = e.file_name();
+                    let s = name.to_string_lossy();
+                    s.starts_with("giantt_") && s.ends_with(".txt")
+                })
+                .collect();
+            if files.len() > MAX_BACKUPS {
+                files.sort_by_key(|e| e.file_name());
+                for old in files.iter().take(files.len() - MAX_BACKUPS) {
+                    let _ = std::fs::remove_file(old.path());
+                }
+            }
         }
     }
 
@@ -530,6 +650,166 @@ pub extern "C" fn soradyne_flow_connect_ensemble(
             }
         }
         Err(_) => -1,
+    }
+}
+
+/// Connect a giantt flow directly to a TCP peer for sync (no capsule/pairing needed).
+///
+/// Creates a standalone topology messenger and wires it to the flow, then
+/// starts the flow's background sync loop.
+///
+/// `peer_addr_ptr`: "ip:port" — the peer's address (Tailscale IP, LAN IP, etc.)
+/// `listen`:  1 = bind and wait for one incoming connection (server role)
+///            0 = connect to the peer (client role)
+///
+/// Both sides must call this function. The server side should call first, then
+/// the client. A lightweight UUID handshake is performed to learn the peer's
+/// device identity.
+///
+/// Returns 0 on success, non-zero on error.
+#[no_mangle]
+#[cfg(feature = "tcp-transport")]
+pub extern "C" fn soradyne_flow_connect_tcp(
+    handle: *mut std::ffi::c_void,
+    peer_addr_ptr: *const c_char,
+    listen: i32,
+) -> i32 {
+    if handle.is_null() || peer_addr_ptr.is_null() {
+        return -1;
+    }
+
+    let addr_str = unsafe {
+        match CStr::from_ptr(peer_addr_ptr).to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => return -2,
+        }
+    };
+
+    let socket_addr: std::net::SocketAddr = match addr_str.parse() {
+        Ok(a) => a,
+        Err(_) => {
+            eprintln!("[giantt_tcp] invalid address: {}", addr_str);
+            return -3;
+        }
+    };
+
+    // Retrieve device_id and runtime from registry (read lock — no mutation needed).
+    let (device_id_str, runtime_handle) = {
+        let reg = match FLOW_REGISTRY.read() {
+            Ok(r) => r,
+            Err(_) => return -4,
+        };
+        match reg.as_ref() {
+            Some(r) => (r.device_id.clone(), r.runtime.handle().clone()),
+            None => return -5,
+        }
+    };
+
+    // Safety: handle was produced by Arc::into_raw in soradyne_flow_open.
+    // We reconstruct an Arc, use it, then forget it so the refcount isn't decremented.
+    let flow_arc = unsafe {
+        let arc = Arc::from_raw(handle as *const Mutex<GianttFlow>);
+        let clone = Arc::clone(&arc);
+        std::mem::forget(arc); // don't decrement refcount
+        clone
+    };
+    let local_uuid = device_uuid_from_id(&device_id_str);
+
+    let result = runtime_handle.block_on(async move {
+        use crate::ble::transport::{BleAddress, BleCentral, BlePeripheral};
+        use crate::topology::ensemble::{
+            ConnectionQuality, EnsembleTopology, PiecePresence, PieceReachability, TopologyEdge,
+            TransportType,
+        };
+        use crate::topology::messenger::TopologyMessenger;
+        use chrono::Utc;
+
+        // ── 1. Establish TCP connection ────────────────────────────────────
+        let raw_conn: Box<dyn crate::ble::transport::BleConnection> = if listen != 0 {
+            use crate::ble::tcp_transport::TcpPeripheral;
+            let peripheral = TcpPeripheral::new(socket_addr);
+            peripheral.start_advertising(vec![]).await?;
+            peripheral.accept().await?
+        } else {
+            use crate::ble::tcp_transport::TcpCentral;
+            let central = TcpCentral::new();
+            central.connect(&BleAddress::Tcp(socket_addr)).await?
+        };
+
+        // ── 2. UUID handshake: exchange device identities ──────────────────
+        // Both sides send their UUID bytes simultaneously then read the peer's.
+        raw_conn.send(local_uuid.as_bytes()).await?;
+        let peer_bytes = raw_conn.recv().await?;
+        let peer_id = if peer_bytes.len() == 16 {
+            let mut b = [0u8; 16];
+            b.copy_from_slice(&peer_bytes);
+            Uuid::from_bytes(b)
+        } else {
+            eprintln!("[giantt_tcp] bad handshake: expected 16 bytes, got {}", peer_bytes.len());
+            return Err(crate::ble::BleError::ConnectionError("handshake failed".into()));
+        };
+
+        // ── 3. Build standalone messenger + topology ───────────────────────
+        let now = Utc::now();
+        let topology = Arc::new(tokio::sync::RwLock::new(EnsembleTopology::new()));
+        let messenger = TopologyMessenger::new(local_uuid, Arc::clone(&topology));
+
+        {
+            let mut t = topology.write().await;
+            t.upsert_piece(PiecePresence {
+                device_id: local_uuid,
+                last_advertisement: now,
+                last_data_exchange: Some(now),
+                rssi: None,
+                reachability: PieceReachability::Direct,
+            });
+            t.upsert_piece(PiecePresence {
+                device_id: peer_id,
+                last_advertisement: now,
+                last_data_exchange: Some(now),
+                rssi: None,
+                reachability: PieceReachability::Direct,
+            });
+            t.add_edge(TopologyEdge {
+                from: local_uuid,
+                to: peer_id,
+                transport: TransportType::TcpDirect,
+                quality: ConnectionQuality::unknown(),
+            });
+            t.add_edge(TopologyEdge {
+                from: peer_id,
+                to: local_uuid,
+                transport: TransportType::TcpDirect,
+                quality: ConnectionQuality::unknown(),
+            });
+        }
+
+        // ── 4. Register connection with messenger ──────────────────────────
+        let conn_arc: Arc<dyn crate::ble::transport::BleConnection> = Arc::from(raw_conn);
+        messenger.add_connection(peer_id, conn_arc).await;
+
+        // ── 5. Wire flow to messenger and start sync ───────────────────────
+        {
+            use crate::flow::flow_core::Flow;
+            let mut flow = flow_arc.lock().map_err(|_| {
+                crate::ble::BleError::ConnectionError("flow lock poisoned".into())
+            })?;
+            flow.drip_flow_mut().set_ensemble(Arc::clone(&messenger), Arc::clone(&topology));
+            flow.drip_flow().start().map_err(|e| {
+                crate::ble::BleError::ConnectionError(format!("flow start: {:?}", e))
+            })?;
+        }
+
+        eprintln!("[giantt_tcp] connected: local={} peer={}", local_uuid, peer_id);
+        Ok::<_, crate::ble::BleError>(())
+    });
+
+    match result {
+        Ok(()) => 0,
+        Err(e) => {
+            eprintln!("[giantt_tcp] connect failed: {}", e);
+            -10
+        }
     }
 }
 

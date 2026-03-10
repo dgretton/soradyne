@@ -97,6 +97,8 @@ video-thumbnails = ["ffmpeg-next"]
 # Enable btleplug-based BLE Central scanning (Mac/Linux/Windows).
 # Android peripheral support is compiled unconditionally on Android via cfg.
 ble-central = ["btleplug"]
+# TCP transport for LAN-based CRDT sync (no BLE hardware required).
+tcp-transport = []
 
 [profile.release]
 lto = true

@@ -4,7 +4,43 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:giantt_core/giantt_core.dart';
 
+// ---------------------------------------------------------------------------
+// Flow system state (initialised once at startup)
+// ---------------------------------------------------------------------------
+
+bool _flowAvailable = false;
+
+/// Try to wire up the Soradyne FFI flow system.
+///
+/// Silently falls back to file-based storage if the native library is not
+/// found, so the CLI still works without a Rust build.
+void _tryInitFlow() {
+  final deviceId = Platform.localHostname;
+  _flowAvailable = FlowRepository.initializeIfAvailable(deviceId);
+  if (!_flowAvailable) {
+    stderr.writeln(
+        '[soradyne] Native library unavailable — using file-based storage.\n'
+        '           Run: cargo build --release --features ble-central '
+        '--no-default-features\n'
+        '           and ensure libsoradyne is on the library search path.');
+  }
+}
+
+/// Return the flow UUID for the current workspace, or null if flow is
+/// unavailable or not yet initialised for this workspace.
+String? _getFlowId() {
+  if (!_flowAvailable) return null;
+  try {
+    final ws = FlowRepository.getDefaultWorkspacePath();
+    return FlowRepository.getOrCreateFlowId(ws);
+  } catch (e) {
+    stderr.writeln('[soradyne] Could not get flow ID: $e');
+    return null;
+  }
+}
+
 void main(List<String> arguments) async {
+  _tryInitFlow();
   final parser = ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help information', negatable: false)
     ..addFlag('version', abbr: 'v', help: 'Show version information', negatable: false);
@@ -25,6 +61,7 @@ void main(List<String> arguments) async {
   parser.addCommand('occlude', _createOccludeCommand());
   parser.addCommand('doctor', _createDoctorCommand());
   parser.addCommand('add-include', _createAddIncludeCommand());
+  parser.addCommand('sync', _createSyncCommand());
 
   try {
     final results = parser.parse(arguments);
@@ -295,6 +332,21 @@ ArgParser _createAddIncludeCommand() {
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use');
 }
 
+ArgParser _createSyncCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addOption('peer',
+        abbr: 'p',
+        help: 'Peer address to connect to (ip:port). Required unless --listen is set.')
+    ..addFlag('listen',
+        abbr: 'l',
+        help: 'Listen for an incoming connection on --port instead of connecting out.',
+        negatable: false)
+    ..addOption('port',
+        defaultsTo: '7979',
+        help: 'Port to listen on when --listen is set (default: 7979).');
+}
+
 Future<void> _executeCommand(ArgResults command) async {
   switch (command.name) {
     case 'init':
@@ -341,6 +393,9 @@ Future<void> _executeCommand(ArgResults command) async {
       break;
     case 'add-include':
       await _executeAddInclude(command);
+      break;
+    case 'sync':
+      await _executeSync(command);
       break;
     default:
       throw ArgumentError('Unknown command: ${command.name}');
@@ -438,9 +493,12 @@ Future<void> _executeAdd(ArgResults args) async {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
-    // Load existing graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
-    
+    // Load existing graph (prefer flow for up-to-date state)
+    final flowId = _getFlowId();
+    final graph = flowId != null
+        ? FlowRepository.loadGraph(flowId)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
     // Validate ID is unique and doesn't conflict with titles (matching Python logic)
     if (graph.items.containsKey(id)) {
       final existingItem = graph.items[id]!;
@@ -523,10 +581,10 @@ Future<void> _executeAdd(ArgResults args) async {
       tags: tagList,
       relations: relations,
     );
-    
-    // Add to graph
+
+    // Add to graph (for cycle check)
     graph.addItem(newItem);
-    
+
     // Check for cycles
     try {
       graph.topologicalSort();
@@ -534,10 +592,15 @@ Future<void> _executeAdd(ArgResults args) async {
       stderr.writeln('Error: Adding this item would create a cycle in dependencies');
       exit(1);
     }
-    
-    // Save graph
-    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
-    
+
+    // Persist: prefer Flow CRDT; fall back to file
+    if (flowId != null) {
+      final ops = GianttOp.fromItem(newItem);
+      FlowRepository.saveOperations(flowId, ops);
+    } else {
+      FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    }
+
     print('Successfully added item "$id"');
   } catch (e) {
     stderr.writeln('Error: $e');
@@ -562,10 +625,13 @@ Future<void> _executeShow(ArgResults args) async {
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
-    
-    // Load graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
-    
+
+    // Load graph — prefer Flow CRDT so synced state is visible; fall back to file
+    final flowId = _getFlowId();
+    final graph = flowId != null
+        ? FlowRepository.loadGraph(flowId)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
     if (!searchChart && !searchLog) {
       // Show item details
       await _showOneItem(graph, substring);
@@ -691,8 +757,11 @@ Future<void> _executeModify(ArgResults args) async {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
 
-    // Load graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    // Load graph — prefer Flow CRDT; fall back to file
+    final flowId = _getFlowId();
+    final graph = flowId != null
+        ? FlowRepository.loadGraph(flowId)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
 
     // Find item by ID or substring
     GianttItem? item;
@@ -795,7 +864,7 @@ Future<void> _executeModify(ArgResults args) async {
         exit(1);
     }
 
-    // Update in graph
+    // Update in graph (for cycle check)
     graph.addItem(modifiedItem);
 
     // Check for cycles if relations were modified
@@ -808,8 +877,13 @@ Future<void> _executeModify(ArgResults args) async {
       }
     }
 
-    // Save graph
-    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    // Build CRDT ops from the diff between old item and modified item
+    if (flowId != null) {
+      final ops = _buildModifyOps(item, modifiedItem, property, addMode, removeMode);
+      FlowRepository.saveOperations(flowId, ops);
+    } else {
+      FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    }
 
     print('Successfully modified "$property" for item "${item.id}"');
   } catch (e) {
@@ -835,8 +909,11 @@ Future<void> _executeRemove(ArgResults args) async {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
 
-    // Load graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    // Load graph — prefer Flow CRDT; fall back to file
+    final flowId = _getFlowId();
+    final graph = flowId != null
+        ? FlowRepository.loadGraph(flowId)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
 
     // Find the item
     if (!graph.items.containsKey(itemId)) {
@@ -862,34 +939,45 @@ Future<void> _executeRemove(ArgResults args) async {
       }
     }
 
-    // Remove the item
-    graph.removeItem(itemId);
-
-    // Clean up relations that reference this item (unless keep-relations is set)
+    // Collect relation cleanup ops BEFORE mutating the graph
+    final relCleanupOps = <GianttOp>[];
     if (!keepRelations) {
       for (final item in graph.items.values) {
-        bool modified = false;
-        final newRelations = <String, List<String>>{};
-
+        if (item.id == itemId) continue;
         for (final entry in item.relations.entries) {
-          final cleanedTargets = entry.value.where((target) => target != itemId).toList();
-          if (cleanedTargets.length != entry.value.length) {
-            modified = true;
+          if (entry.value.contains(itemId)) {
+            relCleanupOps.add(
+              GianttOp.removeFromSet(item.id, entry.key.toLowerCase(), itemId, []),
+            );
           }
-          if (cleanedTargets.isNotEmpty) {
-            newRelations[entry.key] = cleanedTargets;
-          }
-        }
-
-        if (modified) {
-          final updatedItem = item.copyWith(relations: newRelations);
-          graph.addItem(updatedItem);
         }
       }
     }
 
-    // Save graph
-    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    // Remove the item from the local graph and clean up relations for file-based path
+    graph.removeItem(itemId);
+    if (!keepRelations) {
+      for (final item in graph.items.values) {
+        bool modified = false;
+        final newRelations = <String, List<String>>{};
+        for (final entry in item.relations.entries) {
+          final cleanedTargets = entry.value.where((t) => t != itemId).toList();
+          if (cleanedTargets.length != entry.value.length) modified = true;
+          if (cleanedTargets.isNotEmpty) newRelations[entry.key] = cleanedTargets;
+        }
+        if (modified) graph.addItem(item.copyWith(relations: newRelations));
+      }
+    }
+
+    // Persist: prefer Flow CRDT; fall back to file
+    if (flowId != null) {
+      FlowRepository.saveOperation(flowId, GianttOp.removeItem(itemId));
+      for (final op in relCleanupOps) {
+        FlowRepository.saveOperation(flowId, op);
+      }
+    } else {
+      FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    }
 
     print('Successfully removed item "$itemId"');
   } catch (e) {
@@ -915,8 +1003,11 @@ Future<void> _executeSetStatus(ArgResults args) async {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
 
-    // Load graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    // Load graph — prefer Flow CRDT; fall back to file
+    final flowId = _getFlowId();
+    final graph = flowId != null
+        ? FlowRepository.loadGraph(flowId)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
 
     // Find item by ID or substring
     GianttItem? item;
@@ -954,8 +1045,13 @@ Future<void> _executeSetStatus(ArgResults args) async {
     final updatedItem = item.copyWith(status: newStatus);
     graph.addItem(updatedItem);
 
-    // Save graph
-    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    // Persist: prefer Flow CRDT; fall back to file
+    if (flowId != null) {
+      FlowRepository.saveOperation(
+          flowId, GianttOp.setStatus(item.id, newStatus));
+    } else {
+      FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    }
 
     print('Set status of "${item.id}" to ${newStatus.name}');
   } catch (e) {
@@ -1685,7 +1781,141 @@ Future<void> _executeDoctorListTypes() async {
   }
 }
 
+/// Build the minimal list of CRDT ops that transforms [oldItem] into
+/// [modifiedItem] for the given [property].
+List<GianttOp> _buildModifyOps(
+  GianttItem oldItem,
+  GianttItem modifiedItem,
+  String property,
+  bool addMode,
+  bool removeMode,
+) {
+  final ops = <GianttOp>[];
+  final id = oldItem.id;
+
+  switch (property.toLowerCase()) {
+    case 'title':
+      ops.add(GianttOp.setTitle(id, modifiedItem.title));
+    case 'status':
+      ops.add(GianttOp.setStatus(id, modifiedItem.status));
+    case 'priority':
+      ops.add(GianttOp.setPriority(id, modifiedItem.priority));
+    case 'duration':
+      ops.add(GianttOp.setDuration(id, modifiedItem.duration));
+    case 'comment':
+      ops.add(GianttOp.setComment(id, modifiedItem.userComment));
+    case 'charts':
+      ops.addAll(_setDiffOps(id, 'charts', oldItem.charts.toSet(),
+          modifiedItem.charts.toSet(), addMode, removeMode));
+    case 'tags':
+      ops.addAll(_setDiffOps(id, 'tags', oldItem.tags.toSet(),
+          modifiedItem.tags.toSet(), addMode, removeMode));
+    case 'requires':
+      ops.addAll(_setDiffOps(
+          id,
+          'requires',
+          (oldItem.relations['REQUIRES'] ?? []).toSet(),
+          (modifiedItem.relations['REQUIRES'] ?? []).toSet(),
+          addMode,
+          removeMode));
+    case 'anyof':
+      ops.addAll(_setDiffOps(
+          id,
+          'anyof',
+          (oldItem.relations['ANYOF'] ?? []).toSet(),
+          (modifiedItem.relations['ANYOF'] ?? []).toSet(),
+          addMode,
+          removeMode));
+    case 'blocks':
+      ops.addAll(_setDiffOps(
+          id,
+          'blocks',
+          (oldItem.relations['BLOCKS'] ?? []).toSet(),
+          (modifiedItem.relations['BLOCKS'] ?? []).toSet(),
+          addMode,
+          removeMode));
+  }
+
+  return ops;
+}
+
+/// Compute AddToSet / RemoveFromSet ops for a set field.
+List<GianttOp> _setDiffOps(
+  String itemId,
+  String setName,
+  Set<String> oldSet,
+  Set<String> newSet,
+  bool addMode,
+  bool removeMode,
+) {
+  final ops = <GianttOp>[];
+  if (addMode) {
+    // Add only the new elements
+    for (final e in newSet.difference(oldSet)) {
+      ops.add(GianttOp.addToSet(itemId, setName, e));
+    }
+  } else if (removeMode) {
+    // Remove only the specified elements
+    for (final e in oldSet.difference(newSet)) {
+      ops.add(GianttOp.removeFromSet(itemId, setName, e, []));
+    }
+  } else {
+    // Replace: remove elements no longer in the set, add new ones
+    for (final e in oldSet.difference(newSet)) {
+      ops.add(GianttOp.removeFromSet(itemId, setName, e, []));
+    }
+    for (final e in newSet.difference(oldSet)) {
+      ops.add(GianttOp.addToSet(itemId, setName, e));
+    }
+  }
+  return ops;
+}
+
 /// Get the default path for Giantt files
+Future<void> _executeSync(ArgResults args) async {
+  final listen = args['listen'] as bool;
+  final port = args['port'] as String? ?? '7979';
+  final peer = args['peer'] as String?;
+
+  if (!_flowAvailable) {
+    stderr.writeln('Error: Flow system unavailable — native library not found.');
+    exit(1);
+  }
+
+  final flowId = _getFlowId();
+  if (flowId == null) {
+    stderr.writeln('Error: Could not determine flow ID for this workspace.');
+    exit(1);
+  }
+
+  final String peerAddr;
+  if (listen) {
+    peerAddr = '0.0.0.0:$port';
+    print('Listening on $peerAddr  (flow: $flowId)');
+    print('Share this flow ID with the peer: $flowId');
+  } else {
+    if (peer == null || peer.isEmpty) {
+      stderr.writeln('Error: --peer <ip:port> is required when not using --listen.');
+      exit(1);
+    }
+    peerAddr = peer;
+    print('Connecting to $peerAddr  (flow: $flowId)');
+  }
+
+  try {
+    FlowRepository.connectTcp(flowId, peerAddr, listen: listen);
+  } on FlowException catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
+
+  print('Sync active. Press Ctrl+C to stop.');
+
+  // Block until the process is interrupted.
+  await ProcessSignal.sigint.watch().first;
+  print('\nSync stopped.');
+}
+
 String _getDefaultGianttPath(String filename, {bool occlude = false}) {
   final filepath = '${occlude ? 'occlude' : 'include'}${Platform.pathSeparator}$filename';
   

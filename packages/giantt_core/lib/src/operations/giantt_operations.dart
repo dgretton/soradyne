@@ -195,18 +195,13 @@ class SetFieldOp implements GianttOp {
     ];
   }
 
-  static Map<String, dynamic> _encodeValue(dynamic value) {
-    if (value == null) {
-      return {'Null': null};
-    } else if (value is bool) {
-      return {'Bool': value};
-    } else if (value is int) {
-      return {'Int': value};
-    } else if (value is String) {
-      return {'String': value};
-    } else {
-      return {'String': value.toString()};
-    }
+  static dynamic _encodeValue(dynamic value) {
+    // Value is #[serde(untagged)] in Rust — serialize bare JSON, not tagged objects.
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value;
+    if (value is String) return value;
+    return value.toString();
   }
 }
 
@@ -225,7 +220,7 @@ class AddToSetOp implements GianttOp {
         'AddToSet': {
           'item_id': itemId,
           'set_name': setName,
-          'element': {'String': element},
+          'element': element,
         },
       },
     ];
@@ -250,7 +245,7 @@ class RemoveFromSetOp implements GianttOp {
         'RemoveFromSet': {
           'item_id': itemId,
           'set_name': setName,
-          'element': {'String': element},
+          'element': element,
           'observed_add_ids': observedAddIds,
         },
       },

@@ -269,6 +269,58 @@ impl EnsembleManager {
     // Connection management
     // ------------------------------------------------------------------
 
+    /// Register a pre-established connection (e.g. TCP) directly,
+    /// bypassing the scan→advertise pipeline.
+    ///
+    /// Creates bidirectional topology edges with the specified transport
+    /// type and wires the connection into the messenger for routing.
+    pub async fn add_direct_connection(
+        &self,
+        peer_id: Uuid,
+        conn: Arc<dyn BleConnection>,
+        transport_type: TransportType,
+    ) {
+        // 1. Register with messenger (starts recv loop)
+        self.messenger.add_connection(peer_id, conn).await;
+
+        // 2. Update topology with bidirectional edges
+        {
+            let mut topo = self.topology.write().await;
+            topo.upsert_piece(PiecePresence {
+                device_id: self.device_id,
+                last_advertisement: Utc::now(),
+                last_data_exchange: Some(Utc::now()),
+                rssi: None,
+                reachability: PieceReachability::Direct,
+            });
+            topo.upsert_piece(PiecePresence {
+                device_id: peer_id,
+                last_advertisement: Utc::now(),
+                last_data_exchange: Some(Utc::now()),
+                rssi: None,
+                reachability: PieceReachability::Direct,
+            });
+            topo.add_edge(TopologyEdge {
+                from: self.device_id,
+                to: peer_id,
+                transport: transport_type.clone(),
+                quality: ConnectionQuality::unknown(),
+            });
+            topo.add_edge(TopologyEdge {
+                from: peer_id,
+                to: self.device_id,
+                transport: transport_type,
+                quality: ConnectionQuality::unknown(),
+            });
+        }
+
+        // 3. Send our topology view to the peer
+        self.send_topology_update(peer_id).await;
+
+        // 4. Propagate peer introductions
+        self.propagate_peer_info(peer_id).await;
+    }
+
     /// Register a peer connection: update topology, start message routing,
     /// exchange topology info, and propagate peer introductions.
     pub async fn add_peer_connection(

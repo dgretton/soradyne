@@ -1,22 +1,28 @@
-//! BLE transport trait definitions and core types
+//! Transport trait definitions and core types
 //!
-//! Defines the abstract BLE interface that both the simulated transport
-//! and future real BLE (btleplug) implementations conform to.
+//! These traits (`BleConnection`, `BleCentral`, `BlePeripheral`) are
+//! transport-agnostic despite the `Ble` prefix — their signatures
+//! (`send`/`recv`/`connect`/`accept`) carry no BLE-specific semantics.
+//! Implementations exist for simulated channels, real BLE (btleplug,
+//! Android JNI), and TCP.
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use super::BleError;
 
-/// A BLE device address.
+/// A device address (BLE, simulated, or TCP).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BleAddress {
     /// A real 6-byte BLE MAC address.
     Real([u8; 6]),
     /// A simulated address identified by UUID.
     Simulated(Uuid),
+    /// A TCP socket address (IP + port).
+    Tcp(SocketAddr),
 }
 
 /// A received BLE advertisement.

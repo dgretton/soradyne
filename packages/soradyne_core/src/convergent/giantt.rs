@@ -150,7 +150,7 @@ pub enum GianttStatus {
 impl GianttStatus {
     pub fn from_str(s: &str) -> Self {
         match s.to_uppercase().as_str() {
-            "TODO" | "" => GianttStatus::Todo,
+            "TODO" | "NOT_STARTED" | "" => GianttStatus::Todo,
             "IN_PROGRESS" | "INPROGRESS" => GianttStatus::InProgress,
             "COMPLETED" | "DONE" => GianttStatus::Completed,
             "BLOCKED" => GianttStatus::Blocked,

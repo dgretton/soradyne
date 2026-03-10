@@ -201,6 +201,42 @@ class FlowClient {
     }
   }
 
+  /// Connect this flow to a TCP peer for direct CRDT sync (no capsule/pairing needed).
+  ///
+  /// [peerAddr] — the peer's "ip:port" (e.g. a Tailscale address like "100.64.1.2:7979").
+  /// [listen]   — if true, bind and wait for the peer to connect (server role);
+  ///               if false, connect to the peer (client role).
+  ///
+  /// Both sides must call [connectTcp]. The server should call first (or concurrently).
+  /// A UUID handshake identifies each peer; sync begins immediately after.
+  ///
+  /// Throws [FlowException] if the native library was not compiled with
+  /// `tcp-transport`, or if the connection fails.
+  void connectTcp(String peerAddr, {bool listen = false}) {
+    _checkNotClosed();
+
+    final fn = _ffi.flowConnectTcp;
+    if (fn == null) {
+      throw FlowException(
+        'TCP transport not available — rebuild with --features tcp-transport',
+        'connectTcp',
+      );
+    }
+
+    final peerAddrPtr = peerAddr.toNativeUtf8();
+    try {
+      final result = fn(_handle, peerAddrPtr, listen ? 1 : 0);
+      if (result != 0) {
+        throw FlowException(
+          'TCP connect failed (code $result)',
+          'connectTcp',
+        );
+      }
+    } finally {
+      malloc.free(peerAddrPtr);
+    }
+  }
+
   /// Close the flow client and release resources.
   ///
   /// After closing, the client cannot be used for further operations.

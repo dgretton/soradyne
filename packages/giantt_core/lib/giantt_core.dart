@@ -34,3 +34,13 @@ export 'src/validation/issue_types.dart';
 // Logging
 export 'src/logging/log_repository.dart';
 export 'src/logging/log_collection.dart';
+
+// Storage helpers and commands used by the Flutter app service layer
+export 'src/storage/dual_file_manager.dart';
+export 'src/commands/command_interface.dart';
+
+// Flow-based CRDT storage (Soradyne-backed)
+export 'src/storage/flow_repository.dart';
+export 'src/operations/giantt_operations.dart';
+export 'src/ffi/flow_client.dart';
+export 'src/ffi/soradyne_ffi.dart';
