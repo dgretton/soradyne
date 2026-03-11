@@ -790,11 +790,10 @@ pub extern "C" fn soradyne_flow_connect_tcp(
             });
         }
 
-        // ── 4. Register connection with messenger ──────────────────────────
-        let conn_arc: Arc<dyn crate::ble::transport::BleConnection> = Arc::from(raw_conn);
-        messenger.add_connection(peer_id, conn_arc).await;
-
-        // ── 5. Wire flow to messenger and start sync ───────────────────────
+        // ── 4. Wire flow to messenger and subscribe BEFORE enabling receive ──
+        // start() subscribes to messenger.incoming(); add_connection() spawns
+        // the recv task. Subscribing first avoids dropping the peer's initial
+        // OperationBatch (which arrives as soon as the TCP reader task starts).
         {
             use crate::flow::flow_core::Flow;
             let mut flow = flow_arc.lock().map_err(|_| {
@@ -805,6 +804,10 @@ pub extern "C" fn soradyne_flow_connect_tcp(
                 crate::ble::BleError::ConnectionError(format!("flow start: {:?}", e))
             })?;
         }
+
+        // ── 5. Register connection — enables the recv task ─────────────────
+        let conn_arc: Arc<dyn crate::ble::transport::BleConnection> = Arc::from(raw_conn);
+        messenger.add_connection(peer_id, conn_arc).await;
 
         eprintln!("[giantt_tcp] connected: local={} peer={}", local_uuid, peer_id);
 
