@@ -208,6 +208,12 @@ impl GianttFlow {
         self.dirty = true;
     }
 
+    /// Flush regardless of dirty flag — used by the periodic sync-persistence task.
+    pub fn force_flush(&mut self) {
+        self.dirty = true;
+        self.flush();
+    }
+
     /// Get all operations (for syncing to other devices)
     pub fn all_operations(&self) -> Vec<OpEnvelope> {
         self.flow
@@ -801,6 +807,22 @@ pub extern "C" fn soradyne_flow_connect_tcp(
         }
 
         eprintln!("[giantt_tcp] connected: local={} peer={}", local_uuid, peer_id);
+
+        // ── 6. Periodic flush — persists ops received via sync to disk ─────
+        // DripHostedFlow applies remote ops in-memory only; this task writes
+        // them to operations.jsonl every 3 seconds so other CLI invocations
+        // (and restarts) see the synced state.
+        let flow_arc_flush = Arc::clone(&flow_arc);
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
+            loop {
+                interval.tick().await;
+                if let Ok(mut flow) = flow_arc_flush.lock() {
+                    flow.force_flush();
+                }
+            }
+        });
+
         Ok::<_, crate::ble::BleError>(())
     });
 
