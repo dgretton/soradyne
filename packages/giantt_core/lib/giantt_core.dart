@@ -39,6 +39,13 @@ export 'src/logging/log_collection.dart';
 export 'src/storage/dual_file_manager.dart';
 export 'src/commands/command_interface.dart';
 
+// Query layer (LLM tool-use integration)
+export 'src/query/giantt_query.dart';
+export 'src/commands/summary_command.dart';
+export 'src/commands/blocked_command.dart';
+export 'src/commands/deps_command.dart';
+export 'src/commands/load_command.dart';
+
 // Flow-based CRDT storage (Soradyne-backed)
 export 'src/storage/flow_repository.dart';
 export 'src/operations/giantt_operations.dart';

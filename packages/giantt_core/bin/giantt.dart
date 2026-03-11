@@ -1,5 +1,6 @@
 #!/usr/bin/env dart
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:args/args.dart';
 import 'package:giantt_core/giantt_core.dart';
@@ -64,6 +65,10 @@ void main(List<String> arguments) async {
   parser.addCommand('sync', _createSyncCommand());
   parser.addCommand('snapshot', _createSnapshotCommand());
   parser.addCommand('watch', _createWatchCommand());
+  parser.addCommand('summary', _createSummaryCommand());
+  parser.addCommand('load', _createLoadCommand());
+  parser.addCommand('deps', _createDepsCommand());
+  parser.addCommand('blocked', _createBlockedCommand());
 
   try {
     final results = parser.parse(arguments);
@@ -120,6 +125,12 @@ void _printUsage(ArgParser parser) {
   print('  occlude     Occlude items or logs');
   print('  doctor      Check the health of the Giantt graph and fix issues');
   print('  add-include Add an include directive to a Giantt items file');
+  print('');
+  print('Query commands (supports --json):');
+  print('  summary     Per-chart project overview');
+  print('  load        Temporal load analysis in a date window');
+  print('  deps        Dependency chain for an item');
+  print('  blocked     All currently blocked items');
   print('');
   print('Run "giantt <command> --help" for more information on a command.');
 }
@@ -189,6 +200,7 @@ ArgParser _createInitCommand() {
 ArgParser _createAddCommand() {
   return ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('duration', defaultsTo: '1d', help: 'Duration (e.g., 1d, 2w, 3mo)')
@@ -203,6 +215,7 @@ ArgParser _createAddCommand() {
 ArgParser _createShowCommand() {
   return ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('log-file', abbr: 'l', help: 'Giantt log file to use')
@@ -214,6 +227,7 @@ ArgParser _createShowCommand() {
 ArgParser _createModifyCommand() {
   return ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addFlag('add', help: 'Add a relation', negatable: false)
@@ -232,6 +246,7 @@ ArgParser _createRemoveCommand() {
 ArgParser _createSetStatusCommand() {
   return ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use');
 }
@@ -294,6 +309,7 @@ ArgParser _createOccludeCommand() {
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addMultiOption('tag', abbr: 't', help: 'Occlude items with specific tags')
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addFlag('dry-run', help: 'Show what would be occluded without making changes', negatable: true, defaultsTo: false));
     
   parser.addCommand('logs', ArgParser()
@@ -405,6 +421,18 @@ Future<void> _executeCommand(ArgResults command) async {
     case 'watch':
       await _executeWatch(command);
       break;
+    case 'summary':
+      _executeSummary(command);
+      break;
+    case 'load':
+      _executeLoad(command);
+      break;
+    case 'deps':
+      _executeDeps(command);
+      break;
+    case 'blocked':
+      _executeBlocked(command);
+      break;
     default:
       throw ArgumentError('Unknown command: ${command.name}');
   }
@@ -496,6 +524,7 @@ Future<void> _executeAdd(ArgResults args) async {
   final status = args['status'] as String;
   final requires = args['requires'] as String?;
   final anyOf = args['any-of'] as String?;
+  final jsonOutput = args['json'] as bool;
   
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
@@ -609,9 +638,17 @@ Future<void> _executeAdd(ArgResults args) async {
       FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
     }
 
-    print('Successfully added item "$id"');
+    if (jsonOutput) {
+      print(jsonEncode({'ok': true, 'command': 'add', 'data': _itemToJson(newItem)}));
+    } else {
+      print('Successfully added item "$id"');
+    }
   } catch (e) {
-    stderr.writeln('Error: $e');
+    if (args['json'] as bool? ?? false) {
+      print(jsonEncode({'ok': false, 'command': 'add', 'error': e.toString()}));
+    } else {
+      stderr.writeln('Error: $e');
+    }
     exit(1);
   }
 }
@@ -629,7 +666,8 @@ Future<void> _executeShow(ArgResults args) async {
   final occludeLogFile = args['occlude-log-file'] as String?;
   final searchChart = args['chart'] as bool;
   final searchLog = args['log'] as bool;
-  
+  final jsonOutput = args['json'] as bool;
+
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
@@ -639,6 +677,18 @@ Future<void> _executeShow(ArgResults args) async {
     final graph = flowId != null
         ? FlowRepository.loadGraph(flowId)
         : FileRepository.loadGraph(itemsPath, occludeItemsPath);
+
+    if (jsonOutput && !searchChart && !searchLog) {
+      // JSON output for item lookup.
+      GianttItem item;
+      if (graph.items.containsKey(substring)) {
+        item = graph.items[substring]!;
+      } else {
+        item = graph.findBySubstring(substring);
+      }
+      print(jsonEncode({'ok': true, 'command': 'show', 'data': {'items': [_itemToJson(item)], 'count': 1}}));
+      return;
+    }
 
     if (!searchChart && !searchLog) {
       // Show item details
@@ -656,7 +706,11 @@ Future<void> _executeShow(ArgResults args) async {
       await _showLogs(logs, substring);
     }
   } catch (e) {
-    stderr.writeln('Error: $e');
+    if (args['json'] as bool? ?? false) {
+      print(jsonEncode({'ok': false, 'command': 'show', 'error': e.toString()}));
+    } else {
+      stderr.writeln('Error: $e');
+    }
     exit(1);
   }
 }
@@ -760,6 +814,7 @@ Future<void> _executeModify(ArgResults args) async {
   final occludeFile = args['occlude-file'] as String?;
   final addMode = args['add'] as bool;
   final removeMode = args['remove'] as bool;
+  final jsonOutput = args['json'] as bool;
 
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
@@ -893,9 +948,25 @@ Future<void> _executeModify(ArgResults args) async {
       FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
     }
 
-    print('Successfully modified "$property" for item "${item.id}"');
+    if (jsonOutput) {
+      print(jsonEncode({
+        'ok': true,
+        'command': 'modify',
+        'data': {
+          'id': modifiedItem.id,
+          'property': property,
+          'item': _itemToJson(modifiedItem),
+        }
+      }));
+    } else {
+      print('Successfully modified "$property" for item "${item.id}"');
+    }
   } catch (e) {
-    stderr.writeln('Error: $e');
+    if (args['json'] as bool? ?? false) {
+      print(jsonEncode({'ok': false, 'command': 'modify', 'error': e.toString()}));
+    } else {
+      stderr.writeln('Error: $e');
+    }
     exit(1);
   }
 }
@@ -1006,6 +1077,7 @@ Future<void> _executeSetStatus(ArgResults args) async {
   final statusStr = args.rest[1];
   final file = args['file'] as String?;
   final occludeFile = args['occlude-file'] as String?;
+  final jsonOutput = args['json'] as bool;
 
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
@@ -1061,9 +1133,25 @@ Future<void> _executeSetStatus(ArgResults args) async {
       FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
     }
 
-    print('Set status of "${item.id}" to ${newStatus.name}');
+    if (jsonOutput) {
+      print(jsonEncode({
+        'ok': true,
+        'command': 'set-status',
+        'data': {
+          'id': item.id,
+          'previous_status': item.status.name,
+          'new_status': newStatus.name,
+        }
+      }));
+    } else {
+      print('Set status of "${item.id}" to ${newStatus.name}');
+    }
   } catch (e) {
-    stderr.writeln('Error: $e');
+    if (args['json'] as bool? ?? false) {
+      print(jsonEncode({'ok': false, 'command': 'set-status', 'error': e.toString()}));
+    } else {
+      stderr.writeln('Error: $e');
+    }
     exit(1);
   }
 }
@@ -1507,6 +1595,7 @@ Future<void> _executeOcclude(ArgResults args) async {
   final subcommand = args.command!;
   final dryRun = subcommand['dry-run'] as bool;
   final tags = (subcommand['tag'] as List<String>?) ?? [];
+  final jsonOutput = subcommand.options.contains('json') && (subcommand['json'] as bool? ?? false);
 
   try {
     if (subcommand.name == 'items') {
@@ -1547,14 +1636,15 @@ Future<void> _executeOcclude(ArgResults args) async {
       }
 
       if (itemsToOcclude.isEmpty) {
-        print('No items to occlude.');
+        if (jsonOutput) {
+          print(jsonEncode({'ok': true, 'command': 'occlude', 'data': {'occluded_items': [], 'occluded_count': 0, 'dry_run': dryRun}}));
+        } else {
+          print('No items to occlude.');
+        }
         return;
       }
 
-      final action = dryRun ? 'Would occlude' : 'Occluded';
-      print('$action ${itemsToOcclude.length} items:');
       for (final item in itemsToOcclude) {
-        print('  - ${item.id}: ${item.title}');
         if (!dryRun) {
           final occludedItem = item.setOcclude(true);
           graph.addItem(occludedItem);
@@ -1563,6 +1653,24 @@ Future<void> _executeOcclude(ArgResults args) async {
 
       if (!dryRun) {
         FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+      }
+
+      if (jsonOutput) {
+        print(jsonEncode({
+          'ok': true,
+          'command': 'occlude',
+          'data': {
+            'occluded_items': itemsToOcclude.map((i) => i.id).toList(),
+            'occluded_count': itemsToOcclude.length,
+            'dry_run': dryRun,
+          }
+        }));
+      } else {
+        final action = dryRun ? 'Would occlude' : 'Occluded';
+        print('$action ${itemsToOcclude.length} items:');
+        for (final item in itemsToOcclude) {
+          print('  - ${item.id}: ${item.title}');
+        }
       }
 
     } else if (subcommand.name == 'logs') {
@@ -2000,6 +2108,209 @@ Future<void> _executeWatch(ArgResults args) async {
   }
 
   print('\nWatch stopped.');
+}
+
+// ---------------------------------------------------------------------------
+// JSON helper
+// ---------------------------------------------------------------------------
+
+Map<String, dynamic> _itemToJson(GianttItem item) => {
+      'id': item.id,
+      'title': item.title,
+      'status': item.status.name,
+      'priority': item.priority.name,
+      'duration_seconds': item.duration.totalSeconds,
+      'charts': item.charts,
+      'tags': item.tags,
+      'occlude': item.occlude,
+      'relations': item.relations,
+      'time_constraints': item.timeConstraints.map((tc) {
+        final m = <String, dynamic>{
+          'type': tc.type.name,
+          'consequence': tc.consequenceType.value,
+          'grace_period_seconds':
+              tc.gracePeriod?.totalSeconds,
+        };
+        if (tc.dueDate != null) m['due_date'] = tc.dueDate;
+        if (tc.type == TimeConstraintType.window) {
+          m['window_seconds'] = tc.duration.totalSeconds;
+        }
+        if (tc.type == TimeConstraintType.recurring && tc.interval != null) {
+          m['interval_seconds'] = tc.interval!.totalSeconds;
+          m['stack'] = tc.stack;
+        }
+        return m;
+      }).toList(),
+      'user_comment': item.userComment,
+      'auto_comment': item.autoComment,
+    };
+
+// ---------------------------------------------------------------------------
+// Query command ArgParsers
+// ---------------------------------------------------------------------------
+
+ArgParser _createSummaryCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
+    ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
+    ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
+    ..addOption('charts', help: 'Include only these charts (comma-separated)')
+    ..addOption('exclude-charts', help: 'Exclude these charts (comma-separated)')
+    ..addOption('min-priority', help: 'Minimum priority (e.g. MEDIUM, HIGH)')
+    ..addOption('today', help: 'Override today date (YYYY-MM-DD)');
+}
+
+ArgParser _createLoadCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
+    ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
+    ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
+    ..addOption('charts', help: 'Include only these charts (comma-separated)')
+    ..addOption('exclude-charts', help: 'Exclude these charts (comma-separated)')
+    ..addOption('min-priority', help: 'Minimum priority (e.g. MEDIUM, HIGH)')
+    ..addOption('today', help: 'Override today date (YYYY-MM-DD)');
+}
+
+ArgParser _createDepsCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
+    ..addFlag('upstream-only', help: 'Show only upstream (prerequisite) dependencies', negatable: false)
+    ..addFlag('downstream-only', help: 'Show only downstream (blocked) dependents', negatable: false)
+    ..addOption('depth', defaultsTo: '20', help: 'Maximum traversal depth in each direction')
+    ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
+    ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use');
+}
+
+ArgParser _createBlockedCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
+    ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
+    ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
+    ..addOption('charts', help: 'Include only these charts (comma-separated)')
+    ..addOption('exclude-charts', help: 'Exclude these charts (comma-separated)')
+    ..addOption('min-priority', help: 'Minimum priority (e.g. MEDIUM, HIGH)');
+}
+
+// ---------------------------------------------------------------------------
+// Query command execute functions
+// ---------------------------------------------------------------------------
+
+/// Parse a date spec: YYYY-MM-DD, TODAY, TODAY+Nd, TODAY-Nd.
+DateTime _parseLoadDate(String spec, DateTime today) {
+  final s = spec.trim().toUpperCase();
+  if (s == 'TODAY') return DateTime(today.year, today.month, today.day);
+
+  final relMatch = RegExp(r'^TODAY([+-])(\d+)D$').firstMatch(s);
+  if (relMatch != null) {
+    final sign = relMatch.group(1) == '+' ? 1 : -1;
+    final days = int.parse(relMatch.group(2)!);
+    final base = DateTime(today.year, today.month, today.day);
+    return base.add(Duration(days: sign * days));
+  }
+
+  // Bare YYYY-MM-DD
+  return DateTime.parse(spec.trim());
+}
+
+GianttPriority? _parsePriority(String? s) {
+  if (s == null) return null;
+  return GianttPriority.fromName(s.trim().toUpperCase());
+}
+
+List<String>? _parseCommaList(String? s) {
+  if (s == null) return null;
+  return s.split(',').map((v) => v.trim()).where((v) => v.isNotEmpty).toList();
+}
+
+void _executeSummary(ArgResults args) {
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+  final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+  final todayStr = args['today'] as String?;
+  final today = todayStr != null ? DateTime.parse(todayStr) : null;
+
+  executeSummaryCommand(
+    itemsPath: itemsPath,
+    occludeItemsPath: occludeItemsPath,
+    today: today,
+    charts: _parseCommaList(args['charts'] as String?),
+    excludeCharts: _parseCommaList(args['exclude-charts'] as String?),
+    minPriority: _parsePriority(args['min-priority'] as String?),
+    jsonOutput: args['json'] as bool,
+  );
+}
+
+void _executeLoad(ArgResults args) {
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+  final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+  final todayStr = args['today'] as String?;
+  final today = todayStr != null ? DateTime.parse(todayStr) : DateTime.now();
+  final todayDate = DateTime(today.year, today.month, today.day);
+
+  // Positional args: [start] [end] — both optional.
+  final rest = args.rest;
+  final windowStart = rest.isNotEmpty ? _parseLoadDate(rest[0], todayDate) : todayDate;
+  final windowEnd = rest.length > 1
+      ? _parseLoadDate(rest[1], todayDate)
+      : todayDate.add(const Duration(days: 30));
+
+  executeLoadCommand(
+    itemsPath: itemsPath,
+    occludeItemsPath: occludeItemsPath,
+    windowStart: windowStart,
+    windowEnd: windowEnd,
+    today: todayDate,
+    charts: _parseCommaList(args['charts'] as String?),
+    excludeCharts: _parseCommaList(args['exclude-charts'] as String?),
+    minPriority: _parsePriority(args['min-priority'] as String?),
+    jsonOutput: args['json'] as bool,
+  );
+}
+
+void _executeDeps(ArgResults args) {
+  if (args.rest.isEmpty) {
+    stderr.writeln('Error: Please provide an item ID or title substring');
+    stderr.writeln('Usage: giantt deps <id_or_substring> [options]');
+    exit(1);
+  }
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+  final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+  final depth = int.tryParse(args['depth'] as String? ?? '20') ?? 20;
+
+  executeDepsCommand(
+    itemsPath: itemsPath,
+    occludeItemsPath: occludeItemsPath,
+    itemId: args.rest.first,
+    maxDepth: depth,
+    upstreamOnly: args['upstream-only'] as bool,
+    downstreamOnly: args['downstream-only'] as bool,
+    jsonOutput: args['json'] as bool,
+  );
+}
+
+void _executeBlocked(ArgResults args) {
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+  final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+
+  executeBlockedCommand(
+    itemsPath: itemsPath,
+    occludeItemsPath: occludeItemsPath,
+    charts: _parseCommaList(args['charts'] as String?),
+    excludeCharts: _parseCommaList(args['exclude-charts'] as String?),
+    minPriority: _parsePriority(args['min-priority'] as String?),
+    jsonOutput: args['json'] as bool,
+  );
 }
 
 String _getDefaultGianttPath(String filename, {bool occlude = false}) {
