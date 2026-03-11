@@ -62,6 +62,8 @@ void main(List<String> arguments) async {
   parser.addCommand('doctor', _createDoctorCommand());
   parser.addCommand('add-include', _createAddIncludeCommand());
   parser.addCommand('sync', _createSyncCommand());
+  parser.addCommand('snapshot', _createSnapshotCommand());
+  parser.addCommand('watch', _createWatchCommand());
 
   try {
     final results = parser.parse(arguments);
@@ -396,6 +398,12 @@ Future<void> _executeCommand(ArgResults command) async {
       break;
     case 'sync':
       await _executeSync(command);
+      break;
+    case 'snapshot':
+      _executeSnapshot(command);
+      break;
+    case 'watch':
+      await _executeWatch(command);
       break;
     default:
       throw ArgumentError('Unknown command: ${command.name}');
@@ -1914,6 +1922,84 @@ Future<void> _executeSync(ArgResults args) async {
   // Block until the process is interrupted.
   await ProcessSignal.sigint.watch().first;
   print('\nSync stopped.');
+}
+
+ArgParser _createSnapshotCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help', negatable: false)
+    ..addOption('output', abbr: 'o', help: 'Output file path (default: stdout)');
+}
+
+void _executeSnapshot(ArgResults args) {
+  if (!_flowAvailable) {
+    stderr.writeln('Error: Flow system unavailable — native library not found.');
+    exit(1);
+  }
+
+  final flowId = _getFlowId();
+  if (flowId == null) {
+    stderr.writeln('Error: Could not determine flow ID for this workspace.');
+    exit(1);
+  }
+
+  final outputPath = args['output'] as String?;
+
+  if (outputPath != null) {
+    FlowRepository.writeSnapshot(flowId, outputPath);
+    print('Snapshot written to $outputPath');
+  } else {
+    // Print to stdout — lets the user pipe it wherever they want
+    final client = FlowClient.open(flowId);
+    try {
+      print(client.readDrip());
+    } finally {
+      client.close();
+    }
+  }
+}
+
+ArgParser _createWatchCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help', negatable: false)
+    ..addOption('output', abbr: 'o',
+        help: 'File to overwrite on each refresh',
+        defaultsTo: '/tmp/giantt_watch.txt')
+    ..addOption('interval', abbr: 'i',
+        help: 'Refresh interval in seconds',
+        defaultsTo: '2');
+}
+
+Future<void> _executeWatch(ArgResults args) async {
+  if (!_flowAvailable) {
+    stderr.writeln('Error: Flow system unavailable — native library not found.');
+    exit(1);
+  }
+
+  final flowId = _getFlowId();
+  if (flowId == null) {
+    stderr.writeln('Error: Could not determine flow ID for this workspace.');
+    exit(1);
+  }
+
+  final outputPath = args['output'] as String;
+  final intervalSecs = int.tryParse(args['interval'] as String) ?? 2;
+
+  print('Watching flow $flowId');
+  print('Writing snapshot to $outputPath every ${intervalSecs}s. Ctrl+C to stop.');
+
+  bool running = true;
+  ProcessSignal.sigint.watch().first.then((_) => running = false);
+
+  while (running) {
+    try {
+      FlowRepository.writeSnapshot(flowId, outputPath);
+    } catch (e) {
+      stderr.writeln('Warning: snapshot failed: $e');
+    }
+    await Future.delayed(Duration(seconds: intervalSecs));
+  }
+
+  print('\nWatch stopped.');
 }
 
 String _getDefaultGianttPath(String filename, {bool occlude = false}) {

@@ -145,6 +145,25 @@ class FlowClient {
     }
   }
 
+  /// Write the materialized .giantt state to [filePath] on disk.
+  ///
+  /// Call this explicitly when you want a human-readable snapshot.
+  /// Nothing writes to [filePath] automatically.
+  void writeSnapshot(String filePath) {
+    _checkNotClosed();
+
+    final fn = _ffi.flowWriteSnapshot;
+    final pathPtr = filePath.toNativeUtf8();
+    try {
+      final result = fn(_handle, pathPtr);
+      if (result != 0) {
+        throw FlowException('Failed to write snapshot to $filePath', 'writeSnapshot');
+      }
+    } finally {
+      malloc.free(pathPtr);
+    }
+  }
+
   /// Read the current state as .giantt text format.
   ///
   /// This materializes the state from all operations (local and remote)

@@ -89,12 +89,7 @@ impl FlowRegistry {
     }
 
     fn close(&mut self, uuid: &str) {
-        if let Some(flow) = self.flows.remove(uuid) {
-            // Ensure any pending writes are flushed
-            if let Ok(mut flow) = flow.lock() {
-                flow.flush();
-            }
-        }
+        self.flows.remove(uuid);
     }
 }
 
@@ -114,7 +109,6 @@ fn device_uuid_from_id(device_id: &str) -> Uuid {
 pub struct GianttFlow {
     flow: DripHostedFlow<GianttSchema>,
     storage_path: Option<PathBuf>,
-    dirty: bool,
 }
 
 impl GianttFlow {
@@ -135,7 +129,6 @@ impl GianttFlow {
                 device_id,
             ),
             storage_path: None,
-            dirty: false,
         }
     }
 
@@ -156,18 +149,19 @@ impl GianttFlow {
                 device_id,
             ),
             storage_path: Some(storage_path),
-            dirty: false,
         };
 
         flow.load_from_disk();
         flow
     }
 
-    /// Apply a local operation
+    /// Apply a local operation.
     ///
     /// For RemoveFromSet with empty observed_add_ids, automatically fills in
     /// the add IDs from the document. This lets the Dart side send a simple
     /// RemoveFromSet without needing to track add IDs.
+    ///
+    /// The resulting op is appended to the on-disk log immediately.
     pub fn apply_operation(&mut self, op: Operation) -> OpEnvelope {
         let op = match op {
             Operation::RemoveFromSet {
@@ -194,28 +188,20 @@ impl GianttFlow {
 
         // OfflineMerge never fails for apply_edit
         let envelope = self.flow.apply_edit(op).unwrap();
-        self.dirty = true;
-
-        // Auto-persist on each operation for durability
-        self.flush();
-
+        self.append_op(&envelope);
         envelope
     }
 
-    /// Apply a remote operation (received from another device)
+    /// Apply a remote operation (received from another device).
+    ///
+    /// The op is appended to the on-disk log so it survives restart.
     pub fn apply_remote(&mut self, envelope: OpEnvelope) {
+        self.append_op(&envelope);
         self.flow
             .document()
             .write()
             .unwrap()
             .apply_remote(envelope);
-        self.dirty = true;
-    }
-
-    /// Flush regardless of dirty flag — used by the periodic sync-persistence task.
-    pub fn force_flush(&mut self) {
-        self.dirty = true;
-        self.flush();
     }
 
     /// Get all operations (for syncing to other devices)
@@ -229,120 +215,60 @@ impl GianttFlow {
             .collect()
     }
 
-    /// Materialize and serialize to .giantt text format
+    /// Materialize and serialize to .giantt text format.
+    ///
+    /// Pure in-memory operation — does not write anything to disk.
     pub fn read_drip(&self) -> String {
         let doc_state = self.flow.document().read().unwrap().materialize();
         let giantt_state = GianttState::from_document_state(&doc_state);
         serialize_giantt_state(&giantt_state)
     }
 
-    /// Persist operations to disk and write a rolling .giantt backup snapshot.
-    fn flush(&mut self) {
-        if !self.dirty {
-            return;
+    /// Write the materialized .giantt state to a file on demand.
+    ///
+    /// This is the only path that writes a human-readable snapshot to disk.
+    /// Intended for CLI inspection (`giantt snapshot`) and debug watch scripts.
+    pub fn write_snapshot(&self, path: &std::path::Path) -> std::io::Result<()> {
+        let text = self.read_drip();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
         }
+        std::fs::write(path, text)
+    }
 
+    /// Append a single op envelope to the on-disk log.
+    ///
+    /// The log is append-only: each new op is one JSON line. On restart,
+    /// `load_from_disk` replays the log to reconstruct in-memory state.
+    /// Duplicate lines are harmless — `apply_remote` is idempotent.
+    fn append_op(&self, envelope: &OpEnvelope) {
         let Some(ref path) = self.storage_path else {
             return;
         };
 
         if let Err(e) = std::fs::create_dir_all(path) {
-            eprintln!("[giantt_flow] flush: failed to create dir {:?}: {}", path, e);
+            eprintln!("[giantt_flow] append_op: failed to create dir: {}", e);
             return;
         }
 
-        // Write operations.jsonl atomically
         let ops_path = path.join("operations.jsonl");
-        let tmp_path = path.join("operations.jsonl.tmp");
-
-        let result = (|| -> std::io::Result<()> {
-            use std::io::Write;
-            let doc = self.flow.document().read().unwrap();
-            let ops: Vec<_> = doc.all_operations().collect();
-            let file = std::fs::File::create(&tmp_path)?;
-            let mut writer = std::io::BufWriter::new(file);
-            for op in ops {
-                let json = serde_json::to_string(op)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-                writeln!(writer, "{}", json)?;
-            }
-            writer.flush()
-        })();
-
-        match result {
-            Ok(()) => {
-                if let Err(e) = std::fs::rename(&tmp_path, &ops_path) {
-                    eprintln!("[giantt_flow] flush: rename failed: {}", e);
-                    let _ = std::fs::remove_file(&tmp_path);
-                    return;
+        match serde_json::to_string(envelope) {
+            Ok(json) => {
+                use std::io::Write;
+                match std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&ops_path)
+                {
+                    Ok(mut file) => {
+                        if let Err(e) = writeln!(file, "{}", json) {
+                            eprintln!("[giantt_flow] append_op: write failed: {}", e);
+                        }
+                    }
+                    Err(e) => eprintln!("[giantt_flow] append_op: open failed: {}", e),
                 }
             }
-            Err(e) => {
-                eprintln!("[giantt_flow] flush: write failed: {}", e);
-                let _ = std::fs::remove_file(&tmp_path);
-                return;
-            }
-        }
-
-        self.dirty = false;
-
-        // Write rolling .giantt backup snapshot
-        self.write_backup(path);
-    }
-
-    /// Write a timestamped .giantt snapshot to the backups/ subdirectory.
-    ///
-    /// Keeps the last MAX_BACKUPS files. Skips if the current state is empty
-    /// (guards against overwriting good backups with an empty state during
-    /// development).
-    fn write_backup(&self, path: &std::path::Path) {
-
-        const MAX_BACKUPS: usize = 5;
-
-        // Materialize current state
-        let doc_state = self.flow.document().read().unwrap().materialize();
-        let giantt_state = GianttState::from_document_state(&doc_state);
-
-        // Skip empty states — protects against overwriting good backups
-        if giantt_state.items.is_empty() {
-            return;
-        }
-
-        let text = serialize_giantt_state(&giantt_state);
-
-        let backup_dir = path.join("backups");
-        if let Err(e) = std::fs::create_dir_all(&backup_dir) {
-            eprintln!("[giantt_flow] backup: failed to create dir: {}", e);
-            return;
-        }
-
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis())
-            .unwrap_or(0);
-        let backup_file = backup_dir.join(format!("giantt_{}.txt", timestamp));
-
-        if let Err(e) = std::fs::write(&backup_file, &text) {
-            eprintln!("[giantt_flow] backup: write failed: {}", e);
-            return;
-        }
-
-        // Rotate: collect all backup files, sort, remove oldest beyond MAX_BACKUPS
-        if let Ok(entries) = std::fs::read_dir(&backup_dir) {
-            let mut files: Vec<_> = entries
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    let name = e.file_name();
-                    let s = name.to_string_lossy();
-                    s.starts_with("giantt_") && s.ends_with(".txt")
-                })
-                .collect();
-            if files.len() > MAX_BACKUPS {
-                files.sort_by_key(|e| e.file_name());
-                for old in files.iter().take(files.len() - MAX_BACKUPS) {
-                    let _ = std::fs::remove_file(old.path());
-                }
-            }
+            Err(e) => eprintln!("[giantt_flow] append_op: serialize failed: {}", e),
         }
     }
 
@@ -521,6 +447,42 @@ pub extern "C" fn soradyne_flow_read_drip(handle: *mut std::ffi::c_void) -> *mut
     }
 }
 
+/// Write the materialized .giantt state to a file at the given path.
+///
+/// Intended for on-demand inspection: `giantt snapshot [file]` or debug watch
+/// scripts. Does not run automatically — call explicitly when you want a
+/// human-readable snapshot on disk.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_flow_write_snapshot(
+    handle: *mut std::ffi::c_void,
+    path_ptr: *const c_char,
+) -> i32 {
+    if handle.is_null() || path_ptr.is_null() {
+        return -1;
+    }
+
+    let path_str = unsafe {
+        match CStr::from_ptr(path_ptr).to_str() {
+            Ok(s) => s,
+            Err(_) => return -1,
+        }
+    };
+
+    let flow = unsafe { &*(handle as *const Mutex<GianttFlow>) };
+    match flow.lock() {
+        Ok(flow) => match flow.write_snapshot(std::path::Path::new(path_str)) {
+            Ok(()) => 0,
+            Err(e) => {
+                eprintln!("[giantt_flow] write_snapshot failed: {}", e);
+                -1
+            }
+        },
+        Err(_) => -1,
+    }
+}
+
 /// Get all operations as JSON array (for syncing)
 ///
 /// Returns a C string that must be freed with soradyne_free_string.
@@ -582,7 +544,6 @@ pub extern "C" fn soradyne_flow_apply_remote(
             for op in ops {
                 flow.apply_remote(op);
             }
-            flow.flush();
             0
         }
         Err(_) => -1,
@@ -845,21 +806,6 @@ pub extern "C" fn soradyne_flow_connect_tcp(
                 }
             }
         }
-
-        // ── 7. Periodic flush — persists ops received via sync to disk ─────
-        // DripHostedFlow applies remote ops in-memory only; this task writes
-        // them to operations.jsonl every 3 seconds so other CLI invocations
-        // (and restarts) see the synced state.
-        let flow_arc_flush = Arc::clone(&flow_arc);
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
-            loop {
-                interval.tick().await;
-                if let Ok(mut flow) = flow_arc_flush.lock() {
-                    flow.force_flush();
-                }
-            }
-        });
 
         Ok::<_, crate::ble::BleError>(())
     });

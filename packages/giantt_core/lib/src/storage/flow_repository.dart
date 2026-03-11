@@ -253,6 +253,21 @@ class FlowRepository {
     }
   }
 
+  /// Write the materialized .giantt state to a file.
+  ///
+  /// Nothing writes to this file automatically — call explicitly for
+  /// inspection or debug watch scripts.
+  static void writeSnapshot(String flowUuid, String filePath) {
+    _ensureInitialized();
+
+    final client = FlowClient.open(flowUuid);
+    try {
+      client.writeSnapshot(filePath);
+    } finally {
+      client.close();
+    }
+  }
+
   /// Get operations from a flow as JSON.
   ///
   /// Useful for debugging or manual sync.

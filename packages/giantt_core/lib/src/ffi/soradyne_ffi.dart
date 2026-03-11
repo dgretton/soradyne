@@ -46,6 +46,11 @@ typedef SoradyneFlowConnectTcpNative = Int32 Function(
 typedef SoradyneFlowConnectTcp = int Function(
     Pointer<Void> handle, Pointer<Utf8> peerAddr, int listen);
 
+typedef SoradyneFlowWriteSnapshotNative = Int32 Function(
+    Pointer<Void> handle, Pointer<Utf8> path);
+typedef SoradyneFlowWriteSnapshot = int Function(
+    Pointer<Void> handle, Pointer<Utf8> path);
+
 /// Soradyne FFI bindings singleton.
 ///
 /// Provides access to native Soradyne functions through Dart FFI.
@@ -64,6 +69,7 @@ class SoradyneFFI {
   late final SoradyneFreeString freeString;
   late final SoradyneFlowCleanup flowCleanup;
   late final SoradyneFlowConnectTcp? flowConnectTcp; // null if not compiled with tcp-transport
+  late final SoradyneFlowWriteSnapshot flowWriteSnapshot;
 
   SoradyneFFI._internal() {
     _lib = _loadLibrary();
@@ -171,6 +177,11 @@ class SoradyneFFI {
 
     flowCleanup = _lib
         .lookup<NativeFunction<SoradyneFlowCleanupNative>>('soradyne_flow_cleanup')
+        .asFunction();
+
+    flowWriteSnapshot = _lib
+        .lookup<NativeFunction<SoradyneFlowWriteSnapshotNative>>(
+            'soradyne_flow_write_snapshot')
         .asFunction();
 
     // Optional: tcp-transport feature. Gracefully absent if not compiled in.
