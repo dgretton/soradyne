@@ -466,16 +466,29 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
         let device_uuid = self.device_uuid;
         let mut shutdown_rx = self.shutdown_tx.subscribe();
 
+        eprintln!("[drip_hosted] start(): listening for flow_id={}", flow_id);
         tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    Ok(envelope) = rx.recv() => {
+                    result = rx.recv() => {
+                        let envelope = match result {
+                            Ok(e) => e,
+                            Err(e) => {
+                                eprintln!("[drip_hosted] rx.recv error: {:?}", e);
+                                continue;
+                            }
+                        };
+                        eprintln!("[drip_hosted] received envelope: msg_type={:?} src={} payload_len={}", envelope.message_type, envelope.source, envelope.payload.len());
                         if envelope.message_type != MessageType::FlowSync {
+                            eprintln!("[drip_hosted] skipping non-FlowSync message");
                             continue;
                         }
                         let msg = match FlowSyncMessage::from_cbor(&envelope.payload) {
                             Ok(m) => m,
-                            Err(_) => continue,
+                            Err(e) => {
+                                eprintln!("[drip_hosted] CBOR decode error: {:?}", e);
+                                continue;
+                            }
                         };
                         // Only handle messages for our flow
                         let msg_flow_id = match &msg {
@@ -483,7 +496,9 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
                             FlowSyncMessage::OperationBatch { flow_id, .. } => *flow_id,
                             FlowSyncMessage::HostAnnouncement { flow_id, .. } => *flow_id,
                         };
+                        eprintln!("[drip_hosted] msg_flow_id={} our_flow_id={} match={}", msg_flow_id, flow_id, msg_flow_id == flow_id);
                         if msg_flow_id != flow_id {
+                            eprintln!("[drip_hosted] DROPPING: flow_id mismatch");
                             continue;
                         }
                         Self::handle_flow_sync_static(
