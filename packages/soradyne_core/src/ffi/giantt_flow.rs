@@ -73,10 +73,14 @@ impl FlowRegistry {
         // Check if this is a test flow (test flows use in-memory storage)
         let is_test = uuid.starts_with("test-");
 
+        // Parse the workspace UUID so both peers use the same FlowConfig::id.
+        // Falls back to a random UUID only for malformed IDs (shouldn't happen).
+        let flow_uuid = Uuid::parse_str(uuid).unwrap_or_else(|_| Uuid::new_v4());
+
         let flow = if is_test {
-            GianttFlow::new_in_memory(self.device_id.clone())
+            GianttFlow::new_in_memory(self.device_id.clone(), flow_uuid)
         } else {
-            GianttFlow::new_persistent(self.device_id.clone(), flow_dir)
+            GianttFlow::new_persistent(self.device_id.clone(), flow_dir, flow_uuid)
         };
 
         let flow = Arc::new(Mutex::new(flow));
@@ -115,10 +119,10 @@ pub struct GianttFlow {
 
 impl GianttFlow {
     /// Create a new in-memory flow (for testing)
-    pub fn new_in_memory(device_id: DeviceId) -> Self {
+    pub fn new_in_memory(device_id: DeviceId, flow_uuid: Uuid) -> Self {
         let device_uuid = device_uuid_from_id(&device_id);
         let config = FlowConfig {
-            id: Uuid::new_v4(),
+            id: flow_uuid,
             type_name: "drip_hosted:giantt".to_string(),
             params: serde_json::json!({}),
         };
@@ -136,10 +140,10 @@ impl GianttFlow {
     }
 
     /// Create a new persistent flow
-    pub fn new_persistent(device_id: DeviceId, storage_path: PathBuf) -> Self {
+    pub fn new_persistent(device_id: DeviceId, storage_path: PathBuf, flow_uuid: Uuid) -> Self {
         let device_uuid = device_uuid_from_id(&device_id);
         let config = FlowConfig {
-            id: Uuid::new_v4(),
+            id: flow_uuid,
             type_name: "drip_hosted:giantt".to_string(),
             params: serde_json::json!({}),
         };
@@ -954,7 +958,7 @@ mod tests {
 
     #[test]
     fn test_flow_basic_operations() {
-        let mut flow = GianttFlow::new_in_memory("test_device".into());
+        let mut flow = GianttFlow::new_in_memory("test_device".into(), Uuid::new_v4());
 
         // Add an item
         flow.apply_operation(Operation::add_item("task_1", "GianttItem"));
@@ -990,7 +994,7 @@ mod tests {
 
     #[test]
     fn test_flow_with_tags_and_charts() {
-        let mut flow = GianttFlow::new_in_memory("test_device".into());
+        let mut flow = GianttFlow::new_in_memory("test_device".into(), Uuid::new_v4());
 
         flow.apply_operation(Operation::add_item("task_1", "GianttItem"));
         flow.apply_operation(Operation::set_field(
@@ -1025,7 +1029,7 @@ mod tests {
     #[test]
     fn test_drip_hosted_local_edits_equivalent() {
         // Verify DripHostedFlow-backed GianttFlow produces identical output
-        let mut flow = GianttFlow::new_in_memory("device_equiv".into());
+        let mut flow = GianttFlow::new_in_memory("device_equiv".into(), Uuid::new_v4());
 
         flow.apply_operation(Operation::add_item("task_1", "GianttItem"));
         flow.apply_operation(Operation::set_field(
@@ -1064,7 +1068,7 @@ mod tests {
         // Create a persistent DripHostedFlow-backed flow and add data
         {
             let mut flow =
-                GianttFlow::new_persistent("test_device_dhf".into(), temp_dir.clone());
+                GianttFlow::new_persistent("test_device_dhf".into(), temp_dir.clone(), Uuid::new_v4());
             flow.apply_operation(Operation::add_item("task_1", "GianttItem"));
             flow.apply_operation(Operation::set_field(
                 "task_1",
@@ -1081,7 +1085,7 @@ mod tests {
         // Reopen and verify data persisted through DripHostedFlow
         {
             let flow =
-                GianttFlow::new_persistent("test_device_dhf".into(), temp_dir.clone());
+                GianttFlow::new_persistent("test_device_dhf".into(), temp_dir.clone(), Uuid::new_v4());
             let text = flow.read_drip();
             assert!(text.contains("task_1"));
             assert!(text.contains("Persistent Task"));
