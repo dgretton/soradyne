@@ -808,7 +808,38 @@ pub extern "C" fn soradyne_flow_connect_tcp(
 
         eprintln!("[giantt_tcp] connected: local={} peer={}", local_uuid, peer_id);
 
-        // ── 6. Periodic flush — persists ops received via sync to disk ─────
+        // ── 6. Initial op push — send all local ops to peer ───────────────
+        // DripHostedFlow::start() only listens; neither side sends first.
+        // We send our full OperationBatch immediately so the peer can apply
+        // any ops we already have (and vice-versa — both sides do this).
+        {
+            use crate::ble::gatt::MessageType;
+            use crate::flow::flow_core::Flow;
+            use crate::flow::types::drip_hosted::FlowSyncMessage;
+            let (flow_id, local_ops) = {
+                let flow = flow_arc.lock().map_err(|_| {
+                    crate::ble::BleError::ConnectionError("flow lock".into())
+                })?;
+                let id = flow.drip_flow().id();
+                let doc = flow.drip_flow().document().read().map_err(|_| {
+                    crate::ble::BleError::ConnectionError("doc lock".into())
+                })?;
+                let ops: Vec<OpEnvelope> = doc.all_operations().cloned().collect();
+                (id, ops)
+            };
+            if !local_ops.is_empty() {
+                let msg = FlowSyncMessage::OperationBatch {
+                    flow_id,
+                    ops: local_ops,
+                };
+                if let Ok(payload) = msg.to_cbor() {
+                    messenger.send_to(peer_id, MessageType::FlowSync, &payload).await.ok();
+                    eprintln!("[giantt_tcp] sent initial op batch to peer");
+                }
+            }
+        }
+
+        // ── 7. Periodic flush — persists ops received via sync to disk ─────
         // DripHostedFlow applies remote ops in-memory only; this task writes
         // them to operations.jsonl every 3 seconds so other CLI invocations
         // (and restarts) see the synced state.
