@@ -234,7 +234,24 @@ ArgParser _createModifyCommand() {
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addFlag('add', help: 'Add a value (for collection properties)', negatable: false)
     ..addFlag('remove', help: 'Remove a value (for collection properties)', negatable: false)
-    ..addFlag('clear', help: 'Clear all values (for collection properties)', negatable: false);
+    ..addFlag('clear', help: 'Clear all values (for collection properties)', negatable: false)
+    ..addOption('add-constraints', help: 'Add time constraints (space-separated, e.g. "due(2026-04-30,severe)")')
+    ..addOption('remove-constraints', help: 'Remove time constraints (space-separated)')
+    ..addOption('set-constraints', help: 'Replace all time constraints (space-separated)')
+    ..addFlag('clear-constraints', help: 'Remove all time constraints', negatable: false)
+    ..addOption('title', help: 'Set item title')
+    ..addOption('status', help: 'Set item status')
+    ..addOption('priority', help: 'Set item priority')
+    ..addOption('duration', help: 'Set item duration')
+    ..addOption('add-charts', help: 'Add charts (comma-separated)')
+    ..addOption('remove-charts', help: 'Remove charts (comma-separated)')
+    ..addOption('add-tags', help: 'Add tags (comma-separated)')
+    ..addOption('remove-tags', help: 'Remove tags (comma-separated)')
+    ..addOption('add-requires', help: 'Add REQUIRES relations (comma-separated)')
+    ..addOption('remove-requires', help: 'Remove REQUIRES relations (comma-separated)')
+    ..addOption('add-blocks', help: 'Add BLOCKS relations (comma-separated)')
+    ..addOption('remove-blocks', help: 'Remove BLOCKS relations (comma-separated)')
+    ..addOption('comment', help: 'Set user comment');
 }
 
 ArgParser _createRemoveCommand() {
@@ -820,19 +837,19 @@ Future<void> _showLogs(LogCollection logs, String substring) async {
 Future<void> _executeModify(ArgResults args) async {
   final clearMode = args['clear'] as bool;
 
-  if (args.rest.length < 2 || (!clearMode && args.rest.length < 3)) {
+  // Check for named-option style: giantt modify <id> --add-constraints="..."
+  final hasNamedOptions = _hasNamedModifyOptions(args);
+
+  if (!hasNamedOptions && (args.rest.length < 2 || (!clearMode && args.rest.length < 3))) {
     stderr.writeln('Error: Please provide item ID, property, and value');
     stderr.writeln('Usage: giantt modify <id> <property> <value> [--add|--remove|--clear]');
+    stderr.writeln('   or: giantt modify <id> --add-constraints="due(2026-04-30,severe)"');
     exit(1);
   }
 
   final itemId = args.rest[0];
-  final property = args.rest[1];
-  final value = args.rest.length >= 3 ? args.rest[2] : '';
   final file = args['file'] as String?;
   final occludeFile = args['occlude-file'] as String?;
-  final addMode = args['add'] as bool;
-  final removeMode = args['remove'] as bool;
   final jsonOutput = args['json'] as bool;
 
   try {
@@ -863,125 +880,39 @@ Future<void> _executeModify(ArgResults args) async {
       exit(1);
     }
 
-    // Apply modification based on property
-    GianttItem modifiedItem;
-    switch (property.toLowerCase()) {
-      case 'title':
-        modifiedItem = item.copyWith(title: value);
-        break;
-      case 'status':
-        modifiedItem = item.copyWith(status: GianttStatus.fromName(value.toUpperCase()));
-        break;
-      case 'priority':
-        modifiedItem = item.copyWith(priority: GianttPriority.fromName(value.toUpperCase()));
-        break;
-      case 'duration':
-        modifiedItem = item.copyWith(duration: GianttDuration.parse(value));
-        break;
-      case 'charts':
-        final chartsList = value.split(',').map((c) => c.trim()).toList();
-        if (addMode) {
-          modifiedItem = item.copyWith(charts: [...item.charts, ...chartsList]);
-        } else if (removeMode) {
-          modifiedItem = item.copyWith(charts: item.charts.where((c) => !chartsList.contains(c)).toList());
-        } else {
-          modifiedItem = item.copyWith(charts: chartsList);
-        }
-        break;
-      case 'tags':
-        final tagsList = value.split(',').map((t) => t.trim()).toList();
-        if (addMode) {
-          modifiedItem = item.copyWith(tags: [...item.tags, ...tagsList]);
-        } else if (removeMode) {
-          modifiedItem = item.copyWith(tags: item.tags.where((t) => !tagsList.contains(t)).toList());
-        } else {
-          modifiedItem = item.copyWith(tags: tagsList);
-        }
-        break;
-      case 'requires':
-        final requiresList = value.split(',').map((r) => r.trim()).toList();
-        final newRelations = Map<String, List<String>>.from(item.relations);
-        if (addMode) {
-          newRelations['REQUIRES'] = [...(newRelations['REQUIRES'] ?? []), ...requiresList];
-        } else if (removeMode) {
-          newRelations['REQUIRES'] = (newRelations['REQUIRES'] ?? []).where((r) => !requiresList.contains(r)).toList();
-          if (newRelations['REQUIRES']!.isEmpty) newRelations.remove('REQUIRES');
-        } else {
-          newRelations['REQUIRES'] = requiresList;
-        }
-        modifiedItem = item.copyWith(relations: newRelations);
-        break;
-      case 'anyof':
-        final anyOfList = value.split(',').map((a) => a.trim()).toList();
-        final newRelations = Map<String, List<String>>.from(item.relations);
-        if (addMode) {
-          newRelations['ANYOF'] = [...(newRelations['ANYOF'] ?? []), ...anyOfList];
-        } else if (removeMode) {
-          newRelations['ANYOF'] = (newRelations['ANYOF'] ?? []).where((a) => !anyOfList.contains(a)).toList();
-          if (newRelations['ANYOF']!.isEmpty) newRelations.remove('ANYOF');
-        } else {
-          newRelations['ANYOF'] = anyOfList;
-        }
-        modifiedItem = item.copyWith(relations: newRelations);
-        break;
-      case 'blocks':
-        final blocksList = value.split(',').map((b) => b.trim()).toList();
-        final newRelations = Map<String, List<String>>.from(item.relations);
-        if (addMode) {
-          newRelations['BLOCKS'] = [...(newRelations['BLOCKS'] ?? []), ...blocksList];
-        } else if (removeMode) {
-          newRelations['BLOCKS'] = (newRelations['BLOCKS'] ?? []).where((b) => !blocksList.contains(b)).toList();
-          if (newRelations['BLOCKS']!.isEmpty) newRelations.remove('BLOCKS');
-        } else {
-          newRelations['BLOCKS'] = blocksList;
-        }
-        modifiedItem = item.copyWith(relations: newRelations);
-        break;
-      case 'comment':
-        modifiedItem = item.copyWith(userComment: value);
-        break;
-      case 'constraints':
-        final constraintList = value.split(' ').where((s) => s.trim().isNotEmpty).toList();
-        final clearMode = args['clear'] as bool;
-        if (clearMode) {
-          modifiedItem = item.copyWith(timeConstraints: []);
-        } else if (addMode) {
-          final newConstraints = <TimeConstraint>[...item.timeConstraints];
-          for (final cs in constraintList) {
-            final tc = TimeConstraint.parse(cs.trim());
-            if (tc != null) newConstraints.add(tc);
-          }
-          modifiedItem = item.copyWith(timeConstraints: newConstraints);
-        } else if (removeMode) {
-          final toRemove = <TimeConstraint>[];
-          for (final cs in constraintList) {
-            final tc = TimeConstraint.parse(cs.trim());
-            if (tc != null) toRemove.add(tc);
-          }
-          modifiedItem = item.copyWith(
-            timeConstraints: item.timeConstraints.where((tc) => !toRemove.contains(tc)).toList(),
-          );
-        } else {
-          // Replace all constraints
-          final newConstraints = <TimeConstraint>[];
-          for (final cs in constraintList) {
-            final tc = TimeConstraint.parse(cs.trim());
-            if (tc != null) newConstraints.add(tc);
-          }
-          modifiedItem = item.copyWith(timeConstraints: newConstraints);
-        }
-        break;
-      default:
-        stderr.writeln('Error: Unknown property "$property"');
-        stderr.writeln('Valid properties: title, status, priority, duration, charts, tags, requires, anyof, blocks, comment, constraints');
-        exit(1);
+    // Collect all modifications to apply (supports multiple named options at once)
+    final modifications = <_ModifyAction>[];
+
+    if (hasNamedOptions) {
+      // Named-option style: --add-constraints, --title, etc.
+      modifications.addAll(_collectNamedModifications(args, item));
+    } else {
+      // Positional style: modify <id> <property> <value> [--add|--remove|--clear]
+      final property = args.rest[1];
+      final value = args.rest.length >= 3 ? args.rest[2] : '';
+      final addMode = args['add'] as bool;
+      final removeMode = args['remove'] as bool;
+      modifications.add(_ModifyAction(property, value, addMode, removeMode, clearMode));
+    }
+
+    if (modifications.isEmpty) {
+      stderr.writeln('Error: No modifications specified');
+      exit(1);
+    }
+
+    // Apply all modifications sequentially
+    var modifiedItem = item;
+    final modifiedProperties = <String>[];
+    for (final mod in modifications) {
+      modifiedItem = _applyModification(modifiedItem, mod);
+      modifiedProperties.add(mod.property);
     }
 
     // Update in graph (for cycle check)
     graph.addItem(modifiedItem);
 
     // Check for cycles if relations were modified
-    if (['requires', 'anyof', 'blocks'].contains(property.toLowerCase())) {
+    if (modifiedProperties.any((p) => ['requires', 'anyof', 'blocks'].contains(p.toLowerCase()))) {
       try {
         graph.topologicalSort();
       } catch (e) {
@@ -992,24 +923,28 @@ Future<void> _executeModify(ArgResults args) async {
 
     // Build CRDT ops from the diff between old item and modified item
     if (flowId != null) {
-      final ops = _buildModifyOps(item, modifiedItem, property, addMode, removeMode);
-      FlowRepository.saveOperations(flowId, ops);
+      final allOps = <GianttOp>[];
+      for (final mod in modifications) {
+        allOps.addAll(_buildModifyOps(item, modifiedItem, mod.property, mod.addMode, mod.removeMode));
+      }
+      FlowRepository.saveOperations(flowId, allOps);
     } else {
       FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
     }
 
+    final propertyDesc = modifiedProperties.join(', ');
     if (jsonOutput) {
       print(jsonEncode({
         'ok': true,
         'command': 'modify',
         'data': {
           'id': modifiedItem.id,
-          'property': property,
+          'property': propertyDesc,
           'item': _itemToJson(modifiedItem),
         }
       }));
     } else {
-      print('Successfully modified "$property" for item "${item.id}"');
+      print('Successfully modified "$propertyDesc" for item "${item.id}"');
     }
   } catch (e) {
     if (args['json'] as bool? ?? false) {
@@ -1960,6 +1895,200 @@ Future<void> _executeDoctorListTypes() async {
   }
 }
 
+/// A single property modification to apply.
+class _ModifyAction {
+  final String property;
+  final String value;
+  final bool addMode;
+  final bool removeMode;
+  final bool clearMode;
+  const _ModifyAction(this.property, this.value, this.addMode, this.removeMode, this.clearMode);
+}
+
+/// Check whether any named modify options (--add-constraints, --title, etc.) are set.
+bool _hasNamedModifyOptions(ArgResults args) {
+  const namedOptions = [
+    'add-constraints', 'remove-constraints', 'set-constraints', 'clear-constraints',
+    'title', 'status', 'priority', 'duration', 'comment',
+    'add-charts', 'remove-charts', 'add-tags', 'remove-tags',
+    'add-requires', 'remove-requires', 'add-blocks', 'remove-blocks',
+  ];
+  for (final opt in namedOptions) {
+    if (args.wasParsed(opt)) return true;
+  }
+  return false;
+}
+
+/// Collect modifications from named options into a list of actions.
+List<_ModifyAction> _collectNamedModifications(ArgResults args, GianttItem item) {
+  final mods = <_ModifyAction>[];
+
+  // Simple property setters
+  if (args.wasParsed('title')) {
+    mods.add(_ModifyAction('title', args['title'] as String, false, false, false));
+  }
+  if (args.wasParsed('status')) {
+    mods.add(_ModifyAction('status', args['status'] as String, false, false, false));
+  }
+  if (args.wasParsed('priority')) {
+    mods.add(_ModifyAction('priority', args['priority'] as String, false, false, false));
+  }
+  if (args.wasParsed('duration')) {
+    mods.add(_ModifyAction('duration', args['duration'] as String, false, false, false));
+  }
+  if (args.wasParsed('comment')) {
+    mods.add(_ModifyAction('comment', args['comment'] as String, false, false, false));
+  }
+
+  // Collection modifiers: charts
+  if (args.wasParsed('add-charts')) {
+    mods.add(_ModifyAction('charts', args['add-charts'] as String, true, false, false));
+  }
+  if (args.wasParsed('remove-charts')) {
+    mods.add(_ModifyAction('charts', args['remove-charts'] as String, false, true, false));
+  }
+
+  // Collection modifiers: tags
+  if (args.wasParsed('add-tags')) {
+    mods.add(_ModifyAction('tags', args['add-tags'] as String, true, false, false));
+  }
+  if (args.wasParsed('remove-tags')) {
+    mods.add(_ModifyAction('tags', args['remove-tags'] as String, false, true, false));
+  }
+
+  // Collection modifiers: relations
+  if (args.wasParsed('add-requires')) {
+    mods.add(_ModifyAction('requires', args['add-requires'] as String, true, false, false));
+  }
+  if (args.wasParsed('remove-requires')) {
+    mods.add(_ModifyAction('requires', args['remove-requires'] as String, false, true, false));
+  }
+  if (args.wasParsed('add-blocks')) {
+    mods.add(_ModifyAction('blocks', args['add-blocks'] as String, true, false, false));
+  }
+  if (args.wasParsed('remove-blocks')) {
+    mods.add(_ModifyAction('blocks', args['remove-blocks'] as String, false, true, false));
+  }
+
+  // Constraints
+  if (args.wasParsed('clear-constraints') && args['clear-constraints'] as bool) {
+    mods.add(_ModifyAction('constraints', '', false, false, true));
+  }
+  if (args.wasParsed('set-constraints')) {
+    mods.add(_ModifyAction('constraints', args['set-constraints'] as String, false, false, false));
+  }
+  if (args.wasParsed('add-constraints')) {
+    mods.add(_ModifyAction('constraints', args['add-constraints'] as String, true, false, false));
+  }
+  if (args.wasParsed('remove-constraints')) {
+    mods.add(_ModifyAction('constraints', args['remove-constraints'] as String, false, true, false));
+  }
+
+  return mods;
+}
+
+/// Apply a single modification action to an item and return the modified item.
+GianttItem _applyModification(GianttItem item, _ModifyAction mod) {
+  final value = mod.value;
+  switch (mod.property.toLowerCase()) {
+    case 'title':
+      return item.copyWith(title: value);
+    case 'status':
+      return item.copyWith(status: GianttStatus.fromName(value.toUpperCase()));
+    case 'priority':
+      return item.copyWith(priority: GianttPriority.fromName(value.toUpperCase()));
+    case 'duration':
+      return item.copyWith(duration: GianttDuration.parse(value));
+    case 'charts':
+      final chartsList = value.split(',').map((c) => c.trim()).toList();
+      if (mod.addMode) {
+        return item.copyWith(charts: [...item.charts, ...chartsList]);
+      } else if (mod.removeMode) {
+        return item.copyWith(charts: item.charts.where((c) => !chartsList.contains(c)).toList());
+      } else {
+        return item.copyWith(charts: chartsList);
+      }
+    case 'tags':
+      final tagsList = value.split(',').map((t) => t.trim()).toList();
+      if (mod.addMode) {
+        return item.copyWith(tags: [...item.tags, ...tagsList]);
+      } else if (mod.removeMode) {
+        return item.copyWith(tags: item.tags.where((t) => !tagsList.contains(t)).toList());
+      } else {
+        return item.copyWith(tags: tagsList);
+      }
+    case 'requires':
+      final requiresList = value.split(',').map((r) => r.trim()).toList();
+      final newRelations = Map<String, List<String>>.from(item.relations);
+      if (mod.addMode) {
+        newRelations['REQUIRES'] = [...(newRelations['REQUIRES'] ?? []), ...requiresList];
+      } else if (mod.removeMode) {
+        newRelations['REQUIRES'] = (newRelations['REQUIRES'] ?? []).where((r) => !requiresList.contains(r)).toList();
+        if (newRelations['REQUIRES']!.isEmpty) newRelations.remove('REQUIRES');
+      } else {
+        newRelations['REQUIRES'] = requiresList;
+      }
+      return item.copyWith(relations: newRelations);
+    case 'anyof':
+      final anyOfList = value.split(',').map((a) => a.trim()).toList();
+      final newRelations = Map<String, List<String>>.from(item.relations);
+      if (mod.addMode) {
+        newRelations['ANYOF'] = [...(newRelations['ANYOF'] ?? []), ...anyOfList];
+      } else if (mod.removeMode) {
+        newRelations['ANYOF'] = (newRelations['ANYOF'] ?? []).where((a) => !anyOfList.contains(a)).toList();
+        if (newRelations['ANYOF']!.isEmpty) newRelations.remove('ANYOF');
+      } else {
+        newRelations['ANYOF'] = anyOfList;
+      }
+      return item.copyWith(relations: newRelations);
+    case 'blocks':
+      final blocksList = value.split(',').map((b) => b.trim()).toList();
+      final newRelations = Map<String, List<String>>.from(item.relations);
+      if (mod.addMode) {
+        newRelations['BLOCKS'] = [...(newRelations['BLOCKS'] ?? []), ...blocksList];
+      } else if (mod.removeMode) {
+        newRelations['BLOCKS'] = (newRelations['BLOCKS'] ?? []).where((b) => !blocksList.contains(b)).toList();
+        if (newRelations['BLOCKS']!.isEmpty) newRelations.remove('BLOCKS');
+      } else {
+        newRelations['BLOCKS'] = blocksList;
+      }
+      return item.copyWith(relations: newRelations);
+    case 'comment':
+      return item.copyWith(userComment: value);
+    case 'constraints':
+      final constraintList = value.split(' ').where((s) => s.trim().isNotEmpty).toList();
+      if (mod.clearMode) {
+        return item.copyWith(timeConstraints: []);
+      } else if (mod.addMode) {
+        final newConstraints = <TimeConstraint>[...item.timeConstraints];
+        for (final cs in constraintList) {
+          final tc = TimeConstraint.parse(cs.trim());
+          if (tc != null) newConstraints.add(tc);
+        }
+        return item.copyWith(timeConstraints: newConstraints);
+      } else if (mod.removeMode) {
+        final toRemove = <TimeConstraint>[];
+        for (final cs in constraintList) {
+          final tc = TimeConstraint.parse(cs.trim());
+          if (tc != null) toRemove.add(tc);
+        }
+        return item.copyWith(
+          timeConstraints: item.timeConstraints.where((tc) => !toRemove.contains(tc)).toList(),
+        );
+      } else {
+        // Replace all constraints
+        final newConstraints = <TimeConstraint>[];
+        for (final cs in constraintList) {
+          final tc = TimeConstraint.parse(cs.trim());
+          if (tc != null) newConstraints.add(tc);
+        }
+        return item.copyWith(timeConstraints: newConstraints);
+      }
+    default:
+      throw ArgumentError('Unknown property "${mod.property}"');
+  }
+}
+
 /// Build the minimal list of CRDT ops that transforms [oldItem] into
 /// [modifiedItem] for the given [property].
 List<GianttOp> _buildModifyOps(
@@ -2011,6 +2140,14 @@ List<GianttOp> _buildModifyOps(
           'blocks',
           (oldItem.relations['BLOCKS'] ?? []).toSet(),
           (modifiedItem.relations['BLOCKS'] ?? []).toSet(),
+          addMode,
+          removeMode));
+    case 'constraints':
+      ops.addAll(_setDiffOps(
+          id,
+          'timeConstraints',
+          oldItem.timeConstraints.map((tc) => tc.toString()).toSet(),
+          modifiedItem.timeConstraints.map((tc) => tc.toString()).toSet(),
           addMode,
           removeMode));
   }
@@ -2297,9 +2434,14 @@ void _executeSummary(ArgResults args) {
   final todayStr = args['today'] as String?;
   final today = todayStr != null ? DateTime.parse(todayStr) : null;
 
+  // Prefer flow CRDT; fall back to file
+  final flowId = _getFlowId();
+  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+
   executeSummaryCommand(
     itemsPath: itemsPath,
     occludeItemsPath: occludeItemsPath,
+    graph: graph,
     today: today,
     charts: _parseCommaList(args['charts'] as String?),
     excludeCharts: _parseCommaList(args['exclude-charts'] as String?),
@@ -2324,9 +2466,14 @@ void _executeLoad(ArgResults args) {
       ? _parseLoadDate(rest[1], todayDate)
       : todayDate.add(const Duration(days: 30));
 
+  // Prefer flow CRDT; fall back to file
+  final flowId = _getFlowId();
+  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+
   executeLoadCommand(
     itemsPath: itemsPath,
     occludeItemsPath: occludeItemsPath,
+    graph: graph,
     windowStart: windowStart,
     windowEnd: windowEnd,
     today: todayDate,
@@ -2349,9 +2496,14 @@ void _executeDeps(ArgResults args) {
   final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
   final depth = int.tryParse(args['depth'] as String? ?? '20') ?? 20;
 
+  // Prefer flow CRDT; fall back to file
+  final flowId = _getFlowId();
+  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+
   executeDepsCommand(
     itemsPath: itemsPath,
     occludeItemsPath: occludeItemsPath,
+    graph: graph,
     itemId: args.rest.first,
     maxDepth: depth,
     upstreamOnly: args['upstream-only'] as bool,
@@ -2366,9 +2518,14 @@ void _executeBlocked(ArgResults args) {
   final itemsPath = file ?? _getDefaultGianttPath('items.txt');
   final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
 
+  // Prefer flow CRDT; fall back to file
+  final flowId = _getFlowId();
+  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+
   executeBlockedCommand(
     itemsPath: itemsPath,
     occludeItemsPath: occludeItemsPath,
+    graph: graph,
     charts: _parseCommaList(args['charts'] as String?),
     excludeCharts: _parseCommaList(args['exclude-charts'] as String?),
     minPriority: _parsePriority(args['min-priority'] as String?),

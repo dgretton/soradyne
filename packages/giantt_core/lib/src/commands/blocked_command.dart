@@ -2,17 +2,22 @@ import 'dart:convert';
 import 'dart:io';
 import '../query/giantt_query.dart';
 import '../models/priority.dart';
+import '../graph/giantt_graph.dart';
 import '../storage/dual_file_manager.dart';
 
 /// Programmatic entry point for the `blocked` command.
+///
+/// If [graph] is provided, it is used directly; otherwise the graph is loaded
+/// from [itemsPath] / [occludeItemsPath].
 BlockedResult runBlocked(
   String itemsPath,
   String occludeItemsPath, {
+  GianttGraph? graph,
   List<String>? charts,
   List<String>? excludeCharts,
   GianttPriority? minPriority,
 }) {
-  final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+  graph ??= DualFileManager.loadGraph(itemsPath, occludeItemsPath);
   return GianttQuery(graph).blocked(
     filter: QueryFilter(
       charts: charts,
@@ -26,6 +31,7 @@ BlockedResult runBlocked(
 void executeBlockedCommand({
   required String itemsPath,
   required String occludeItemsPath,
+  GianttGraph? graph,
   List<String>? charts,
   List<String>? excludeCharts,
   GianttPriority? minPriority,
@@ -35,6 +41,7 @@ void executeBlockedCommand({
     final result = runBlocked(
       itemsPath,
       occludeItemsPath,
+      graph: graph,
       charts: charts,
       excludeCharts: excludeCharts,
       minPriority: minPriority,

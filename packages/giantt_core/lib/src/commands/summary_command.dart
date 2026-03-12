@@ -2,21 +2,25 @@ import 'dart:convert';
 import 'dart:io';
 import '../query/giantt_query.dart';
 import '../models/priority.dart';
+import '../graph/giantt_graph.dart';
 import '../storage/dual_file_manager.dart';
 
 /// Programmatic entry point for the `summary` command.
 ///
 /// Returns a [SummaryResult] or throws on error.
 /// Intended for use by integration layers (MCP servers, Flutter, etc.).
+/// If [graph] is provided, it is used directly; otherwise the graph is loaded
+/// from [itemsPath] / [occludeItemsPath].
 SummaryResult runSummary(
   String itemsPath,
   String occludeItemsPath, {
+  GianttGraph? graph,
   DateTime? today,
   List<String>? charts,
   List<String>? excludeCharts,
   GianttPriority? minPriority,
 }) {
-  final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+  graph ??= DualFileManager.loadGraph(itemsPath, occludeItemsPath);
   return GianttQuery(graph).summary(
     today: today,
     filter: QueryFilter(
@@ -34,6 +38,7 @@ SummaryResult runSummary(
 void executeSummaryCommand({
   required String itemsPath,
   required String occludeItemsPath,
+  GianttGraph? graph,
   DateTime? today,
   List<String>? charts,
   List<String>? excludeCharts,
@@ -44,6 +49,7 @@ void executeSummaryCommand({
     final result = runSummary(
       itemsPath,
       occludeItemsPath,
+      graph: graph,
       today: today,
       charts: charts,
       excludeCharts: excludeCharts,

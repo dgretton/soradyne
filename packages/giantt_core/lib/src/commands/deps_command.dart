@@ -1,16 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
 import '../query/giantt_query.dart';
+import '../graph/giantt_graph.dart';
 import '../storage/dual_file_manager.dart';
 
 /// Programmatic entry point for the `deps` command.
+///
+/// If [graph] is provided, it is used directly; otherwise the graph is loaded
+/// from [itemsPath] / [occludeItemsPath].
 DepsResult runDeps(
   String itemsPath,
   String occludeItemsPath,
   String itemId, {
+  GianttGraph? graph,
   int maxDepth = 20,
 }) {
-  final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+  graph ??= DualFileManager.loadGraph(itemsPath, occludeItemsPath);
   return GianttQuery(graph).deps(itemId, maxDepth: maxDepth);
 }
 
@@ -18,6 +23,7 @@ DepsResult runDeps(
 void executeDepsCommand({
   required String itemsPath,
   required String occludeItemsPath,
+  GianttGraph? graph,
   required String itemId,
   int maxDepth = 20,
   bool upstreamOnly = false,
@@ -26,7 +32,7 @@ void executeDepsCommand({
 }) {
   try {
     final result = runDeps(itemsPath, occludeItemsPath, itemId,
-        maxDepth: maxDepth);
+        graph: graph, maxDepth: maxDepth);
 
     if (jsonOutput) {
       // Apply upstream/downstream-only filtering at the output level.

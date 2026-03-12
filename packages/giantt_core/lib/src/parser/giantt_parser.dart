@@ -153,19 +153,20 @@ class GianttParser {
     // Parse comments from the entire remainder first
     final (userComment, autoComment) = _parseComments(remainder);
     
-    // Split remainder by >>> to separate tags from relations
-    final parts = remainder.split('>>>');
+    // Split remainder by @@@ first to separate time constraints from everything else.
+    // @@@ can appear after >>> (relations section) or directly after tags.
+    final atParts = remainder.split('@@@');
+    final preConstraints = atParts[0].trim();
+    final timeConstraintStr = atParts.length > 1 ? atParts[1].trim() : null;
+
+    // Split pre-constraint remainder by >>> to separate tags from relations
+    final parts = preConstraints.split('>>>');
     final tagsStr = parts[0].trim();
-    final relationsAndConstraints = parts.length > 1 ? parts[1].trim() : '';
-    
+    final relationsStr = parts.length > 1 ? parts[1].trim() : '';
+
     // Parse tags (remove comments from tags string)
     final cleanTagsStr = _removeComments(tagsStr);
     final tags = _parseTags(cleanTagsStr);
-    
-    // Split relations section by @@@ to separate relations from time constraints
-    final constraintParts = relationsAndConstraints.split('@@@');
-    final relationsStr = constraintParts[0].trim();
-    final timeConstraintStr = constraintParts.length > 1 ? constraintParts[1].trim() : null;
     
     // Parse relations (remove comments from relations string)
     final cleanRelationsStr = _removeComments(relationsStr);

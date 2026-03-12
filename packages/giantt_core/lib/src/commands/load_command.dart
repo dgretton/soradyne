@@ -2,12 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 import '../query/giantt_query.dart';
 import '../models/priority.dart';
+import '../graph/giantt_graph.dart';
 import '../storage/dual_file_manager.dart';
 
 /// Programmatic entry point for the `load` command.
+///
+/// If [graph] is provided, it is used directly; otherwise the graph is loaded
+/// from [itemsPath] / [occludeItemsPath].
 LoadResult runLoad(
   String itemsPath,
   String occludeItemsPath, {
+  GianttGraph? graph,
   required DateTime windowStart,
   required DateTime windowEnd,
   DateTime? today,
@@ -15,7 +20,7 @@ LoadResult runLoad(
   List<String>? excludeCharts,
   GianttPriority? minPriority,
 }) {
-  final graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+  graph ??= DualFileManager.loadGraph(itemsPath, occludeItemsPath);
   return GianttQuery(graph).load(
     windowStart: windowStart,
     windowEnd: windowEnd,
@@ -32,6 +37,7 @@ LoadResult runLoad(
 void executeLoadCommand({
   required String itemsPath,
   required String occludeItemsPath,
+  GianttGraph? graph,
   required DateTime windowStart,
   required DateTime windowEnd,
   DateTime? today,
@@ -44,6 +50,7 @@ void executeLoadCommand({
     final result = runLoad(
       itemsPath,
       occludeItemsPath,
+      graph: graph,
       windowStart: windowStart,
       windowEnd: windowEnd,
       today: today,
