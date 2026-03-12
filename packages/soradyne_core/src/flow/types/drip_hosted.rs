@@ -546,6 +546,10 @@ pub struct FullReplicaFlow<S: DocumentSchema + 'static> {
     /// queue outbound ops for them. Maps DeviceId → device Uuid.
     /// Persisted in `parties.json`.
     known_parties: Arc<std::sync::RwLock<HashMap<String, Uuid>>>,
+    /// Signal to trigger an outbound queue flush. Fired on: local edit,
+    /// inbound message received, new peer connected, and startup.
+    /// `Notify` coalesces multiple signals into one wakeup.
+    flush_notify: Arc<tokio::sync::Notify>,
 }
 
 /// Transitional alias — use `FullReplicaFlow` in new code.
@@ -594,6 +598,7 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             state_stream: state_stream_notify,
             storage_path: None,
             known_parties: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            flush_notify: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -751,11 +756,8 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
         }
     }
 
-    /// Drain the outbound queue for a specific peer.
-    ///
-    /// Returns all queued ops and clears the queue file. The caller is
-    /// responsible for actually delivering them.
-    pub fn drain_outbound(&self, peer_device_id: &str) -> Vec<OpEnvelope> {
+    /// Read the outbound queue for a specific peer without clearing it.
+    fn peek_outbound(&self, peer_device_id: &str) -> Vec<OpEnvelope> {
         let Some(ref path) = self.storage_path else {
             return Vec::new();
         };
@@ -768,11 +770,30 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             Ok(c) => c,
             Err(_) => return Vec::new(),
         };
-        let ops: Vec<OpEnvelope> = content.lines()
+        content.lines()
             .filter_map(|line| serde_json::from_str(line).ok())
-            .collect();
-        // Clear the queue
+            .collect()
+    }
+
+    /// Clear the outbound queue for a specific peer (called after confirmed delivery).
+    fn clear_outbound(&self, peer_device_id: &str) {
+        let Some(ref path) = self.storage_path else {
+            return;
+        };
+        let filename = format!("{}.jsonl", device_id_to_filename(peer_device_id));
+        let queue_path = path.join("outbound").join(filename);
         let _ = std::fs::write(&queue_path, "");
+    }
+
+    /// Drain the outbound queue for a specific peer.
+    ///
+    /// Returns all queued ops and clears the queue file. The caller is
+    /// responsible for actually delivering them.
+    pub fn drain_outbound(&self, peer_device_id: &str) -> Vec<OpEnvelope> {
+        let ops = self.peek_outbound(peer_device_id);
+        if !ops.is_empty() {
+            self.clear_outbound(peer_device_id);
+        }
         ops
     }
 
@@ -785,11 +806,10 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
 
     /// Attempt to deliver all pending outbound ops to connected peers.
     ///
-    /// For each known party with queued ops, drains the queue and sends
-    /// an `OperationBatch` via the messenger. Returns the number of ops
-    /// sent per peer. If the messenger is not configured or a peer is
-    /// unreachable, their queue is still drained — the ops remain in the
-    /// sender's journal and can be re-synced via `HorizonExchange` later.
+    /// For each known party with queued ops, reads the queue, sends an
+    /// `OperationBatch` via the messenger, and **only clears the queue if
+    /// the send succeeds**. If the peer is unreachable, ops stay in the
+    /// queue for the next flush attempt.
     pub async fn flush_outbound(&self) -> HashMap<String, usize> {
         let messenger = match &self.messenger {
             Some(m) => Arc::clone(m),
@@ -800,7 +820,7 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
         let mut results = HashMap::new();
 
         for (device_id, peer_uuid) in &parties {
-            let ops = self.drain_outbound(device_id);
+            let ops = self.peek_outbound(device_id);
             if ops.is_empty() {
                 continue;
             }
@@ -812,12 +832,12 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             if let Ok(payload) = msg.to_cbor() {
                 match messenger.send_to(*peer_uuid, MessageType::FlowSync, &payload).await {
                     Ok(()) => {
+                        // Send confirmed — now clear the queue.
+                        self.clear_outbound(device_id);
                         results.insert(device_id.clone(), count);
                     }
-                    Err(e) => {
-                        eprintln!("[full_replica] flush_outbound to {}: send failed: {}", device_id, e);
-                        // Ops are drained but still in our journal.
-                        // Peer can recover via HorizonExchange.
+                    Err(_) => {
+                        // Send failed — leave queue intact for next attempt.
                     }
                 }
             }
@@ -826,117 +846,207 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
         results
     }
 
-    /// Start the background sync listener task.
+    /// Signal that the outbound queues should be flushed.
+    /// Safe to call from sync or async contexts. Multiple rapid signals
+    /// coalesce into a single flush.
+    pub fn signal_flush(&self) {
+        self.flush_notify.notify_one();
+    }
+
+    /// Start the background sync tasks:
     ///
-    /// Subscribes to incoming `FlowSync` messages from the messenger and handles:
-    /// - `HorizonExchange`: responds with the ops the peer hasn't seen (incremental sync).
-    /// - `OperationBatch`: applies new ops to the document, persists them, notifies subscribers.
-    /// - `HostAnnouncement`: updates the host assignment tracker.
+    /// 1. **Inbound listener**: handles `HorizonExchange`, `OperationBatch`,
+    ///    and `HostAnnouncement` messages from peers.
+    /// 2. **Flush task**: drains outbound queues whenever signaled (by local
+    ///    edits, inbound messages, new peer connections, or startup). Only
+    ///    clears a peer's queue after confirmed delivery.
+    /// 3. **Topology watcher**: sends `HorizonExchange` to newly-connected
+    ///    peers so both sides catch up.
     pub fn start(&self) -> Result<(), FlowError> {
         let messenger = self
             .messenger
             .as_ref()
             .ok_or_else(|| FlowError::SyncError("no messenger configured".into()))?;
 
-        let mut rx = messenger.incoming();
-        let flow_id = self.id;
-        let document = Arc::clone(&self.document);
-        let host_assignment = Arc::clone(&self.host_assignment);
-        let messenger_task = Arc::clone(messenger);
-        let state_stream = self.state_stream.clone();
-        let storage_path = self.storage_path.clone();
-        let mut shutdown_rx = self.shutdown_tx.subscribe();
+        let flush_notify = Arc::clone(&self.flush_notify);
 
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    result = rx.recv() => {
-                        let envelope = match result {
-                            Ok(e) => e,
-                            Err(_) => continue,
-                        };
-                        if envelope.message_type != MessageType::FlowSync {
-                            continue;
-                        }
-                        let msg = match FlowSyncMessage::from_cbor(&envelope.payload) {
-                            Ok(m) => m,
-                            Err(_) => continue,
-                        };
-                        let msg_flow_id = match &msg {
-                            FlowSyncMessage::HorizonExchange { flow_id, .. } => *flow_id,
-                            FlowSyncMessage::OperationBatch { flow_id, .. } => *flow_id,
-                            FlowSyncMessage::HostAnnouncement { flow_id, .. } => *flow_id,
-                        };
-                        if msg_flow_id != flow_id {
-                            continue;
-                        }
-                        match msg {
-                            FlowSyncMessage::HorizonExchange { flow_id: fid, horizon: peer_horizon } => {
-                                // Compute the ops this peer hasn't seen and send them back.
-                                let ops_to_send: Vec<OpEnvelope> = match document.read() {
-                                    Ok(doc) => doc.operations_since(&peer_horizon)
-                                        .into_iter().cloned().collect(),
-                                    Err(_) => Vec::new(),
-                                };
-                                if !ops_to_send.is_empty() {
-                                    let response = FlowSyncMessage::OperationBatch {
-                                        flow_id: fid,
-                                        ops: ops_to_send,
-                                    };
-                                    if let Ok(payload) = response.to_cbor() {
-                                        let m = Arc::clone(&messenger_task);
-                                        let source = envelope.source;
-                                        tokio::spawn(async move {
-                                            let _ = m.send_to(source, MessageType::FlowSync, &payload).await;
-                                        });
-                                    }
-                                }
+        // --- Task 1: Inbound message listener ---
+        {
+            let mut rx = messenger.incoming();
+            let flow_id = self.id;
+            let document = Arc::clone(&self.document);
+            let host_assignment = Arc::clone(&self.host_assignment);
+            let messenger_task = Arc::clone(messenger);
+            let state_stream = self.state_stream.clone();
+            let storage_path = self.storage_path.clone();
+            let flush_notify = Arc::clone(&flush_notify);
+            let mut shutdown_rx = self.shutdown_tx.subscribe();
+
+            tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        result = rx.recv() => {
+                            let envelope = match result {
+                                Ok(e) => e,
+                                Err(_) => continue,
+                            };
+                            if envelope.message_type != MessageType::FlowSync {
+                                continue;
                             }
-                            FlowSyncMessage::OperationBatch { ops, .. } => {
-                                // Apply ops; collect only the ones that were genuinely new.
-                                let applied: Vec<OpEnvelope> = match document.write() {
-                                    Ok(mut doc) => ops.into_iter()
-                                        .filter_map(|op| {
-                                            if doc.apply_remote(op.clone()) { Some(op) } else { None }
-                                        })
-                                        .collect(),
-                                    Err(_) => Vec::new(),
-                                };
-                                if !applied.is_empty() {
-                                    // Persist each op to the author's journal.
-                                    if let Some(ref path) = storage_path {
-                                        for op in &applied {
-                                            append_to_journal(path, &op.author, op);
+                            let msg = match FlowSyncMessage::from_cbor(&envelope.payload) {
+                                Ok(m) => m,
+                                Err(_) => continue,
+                            };
+                            let msg_flow_id = match &msg {
+                                FlowSyncMessage::HorizonExchange { flow_id, .. } => *flow_id,
+                                FlowSyncMessage::OperationBatch { flow_id, .. } => *flow_id,
+                                FlowSyncMessage::HostAnnouncement { flow_id, .. } => *flow_id,
+                            };
+                            if msg_flow_id != flow_id {
+                                continue;
+                            }
+                            match msg {
+                                FlowSyncMessage::HorizonExchange { flow_id: fid, horizon: peer_horizon } => {
+                                    // Compute the ops this peer hasn't seen and send them back.
+                                    let ops_to_send: Vec<OpEnvelope> = match document.read() {
+                                        Ok(doc) => doc.operations_since(&peer_horizon)
+                                            .into_iter().cloned().collect(),
+                                        Err(_) => Vec::new(),
+                                    };
+                                    if !ops_to_send.is_empty() {
+                                        let response = FlowSyncMessage::OperationBatch {
+                                            flow_id: fid,
+                                            ops: ops_to_send,
+                                        };
+                                        if let Ok(payload) = response.to_cbor() {
+                                            let m = Arc::clone(&messenger_task);
+                                            let source = envelope.source;
+                                            tokio::spawn(async move {
+                                                let _ = m.send_to(source, MessageType::FlowSync, &payload).await;
+                                            });
                                         }
                                     }
-                                    // Notify UI subscribers so polling consumers see the new state.
-                                    state_stream.notify_subscribers();
+                                    // A peer just connected and exchanged horizons —
+                                    // good time to flush our queues too.
+                                    flush_notify.notify_one();
                                 }
-                            }
-                            FlowSyncMessage::HostAnnouncement { host_id, epoch, .. } => {
-                                if let Ok(mut ha) = host_assignment.write() {
-                                    ha.accept_announcement(host_id, epoch);
+                                FlowSyncMessage::OperationBatch { ops, .. } => {
+                                    // Apply ops; collect only the ones that were genuinely new.
+                                    let applied: Vec<OpEnvelope> = match document.write() {
+                                        Ok(mut doc) => ops.into_iter()
+                                            .filter_map(|op| {
+                                                if doc.apply_remote(op.clone()) { Some(op) } else { None }
+                                            })
+                                            .collect(),
+                                        Err(_) => Vec::new(),
+                                    };
+                                    if !applied.is_empty() {
+                                        // Persist each op to the author's journal.
+                                        if let Some(ref path) = storage_path {
+                                            for op in &applied {
+                                                append_to_journal(path, &op.author, op);
+                                            }
+                                        }
+                                        // Notify UI subscribers so polling consumers see the new state.
+                                        state_stream.notify_subscribers();
+                                        // Receiving ops means a peer is online — flush our queues.
+                                        flush_notify.notify_one();
+                                    }
+                                }
+                                FlowSyncMessage::HostAnnouncement { host_id, epoch, .. } => {
+                                    if let Ok(mut ha) = host_assignment.write() {
+                                        ha.accept_announcement(host_id, epoch);
+                                    }
                                 }
                             }
                         }
-                    }
-                    _ = shutdown_rx.recv() => {
-                        break;
+                        _ = shutdown_rx.recv() => {
+                            break;
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
-        // Topology watcher: when a new peer becomes directly reachable,
-        // send our horizon so they respond with the ops we're missing.
-        // Both sides do this, so the exchange is symmetric — each side
-        // learns what the other has that it doesn't.
+        // --- Task 2: Event-driven outbound flush ---
+        //
+        // Waits for flush_notify signals (from local edits, inbound messages,
+        // new peer connections) and attempts to deliver queued ops to all peers.
+        // Only clears a peer's queue after the send is confirmed.
+        {
+            let known_parties = Arc::clone(&self.known_parties);
+            let storage_path = self.storage_path.clone();
+            let messenger_flush = Arc::clone(messenger);
+            let flow_id = self.id;
+            let flush_notify = Arc::clone(&flush_notify);
+            let mut shutdown_rx = self.shutdown_tx.subscribe();
+
+            tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = flush_notify.notified() => {
+                            // Small delay to coalesce rapid signals (e.g. multiple
+                            // apply_edit calls in quick succession).
+                            tokio::time::sleep(Duration::from_millis(50)).await;
+
+                            let parties: HashMap<String, Uuid> = known_parties
+                                .read()
+                                .map(|p| p.clone())
+                                .unwrap_or_default();
+
+                            let Some(ref path) = storage_path else { continue };
+
+                            for (device_id, peer_uuid) in &parties {
+                                let filename = format!("{}.jsonl", device_id_to_filename(device_id));
+                                let queue_path = path.join("outbound").join(&filename);
+                                if !queue_path.exists() {
+                                    continue;
+                                }
+                                let content = match std::fs::read_to_string(&queue_path) {
+                                    Ok(c) if !c.is_empty() => c,
+                                    _ => continue,
+                                };
+                                let ops: Vec<OpEnvelope> = content.lines()
+                                    .filter_map(|line| serde_json::from_str(line).ok())
+                                    .collect();
+                                if ops.is_empty() {
+                                    continue;
+                                }
+                                let msg = FlowSyncMessage::OperationBatch {
+                                    flow_id,
+                                    ops,
+                                };
+                                if let Ok(payload) = msg.to_cbor() {
+                                    match messenger_flush.send_to(*peer_uuid, MessageType::FlowSync, &payload).await {
+                                        Ok(()) => {
+                                            // Confirmed delivery — clear the queue.
+                                            let _ = std::fs::write(&queue_path, "");
+                                        }
+                                        Err(_) => {
+                                            // Send failed — leave queue intact.
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        _ = shutdown_rx.recv() => break,
+                    }
+                }
+            });
+        }
+
+        // --- Task 3: Topology watcher ---
+        //
+        // When a new peer becomes directly reachable, send our horizon so they
+        // respond with the ops we're missing. Both sides do this, so the
+        // exchange is symmetric. Also signals a flush so queued ops get sent.
         if let Some(ref topology) = self.topology {
             let topology = Arc::clone(topology);
             let document = Arc::clone(&self.document);
             let messenger_watch = Arc::clone(messenger);
             let flow_id = self.id;
             let device_uuid = self.device_uuid;
+            let flush_notify = Arc::clone(&flush_notify);
             let mut shutdown_rx2 = self.shutdown_tx.subscribe();
 
             tokio::spawn(async move {
@@ -968,6 +1078,8 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                     match messenger_watch.send_to(peer_id, MessageType::FlowSync, &payload).await {
                                         Ok(()) => {
                                             synced_peers.insert(peer_id);
+                                            // New peer connected — flush queued ops.
+                                            flush_notify.notify_one();
                                         }
                                         Err(e) => {
                                             eprintln!("[full_replica] horizon exchange with {} failed: {}", peer_id, e);
@@ -981,6 +1093,9 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                 }
             });
         }
+
+        // Signal initial flush so any ops queued before startup get sent.
+        flush_notify.notify_one();
 
         Ok(())
     }
@@ -1031,19 +1146,10 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                     }
                 }
 
-                // Broadcast to peers if we have a messenger
-                if let Some(messenger) = &self.messenger {
-                    let msg = FlowSyncMessage::OperationBatch {
-                        flow_id: self.id,
-                        ops: vec![envelope.clone()],
-                    };
-                    if let Ok(payload) = msg.to_cbor() {
-                        let messenger = Arc::clone(messenger);
-                        tokio::spawn(async move {
-                            let _ = messenger.broadcast(MessageType::FlowSync, &payload).await;
-                        });
-                    }
-                }
+                // Signal the flush task to deliver queued ops.
+                // This handles both the immediate case (peer online) and
+                // the deferred case (peer was offline when ops were queued).
+                self.flush_notify.notify_one();
 
                 Ok(envelope)
             }
