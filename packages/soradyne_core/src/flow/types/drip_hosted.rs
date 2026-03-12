@@ -3569,5 +3569,306 @@ mod tests {
 
             flow_c.stop();
         }
+
+        /// Two independent Giantt flows on the same device, sharing the same
+        /// messenger and topology. Verifies that ops on flow_1 don't leak into
+        /// flow_2 and vice versa — each flow has its own document, journals,
+        /// and outbound queues keyed by flow_id.
+        #[tokio::test]
+        async fn test_two_giantt_flows_same_device() {
+            let network = SimBleNetwork::new();
+
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+            let flow_id_1 = Uuid::new_v4();
+            let flow_id_2 = Uuid::new_v4();
+
+            let tmp_a1 = tempfile::tempdir().unwrap();
+            let tmp_a2 = tempfile::tempdir().unwrap();
+            let tmp_b1 = tempfile::tempdir().unwrap();
+            let tmp_b2 = tempfile::tempdir().unwrap();
+
+            // Shared topology and messenger for each device
+            let make_topo = || {
+                let mut t = EnsembleTopology::new();
+                t.add_edge(make_sim_edge(id_a, id_b));
+                t.add_edge(make_sim_edge(id_b, id_a));
+                Arc::new(RwLock::new(t))
+            };
+
+            let topo_a = make_topo();
+            let topo_b = make_topo();
+            let messenger_a = Arc::new(TopologyMessenger::new(id_a, topo_a.clone()));
+            let messenger_b = Arc::new(TopologyMessenger::new(id_b, topo_b.clone()));
+
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+
+            // --- Flow 1: "work tasks" ---
+            let config_1 = FlowConfig {
+                id: flow_id_1,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a1 = FullReplicaFlow::new_persistent(
+                config_1.clone(),
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "phone".into(),
+                tmp_a1.path().to_path_buf(),
+            );
+            flow_a1.messenger = Some(Arc::clone(&messenger_a));
+            flow_a1.topology = Some(topo_a.clone());
+            flow_a1.register_party("laptop", id_b);
+
+            let mut flow_b1 = FullReplicaFlow::new_persistent(
+                config_1,
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_b,
+                "laptop".into(),
+                tmp_b1.path().to_path_buf(),
+            );
+            flow_b1.messenger = Some(Arc::clone(&messenger_b));
+            flow_b1.topology = Some(topo_b.clone());
+            flow_b1.register_party("phone", id_a);
+            flow_b1.start().unwrap();
+
+            // --- Flow 2: "personal tasks" ---
+            let config_2 = FlowConfig {
+                id: flow_id_2,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a2 = FullReplicaFlow::new_persistent(
+                config_2.clone(),
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "phone".into(),
+                tmp_a2.path().to_path_buf(),
+            );
+            flow_a2.messenger = Some(Arc::clone(&messenger_a));
+            flow_a2.topology = Some(topo_a.clone());
+            flow_a2.register_party("laptop", id_b);
+
+            let mut flow_b2 = FullReplicaFlow::new_persistent(
+                config_2,
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_b,
+                "laptop".into(),
+                tmp_b2.path().to_path_buf(),
+            );
+            flow_b2.messenger = Some(Arc::clone(&messenger_b));
+            flow_b2.topology = Some(topo_b.clone());
+            flow_b2.register_party("phone", id_a);
+            flow_b2.start().unwrap();
+
+            // A writes to flow_1 only
+            flow_a1
+                .apply_edit(Operation::add_item("work_task", "GianttTask"))
+                .unwrap();
+
+            // A writes to flow_2 only
+            flow_a2
+                .apply_edit(Operation::add_item("personal_task", "GianttTask"))
+                .unwrap();
+
+            // Flush both flows
+            let sent_1 = flow_a1.flush_outbound().await;
+            let sent_2 = flow_a2.flush_outbound().await;
+            assert_eq!(sent_1.get("laptop"), Some(&1));
+            assert_eq!(sent_2.get("laptop"), Some(&1));
+
+            tokio::time::sleep(Duration::from_millis(300)).await;
+
+            // B's flow_1 should have work_task but NOT personal_task
+            {
+                let state_b1 = flow_b1.document.read().unwrap().materialize();
+                assert!(
+                    state_b1.get(&"work_task".into()).is_some(),
+                    "B flow_1 should have work_task"
+                );
+                assert!(
+                    state_b1.get(&"personal_task".into()).is_none(),
+                    "B flow_1 should NOT have personal_task (belongs to flow_2)"
+                );
+            }
+
+            // B's flow_2 should have personal_task but NOT work_task
+            {
+                let state_b2 = flow_b2.document.read().unwrap().materialize();
+                assert!(
+                    state_b2.get(&"personal_task".into()).is_some(),
+                    "B flow_2 should have personal_task"
+                );
+                assert!(
+                    state_b2.get(&"work_task".into()).is_none(),
+                    "B flow_2 should NOT have work_task (belongs to flow_1)"
+                );
+            }
+
+            flow_b1.stop();
+            flow_b2.stop();
+        }
+
+        /// Giantt and Inventory flows running simultaneously on the same device,
+        /// sharing the same messenger and topology. Verifies that different schema
+        /// types coexist without interference.
+        #[tokio::test]
+        async fn test_giantt_and_inventory_flows_simultaneously() {
+            use crate::convergent::inventory::InventorySchema;
+
+            let network = SimBleNetwork::new();
+
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+            let giantt_flow_id = Uuid::new_v4();
+            let inventory_flow_id = Uuid::new_v4();
+
+            let tmp_a_giantt = tempfile::tempdir().unwrap();
+            let tmp_a_inventory = tempfile::tempdir().unwrap();
+            let tmp_b_giantt = tempfile::tempdir().unwrap();
+            let tmp_b_inventory = tempfile::tempdir().unwrap();
+
+            let make_topo = || {
+                let mut t = EnsembleTopology::new();
+                t.add_edge(make_sim_edge(id_a, id_b));
+                t.add_edge(make_sim_edge(id_b, id_a));
+                Arc::new(RwLock::new(t))
+            };
+
+            let topo_a = make_topo();
+            let topo_b = make_topo();
+            let messenger_a = Arc::new(TopologyMessenger::new(id_a, topo_a.clone()));
+            let messenger_b = Arc::new(TopologyMessenger::new(id_b, topo_b.clone()));
+
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+
+            // --- Giantt flow ---
+            let giantt_config = FlowConfig {
+                id: giantt_flow_id,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a_giantt = FullReplicaFlow::new_persistent(
+                giantt_config.clone(),
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "phone".into(),
+                tmp_a_giantt.path().to_path_buf(),
+            );
+            flow_a_giantt.messenger = Some(Arc::clone(&messenger_a));
+            flow_a_giantt.topology = Some(topo_a.clone());
+            flow_a_giantt.register_party("laptop", id_b);
+
+            let mut flow_b_giantt = FullReplicaFlow::new_persistent(
+                giantt_config,
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_b,
+                "laptop".into(),
+                tmp_b_giantt.path().to_path_buf(),
+            );
+            flow_b_giantt.messenger = Some(Arc::clone(&messenger_b));
+            flow_b_giantt.topology = Some(topo_b.clone());
+            flow_b_giantt.register_party("phone", id_a);
+            flow_b_giantt.start().unwrap();
+
+            // --- Inventory flow ---
+            let inventory_config = FlowConfig {
+                id: inventory_flow_id,
+                type_name: "drip_hosted:inventory".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a_inv = FullReplicaFlow::new_persistent(
+                inventory_config.clone(),
+                InventorySchema,
+                DripHostPolicy::default(),
+                id_a,
+                "phone".into(),
+                tmp_a_inventory.path().to_path_buf(),
+            );
+            flow_a_inv.messenger = Some(Arc::clone(&messenger_a));
+            flow_a_inv.topology = Some(topo_a.clone());
+            flow_a_inv.register_party("laptop", id_b);
+
+            let mut flow_b_inv = FullReplicaFlow::new_persistent(
+                inventory_config,
+                InventorySchema,
+                DripHostPolicy::default(),
+                id_b,
+                "laptop".into(),
+                tmp_b_inventory.path().to_path_buf(),
+            );
+            flow_b_inv.messenger = Some(Arc::clone(&messenger_b));
+            flow_b_inv.topology = Some(topo_b.clone());
+            flow_b_inv.register_party("phone", id_a);
+            flow_b_inv.start().unwrap();
+
+            // A writes a Giantt task
+            flow_a_giantt
+                .apply_edit(Operation::add_item("write_report", "GianttTask"))
+                .unwrap();
+
+            // A writes an inventory item
+            flow_a_inv
+                .apply_edit(Operation::add_item("hammer", "InventoryItem"))
+                .unwrap();
+            flow_a_inv
+                .apply_edit(Operation::set_field(
+                    "hammer",
+                    "description",
+                    Value::string("Claw hammer"),
+                ))
+                .unwrap();
+
+            // Flush both flows
+            let sent_giantt = flow_a_giantt.flush_outbound().await;
+            let sent_inv = flow_a_inv.flush_outbound().await;
+            assert_eq!(sent_giantt.get("laptop"), Some(&1));
+            assert_eq!(sent_inv.get("laptop"), Some(&2));
+
+            tokio::time::sleep(Duration::from_millis(300)).await;
+
+            // B's Giantt flow should have the task but NOT the inventory item
+            {
+                let state = flow_b_giantt.document.read().unwrap().materialize();
+                assert!(
+                    state.get(&"write_report".into()).is_some(),
+                    "B giantt flow should have write_report"
+                );
+                assert!(
+                    state.get(&"hammer".into()).is_none(),
+                    "B giantt flow should NOT have hammer (belongs to inventory flow)"
+                );
+            }
+
+            // B's Inventory flow should have the item but NOT the task
+            {
+                let state = flow_b_inv.document.read().unwrap().materialize();
+                assert!(
+                    state.get(&"hammer".into()).is_some(),
+                    "B inventory flow should have hammer"
+                );
+                assert!(
+                    state.get(&"write_report".into()).is_none(),
+                    "B inventory flow should NOT have write_report (belongs to giantt flow)"
+                );
+            }
+
+            flow_b_giantt.stop();
+            flow_b_inv.stop();
+        }
     }
 }
