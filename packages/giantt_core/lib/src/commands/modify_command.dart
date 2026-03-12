@@ -3,6 +3,7 @@ import '../models/giantt_item.dart';
 import '../models/status.dart';
 import '../models/priority.dart';
 import '../models/duration.dart';
+import '../models/time_constraint.dart';
 import '../storage/dual_file_manager.dart';
 import '../graph/giantt_graph.dart';
 import '../models/graph_exceptions.dart';
@@ -21,6 +22,9 @@ class ModifyArgs {
     this.removeTags = const [],
     this.addRelations = const {},
     this.removeRelations = const {},
+    this.addConstraints = const [],
+    this.removeConstraints = const [],
+    this.setConstraints,
     this.userComment,
   });
 
@@ -35,6 +39,9 @@ class ModifyArgs {
   final List<String> removeTags;
   final Map<String, List<String>> addRelations;
   final Map<String, List<String>> removeRelations;
+  final List<TimeConstraint> addConstraints;
+  final List<TimeConstraint> removeConstraints;
+  final List<TimeConstraint>? setConstraints;
   final String? userComment;
 }
 
@@ -68,11 +75,14 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
     List<String> removeTags = [];
     Map<String, List<String>> addRelations = {};
     Map<String, List<String>> removeRelations = {};
+    List<TimeConstraint> addConstraints = [];
+    List<TimeConstraint> removeConstraints = [];
+    List<TimeConstraint>? setConstraints;
     String? userComment;
 
     for (int i = 1; i < args.length; i++) {
       final arg = args[i];
-      
+
       if (arg.startsWith('--title=')) {
         title = arg.substring(8);
       } else if (arg.startsWith('--status=')) {
@@ -110,6 +120,41 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
         removeRelations['BLOCKS'] = blocksStr.split(',').map((b) => b.trim()).toList();
       } else if (arg.startsWith('--comment=')) {
         userComment = arg.substring(10);
+      } else if (arg.startsWith('--add-constraints=')) {
+        final constraintsStr = arg.substring(18);
+        for (final constraintStr in constraintsStr.split(' ')) {
+          if (constraintStr.trim().isNotEmpty) {
+            final constraint = TimeConstraint.parse(constraintStr.trim());
+            if (constraint != null) {
+              addConstraints.add(constraint);
+            }
+          }
+        }
+      } else if (arg.startsWith('--remove-constraints=')) {
+        final constraintsStr = arg.substring(21);
+        for (final constraintStr in constraintsStr.split(' ')) {
+          if (constraintStr.trim().isNotEmpty) {
+            final constraint = TimeConstraint.parse(constraintStr.trim());
+            if (constraint != null) {
+              removeConstraints.add(constraint);
+            }
+          }
+        }
+      } else if (arg.startsWith('--set-constraints=')) {
+        final constraintsStr = arg.substring(18);
+        setConstraints = [];
+        if (constraintsStr.isNotEmpty) {
+          for (final constraintStr in constraintsStr.split(' ')) {
+            if (constraintStr.trim().isNotEmpty) {
+              final constraint = TimeConstraint.parse(constraintStr.trim());
+              if (constraint != null) {
+                setConstraints.add(constraint);
+              }
+            }
+          }
+        }
+      } else if (arg == '--clear-constraints') {
+        setConstraints = [];
       }
     }
 
@@ -125,6 +170,9 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
       removeTags: removeTags,
       addRelations: addRelations,
       removeRelations: removeRelations,
+      addConstraints: addConstraints,
+      removeConstraints: removeConstraints,
+      setConstraints: setConstraints,
       userComment: userComment,
     );
   }
@@ -248,6 +296,23 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
     
     modified = modified.copyWith(relations: newRelations);
 
+    // Apply constraint modifications
+    if (args.setConstraints != null) {
+      // --set-constraints or --clear-constraints replaces all constraints
+      modified = modified.copyWith(timeConstraints: args.setConstraints);
+    } else {
+      var newConstraints = List<TimeConstraint>.from(modified.timeConstraints);
+      // Remove constraints that match
+      if (args.removeConstraints.isNotEmpty) {
+        newConstraints.removeWhere((tc) => args.removeConstraints.contains(tc));
+      }
+      // Add new constraints
+      newConstraints.addAll(args.addConstraints);
+      if (args.removeConstraints.isNotEmpty || args.addConstraints.isNotEmpty) {
+        modified = modified.copyWith(timeConstraints: newConstraints);
+      }
+    }
+
     return modified;
   }
 
@@ -265,6 +330,9 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
     List<String> removeTags = const [],
     Map<String, List<String>> addRelations = const {},
     Map<String, List<String>> removeRelations = const {},
+    List<TimeConstraint> addConstraints = const [],
+    List<TimeConstraint> removeConstraints = const [],
+    List<TimeConstraint>? setConstraints,
     String? userComment,
   }) async {
     final context = CommandContext(workspacePath: workspacePath);
@@ -293,6 +361,9 @@ class ModifyCommand extends CliCommand<ModifyArgs> {
       removeTags: removeTags,
       addRelations: addRelations,
       removeRelations: removeRelations,
+      addConstraints: addConstraints,
+      removeConstraints: removeConstraints,
+      setConstraints: setConstraints,
       userComment: userComment,
     );
 

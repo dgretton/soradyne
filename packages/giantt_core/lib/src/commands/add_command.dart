@@ -227,6 +227,7 @@ class AddCommand extends CliCommand<AddArgs> {
     List<String> charts = const [],
     List<String> tags = const [],
     Map<String, List<String>> relations = const {},
+    List<TimeConstraint> timeConstraints = const [],
   }) async {
     final context = CommandContext(workspacePath: workspacePath);
     
@@ -251,7 +252,7 @@ class AddCommand extends CliCommand<AddArgs> {
       charts: charts,
       tags: tags,
       relations: relations,
-      timeConstraints: const [],
+      timeConstraints: timeConstraints,
       userComment: null,
       autoComment: null,
       occlude: false,

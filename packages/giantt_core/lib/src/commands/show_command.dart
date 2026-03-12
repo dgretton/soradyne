@@ -162,7 +162,10 @@ class ShowCommand extends CliCommand<ShowArgs> {
     }
     
     if (item.timeConstraints.isNotEmpty) {
-      buffer.writeln('Time Constraints: ${item.timeConstraints.length}');
+      buffer.writeln('Time Constraints:');
+      for (final tc in item.timeConstraints) {
+        buffer.writeln('  $tc');
+      }
     }
     
     if (item.userComment != null) {

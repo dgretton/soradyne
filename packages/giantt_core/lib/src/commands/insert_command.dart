@@ -3,6 +3,7 @@ import '../models/giantt_item.dart';
 import '../models/status.dart';
 import '../models/priority.dart';
 import '../models/duration.dart';
+import '../models/time_constraint.dart';
 import '../storage/dual_file_manager.dart';
 
 /// Arguments for insert command
@@ -15,6 +16,7 @@ class InsertArgs {
     this.status = GianttStatus.notStarted,
     this.priority = GianttPriority.neutral,
     this.duration,
+    this.timeConstraints = const [],
   });
 
   final String newId;
@@ -24,6 +26,7 @@ class InsertArgs {
   final GianttStatus status;
   final GianttPriority priority;
   final GianttDuration? duration;
+  final List<TimeConstraint> timeConstraints;
 }
 
 /// Insert a new item between two existing items in the dependency chain
@@ -54,10 +57,11 @@ class InsertCommand extends CliCommand<InsertArgs> {
     GianttStatus status = GianttStatus.notStarted;
     GianttPriority priority = GianttPriority.neutral;
     GianttDuration? duration;
+    List<TimeConstraint> timeConstraints = [];
 
     for (int i = 4; i < args.length; i++) {
       final arg = args[i];
-      
+
       if (arg.startsWith('--status=')) {
         final statusStr = arg.substring(9);
         status = GianttStatus.fromSymbol(statusStr);
@@ -67,6 +71,16 @@ class InsertCommand extends CliCommand<InsertArgs> {
       } else if (arg.startsWith('--duration=')) {
         final durationStr = arg.substring(11);
         duration = GianttDuration.parse(durationStr);
+      } else if (arg.startsWith('--constraints=')) {
+        final constraintsStr = arg.substring(14);
+        for (final constraintStr in constraintsStr.split(' ')) {
+          if (constraintStr.trim().isNotEmpty) {
+            final constraint = TimeConstraint.parse(constraintStr.trim());
+            if (constraint != null) {
+              timeConstraints.add(constraint);
+            }
+          }
+        }
       }
     }
 
@@ -78,6 +92,7 @@ class InsertCommand extends CliCommand<InsertArgs> {
       status: status,
       priority: priority,
       duration: duration,
+      timeConstraints: timeConstraints,
     );
   }
 
@@ -120,7 +135,7 @@ class InsertCommand extends CliCommand<InsertArgs> {
         charts: [],
         tags: [],
         relations: {},
-        timeConstraints: const [],
+        timeConstraints: args.timeConstraints,
         userComment: null,
         autoComment: null,
         occlude: false,
@@ -163,6 +178,7 @@ class InsertCommand extends CliCommand<InsertArgs> {
     GianttStatus status = GianttStatus.notStarted,
     GianttPriority priority = GianttPriority.neutral,
     GianttDuration? duration,
+    List<TimeConstraint> timeConstraints = const [],
   }) async {
     final context = CommandContext(workspacePath: workspacePath);
     
@@ -195,7 +211,7 @@ class InsertCommand extends CliCommand<InsertArgs> {
       charts: [],
       tags: [],
       relations: {},
-      timeConstraints: const [],
+      timeConstraints: timeConstraints,
       userComment: null,
       autoComment: null,
       occlude: false,
