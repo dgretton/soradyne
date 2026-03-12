@@ -2,7 +2,7 @@
 //! Enhanced Soradyne heartrate bridge that receives heart rate data from Colmi ring
 //! and distributes it via the Soradyne protocol
 
-use soradyne::types::heartrate::{Heartrate, HeartrateFlow};
+use soradyne::types::heartrate::{Heartrate, HeartrateChannel};
 use soradyne::network::connection::NetworkBridge;
 use soradyne::network::NoOpDiscovery;
 use soradyne::flow::FlowType;
@@ -28,13 +28,13 @@ struct ColmiHeartRateMessage {
 }
 
 struct ColmiSoradyneBridge {
-    flow: Arc<HeartrateFlow>,
+    flow: Arc<HeartrateChannel>,
     device_id: Uuid,
     last_processed_time: Option<DateTime<Utc>>,
 }
 
 impl ColmiSoradyneBridge {
-    fn new(flow: Arc<HeartrateFlow>, device_id: Uuid) -> Self {
+    fn new(flow: Arc<HeartrateChannel>, device_id: Uuid) -> Self {
         Self {
             flow,
             device_id,
@@ -125,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let storage = LocalFileStorage::new("./heartrate_data")
         .expect("Failed to create storage directory");
     
-    let flow = Arc::new(HeartrateFlow::new(
+    let flow = Arc::new(HeartrateChannel::new(
         "colmi_heartrate_bridge",
         device_id,
         Heartrate::new(70.0, device_id),

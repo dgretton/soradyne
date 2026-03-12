@@ -11,8 +11,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use serde::{Serialize, Deserialize};
 
-// Re-export for compatibility
-pub use ShamirErasureEncoder as ErasureEncoder;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyShare {
@@ -166,13 +164,6 @@ impl ShamirErasureEncoder {
         ))
     }
     
-    /// Legacy decode method for compatibility
-    pub fn decode(&self, shards: HashMap<usize, Vec<u8>>, expected_size: usize) -> Result<Vec<u8>, FlowError> {
-        // This is for backward compatibility with old RS-only blocks
-        // We'll implement this as a fallback for migration
-        self.decode_rs_only(shards, expected_size)
-    }
-    
     /// Reed-Solomon encoding without length prefix (for encrypted data)
     fn encode_rs_raw(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
         let shard_size = (data.len() + self.threshold - 1) / self.threshold;
@@ -200,79 +191,6 @@ impl ShamirErasureEncoder {
             ))?;
 
         Ok(shards)
-    }
-    
-    /// Traditional Reed-Solomon encoding with length prefix (for legacy compatibility)
-    fn encode_rs(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, FlowError> {
-        // Store the original length at the beginning for proper truncation
-        let mut length_prefixed_data = Vec::new();
-        length_prefixed_data.extend_from_slice(&(data.len() as u32).to_le_bytes());
-        length_prefixed_data.extend_from_slice(data);
-        
-        self.encode_rs_raw(&length_prefixed_data)
-    }
-    
-    /// Legacy RS-only decode for backward compatibility
-    fn decode_rs_only(&self, shards: HashMap<usize, Vec<u8>>, _expected_size: usize) -> Result<Vec<u8>, FlowError> {
-        if shards.len() < self.threshold {
-            return Err(FlowError::PersistenceError(
-                format!("Not enough shards: {} < {}", shards.len(), self.threshold)
-            ));
-        }
-
-        let shard_size = shards.values().next()
-            .ok_or_else(|| FlowError::PersistenceError("No shards available".to_string()))?
-            .len();
-
-        let mut reconstruction_shards: Vec<Option<Vec<u8>>> = vec![None; self.total_shards];
-
-        for (index, shard_data) in shards {
-            if index >= self.total_shards {
-                return Err(FlowError::PersistenceError(
-                    format!("Invalid shard index: {} >= {}", index, self.total_shards)
-                ));
-            }
-
-            if shard_data.len() != shard_size {
-                return Err(FlowError::PersistenceError(
-                    format!("Shard size mismatch: expected {}, got {}", shard_size, shard_data.len())
-                ));
-            }
-
-            reconstruction_shards[index] = Some(shard_data);
-        }
-
-        self.reed_solomon.reconstruct(&mut reconstruction_shards)
-            .map_err(|e| FlowError::PersistenceError(
-                format!("Reed-Solomon reconstruction failed: {}", e)
-            ))?;
-
-        // Concatenate data shards; first 4 bytes are a length prefix
-        let mut full_data = Vec::new();
-        for i in 0..self.threshold {
-            if let Some(ref shard) = reconstruction_shards[i] {
-                full_data.extend_from_slice(shard);
-            } else {
-                return Err(FlowError::PersistenceError(
-                    "Failed to reconstruct data shard".to_string()
-                ));
-            }
-        }
-
-        if full_data.len() < 4 {
-            return Err(FlowError::PersistenceError(
-                "Reconstructed data too small to contain length prefix".to_string()
-            ));
-        }
-
-        let original_length = u32::from_le_bytes([
-            full_data[0], full_data[1], full_data[2], full_data[3],
-        ]) as usize;
-
-        // Strip length prefix, then truncate RS padding
-        let mut result = full_data[4..].to_vec();
-        result.truncate(original_length);
-        Ok(result)
     }
     
     fn encrypt_data_chunked(&self, data: &[u8], master_key: &[u8; 32], block_id: &BlockId) -> Result<Vec<u8>, FlowError> {

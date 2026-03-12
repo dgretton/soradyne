@@ -3,7 +3,7 @@
 //! A demo app that streams heartrate data, subscribes to updates, persists
 //! data to disk, and syncs heartrate across devices using NetworkBridge.
 
-use soradyne::types::heartrate::{Heartrate, HeartrateFlow};
+use soradyne::types::heartrate::{Heartrate, HeartrateChannel};
 use soradyne::network::connection::NetworkBridge;
 use soradyne::network::NoOpDiscovery;
 use soradyne::flow::FlowType;
@@ -20,7 +20,7 @@ async fn main() {
     // Create a local file storage backend
     let storage = LocalFileStorage::new("./data").expect("Failed to create storage directory");
     
-    let flow = Arc::new(HeartrateFlow::new(
+    let flow = Arc::new(HeartrateChannel::new(
         "heartrate_demo",
         device_id,
         Heartrate::new(70.0, device_id),

@@ -372,14 +372,3 @@ where
     }
 }
 
-// === Backward compatibility aliases ===
-// These allow existing code to continue working while we migrate.
-
-/// DEPRECATED: Use DataChannel instead.
-/// This alias exists for backward compatibility during migration.
-#[deprecated(since = "0.2.0", note = "Use DataChannel instead")]
-pub type SelfDataFlow<T> = DataChannel<T>;
-
-/// DEPRECATED: Use ChannelMetadata instead.
-#[deprecated(since = "0.2.0", note = "Use ChannelMetadata instead")]
-pub type FlowMetadata = ChannelMetadata;

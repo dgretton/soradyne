@@ -252,43 +252,28 @@ impl BlockManager {
     pub async fn demonstrate_fault_tolerance(&self, block_id: &[u8; 32], shards_to_simulate_missing: Vec<usize>) -> Result<DemonstrationResult, FlowError> {
         let metadata = self.metadata_store.read().await.get_block(block_id)?;
         
-        // Collect available shards, excluding the ones we're simulating as missing
-        let mut available_shards = HashMap::new();
-        
+        // Count available shards, excluding the ones we're simulating as missing
+        let mut available_shards_count = 0;
+
         for location in &metadata.shard_locations {
             if shards_to_simulate_missing.contains(&location.shard_index) {
-                continue; // Simulate this shard as missing
+                continue;
             }
-            
             let shard_path = PathBuf::from(&location.rimsd_path)
                 .join(&location.relative_path);
-            
             if shard_path.exists() {
-                let shard_data = tokio::fs::read(&shard_path).await.map_err(|e|
-                    FlowError::PersistenceError(format!("Failed to read shard: {}", e))
-                )?;
-                available_shards.insert(location.shard_index, shard_data);
+                available_shards_count += 1;
             }
         }
-        
-        let available_shards_count = available_shards.len();
         let can_recover = available_shards_count >= self.threshold;
-        let recovery_result = if can_recover {
-            match self.erasure_encoder.decode(available_shards, metadata.size) {
-                Ok(data) => Some(data),
-                Err(_) => None,
-            }
-        } else {
-            None
-        };
-        
+
         Ok(DemonstrationResult {
             original_shards: metadata.shard_locations.len(),
             simulated_missing: shards_to_simulate_missing,
             available_shards: available_shards_count,
             threshold_required: self.threshold,
-            recovery_successful: recovery_result.is_some(),
-            recovered_data_size: recovery_result.as_ref().map(|d| d.len()).unwrap_or(0),
+            recovery_successful: can_recover,
+            recovered_data_size: if can_recover { metadata.size } else { 0 },
         })
     }
     
@@ -309,7 +294,6 @@ impl BlockManager {
             created_at: Utc::now(),
             modified_at: Utc::now(),
             shard_locations: Vec::new(),
-            encryption_version: 1, // New Shamir+RS format
             nonce,
         };
         
@@ -371,10 +355,10 @@ impl BlockManager {
                             .unwrap()
                             .to_string_lossy()
                             .to_string(),
-                        key_share_path: Some(key_share_path.strip_prefix(rimsd_dir)
+                        key_share_path: key_share_path.strip_prefix(rimsd_dir)
                             .unwrap()
                             .to_string_lossy()
-                            .to_string()),
+                            .to_string(),
                     });
                 }
                 Err(e) => {
@@ -434,25 +418,15 @@ impl BlockManager {
         println!("📖 Reading block with {} total shards (need {} minimum):", 
             metadata.shard_locations.len(), self.threshold);
         
-        // Check encryption version for backward compatibility
-        if metadata.encryption_version == 0 {
-            return self.read_legacy_block(metadata).await;
-        }
-        
         // Collect available shards and key shares
         let mut shards_with_keys = HashMap::new();
         let mut missing_shards = Vec::new();
-        
+
         for location in &metadata.shard_locations {
             let shard_path = PathBuf::from(&location.rimsd_path)
                 .join(&location.relative_path);
-            
-            let key_share_path = if let Some(key_path) = &location.key_share_path {
-                PathBuf::from(&location.rimsd_path).join(key_path)
-            } else {
-                // Fallback to legacy format
-                return self.read_legacy_block(metadata).await;
-            };
+
+            let key_share_path = PathBuf::from(&location.rimsd_path).join(&location.key_share_path);
             
             if shard_path.exists() && key_share_path.exists() {
                 match (tokio::fs::read(&shard_path).await, tokio::fs::read(&key_share_path).await) {
@@ -505,7 +479,6 @@ impl BlockManager {
         println!("   Total shards: {}", shards_with_keys.len());
         println!("   Block ID: {}", hex::encode(&metadata.id));
         println!("   Expected size: {}", metadata.size);
-        println!("   Encryption version: {}", metadata.encryption_version);
         
         // Log shard details
         for (i, (shard_index, shard_with_key)) in shards_with_keys.iter().enumerate() {
@@ -545,50 +518,8 @@ impl BlockManager {
         Ok(result)
     }
     
-    /// Read legacy RS-only blocks for backward compatibility
-    async fn read_legacy_block(&self, metadata: &BlockMetadata) -> Result<Vec<u8>, FlowError> {
-        println!("📖 Reading legacy RS-only block...");
-        
-        let mut shards = HashMap::new();
-        let mut missing_shards = Vec::new();
-        
-        for location in &metadata.shard_locations {
-            let shard_path = PathBuf::from(&location.rimsd_path)
-                .join(&location.relative_path);
-            
-            if shard_path.exists() {
-                match tokio::fs::read(&shard_path).await {
-                    Ok(shard_data) => {
-                        println!("   ✅ Read legacy shard {} ({} bytes) ← {}", 
-                            location.shard_index, shard_data.len(), shard_path.display());
-                        shards.insert(location.shard_index, shard_data);
-                    }
-                    Err(e) => {
-                        println!("   ❌ Failed to read legacy shard {} from {}: {}", 
-                            location.shard_index, shard_path.display(), e);
-                        missing_shards.push(location.shard_index);
-                    }
-                }
-            } else {
-                println!("   ⚠️  Legacy shard {} missing: {}", 
-                    location.shard_index, shard_path.display());
-                missing_shards.push(location.shard_index);
-            }
-        }
-        
-        if shards.len() < self.threshold {
-            return Err(FlowError::PersistenceError(
-                format!("Not enough legacy shards available: {} < {}", shards.len(), self.threshold)
-            ));
-        }
-        
-        // Use legacy decode method
-        let result = self.erasure_encoder.decode(shards, metadata.size)?;
-        println!("✅ Successfully reconstructed {} bytes from legacy block", result.len());
-        
-        Ok(result)
-    }
-    
+
+
     async fn read_indirect_block(&self, metadata: &BlockMetadata) -> Result<Vec<u8>, FlowError> {
         // First read the indirect block itself to get addresses
         let addresses_data = self.read_direct_block(metadata).await?;

@@ -27,45 +27,6 @@ fn create_video_placeholder() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     create_video_placeholder_at_size(150)
 }
 
-// Legacy function - kept for compatibility
-fn _create_video_placeholder_legacy() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use image::{RgbaImage, Rgba};
-    
-    // Create a 150x150 gray image with a play icon
-    let mut img = RgbaImage::new(150, 150);
-    let gray = Rgba([128, 128, 128, 255]);
-    let white = Rgba([255, 255, 255, 255]);
-    
-    // Fill with gray
-    for pixel in img.pixels_mut() {
-        *pixel = gray;
-    }
-    
-    // Draw a simple play triangle in the center
-    let center_x = 75;
-    let center_y = 75;
-    let size = 20;
-    
-    // Simple triangle points
-    for y in (center_y - size as i32)..(center_y + size as i32) {
-        for x in (center_x - size as i32/2)..(center_x + size as i32) {
-            if x >= 0 && x < 150 && y >= 0 && y < 150 {
-                // Simple triangle shape
-                let dx: i32 = x - center_x;
-                let dy: i32 = y - center_y;
-                if dx > -(size as i32)/2 && dx < size as i32 && dy.abs() < size as i32 - dx.abs()/2 {
-                    img.put_pixel(x as u32, y as u32, white);
-                }
-            }
-        }
-    }
-    
-    // Encode as PNG
-    let mut buffer = Vec::new();
-    img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
-    
-    Ok(buffer)
-}
 
 // Global state for the album system
 static mut ALBUM_SYSTEM: Option<Arc<Mutex<AlbumSystem>>> = None;

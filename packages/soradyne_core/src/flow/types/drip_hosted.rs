@@ -13,6 +13,8 @@
 //! Phase 5.5 will wire this to Giantt/Inventory via FFI.
 
 use std::collections::HashMap;
+use std::io::Write as IoWrite;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -209,6 +211,34 @@ impl Default for HostAssignment {
 }
 
 // ---------------------------------------------------------------------------
+// Persistence helper (module-level, used by DripHostedFlow)
+// ---------------------------------------------------------------------------
+
+/// Append a single `OpEnvelope` as a JSON line to `path/operations.jsonl`.
+/// Idempotent on the document level: duplicate lines are harmless because
+/// `apply_remote` deduplicates by (author, seq) on load.
+fn append_op_to_path(path: &std::path::Path, envelope: &OpEnvelope) {
+    if let Err(e) = std::fs::create_dir_all(path) {
+        eprintln!("[drip_hosted] append_op: create_dir {:?} failed: {}", path, e);
+        return;
+    }
+    let ops_path = path.join("operations.jsonl");
+    match serde_json::to_string(envelope) {
+        Ok(json) => {
+            match std::fs::OpenOptions::new().create(true).append(true).open(&ops_path) {
+                Ok(mut file) => {
+                    if let Err(e) = writeln!(file, "{}", json) {
+                        eprintln!("[drip_hosted] append_op: write failed: {}", e);
+                    }
+                }
+                Err(e) => eprintln!("[drip_hosted] append_op: open {:?} failed: {}", ops_path, e),
+            }
+        }
+        Err(e) => eprintln!("[drip_hosted] append_op: serialize failed: {}", e),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // 5.4  ConvergentDocumentStream<S>
 // ---------------------------------------------------------------------------
 
@@ -293,6 +323,18 @@ impl<S: DocumentSchema + 'static> Stream for ConvergentDocumentStream<S> {
 
     fn name(&self) -> &str {
         &self.name
+    }
+}
+
+impl<S: DocumentSchema> Clone for ConvergentDocumentStream<S> {
+    /// Produces a second handle to the same stream: shared document Arc and
+    /// shared subscriber map, so subscribers registered on one are visible to both.
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            document: Arc::clone(&self.document),
+            subscribers: Arc::clone(&self.subscribers),
+        }
     }
 }
 
@@ -389,6 +431,14 @@ pub struct DripHostedFlow<S: DocumentSchema + 'static> {
     pending_edits: Arc<std::sync::RwLock<Vec<Operation>>>,
     streams: HashMap<String, Box<dyn Stream>>,
     shutdown_tx: broadcast::Sender<()>,
+    /// Shared clone of the "state" stream; the start() task calls
+    /// notify_subscribers() on this after remote ops arrive, so UI pollers
+    /// see the updated materialized state without needing a separate callback.
+    state_stream: ConvergentDocumentStream<S>,
+    /// Filesystem path for the append-only op log (`operations.jsonl`).
+    /// `None` for in-memory flows (tests, ephemeral sessions).
+    /// When set, every local and remote operation is persisted immediately.
+    storage_path: Option<PathBuf>,
 }
 
 impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
@@ -410,6 +460,7 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
             .with_stream(StreamSpec::drip("state").with_description("Convergent document state"));
 
         let state_stream = ConvergentDocumentStream::new("state", Arc::clone(&document));
+        let state_stream_notify = state_stream.clone();
 
         let mut streams: HashMap<String, Box<dyn Stream>> = HashMap::new();
         streams.insert("state".to_string(), Box::new(state_stream));
@@ -430,6 +481,8 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
             pending_edits: Arc::new(std::sync::RwLock::new(Vec::new())),
             streams,
             shutdown_tx,
+            state_stream: state_stream_notify,
+            storage_path: None,
         }
     }
 
@@ -449,8 +502,60 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
         flow
     }
 
-    /// Start the sync listener task. Subscribes to incoming messages from
-    /// the messenger and dispatches FlowSync messages.
+    /// Construct in persistent mode.
+    ///
+    /// Replays the op log at `storage_path/operations.jsonl` on startup.
+    /// Every subsequent local edit (`apply_edit`) and every remote op applied
+    /// by the sync task is appended to the log immediately — no explicit flush
+    /// needed. Process restart is safe: the log is replayed and deduplicated.
+    ///
+    /// This is the memorization role from the Self-Data Flow design: persistence
+    /// lives inside the flow layer, not in application-specific wrappers.
+    pub fn new_persistent(
+        config: FlowConfig,
+        doc_schema: S,
+        policy: DripHostPolicy,
+        device_uuid: Uuid,
+        device_id: DeviceId,
+        storage_path: PathBuf,
+    ) -> Self {
+        let mut flow = Self::new(config, doc_schema, policy, device_uuid, device_id);
+        flow.storage_path = Some(storage_path);
+        flow.load_from_disk();
+        flow
+    }
+
+    /// Replay the on-disk op log into the in-memory document.
+    fn load_from_disk(&mut self) {
+        let Some(ref path) = self.storage_path else {
+            return;
+        };
+        let ops_path = path.join("operations.jsonl");
+        if !ops_path.exists() {
+            return;
+        }
+        let content = match std::fs::read_to_string(&ops_path) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[drip_hosted] load_from_disk: read {:?} failed: {}", ops_path, e);
+                return;
+            }
+        };
+        if let Ok(mut doc) = self.document.write() {
+            for line in content.lines() {
+                if let Ok(env) = serde_json::from_str::<OpEnvelope>(line) {
+                    doc.apply_remote(env);
+                }
+            }
+        }
+    }
+
+    /// Start the background sync listener task.
+    ///
+    /// Subscribes to incoming `FlowSync` messages from the messenger and handles:
+    /// - `HorizonExchange`: responds with the ops the peer hasn't seen (incremental sync).
+    /// - `OperationBatch`: applies new ops to the document, persists them, notifies subscribers.
+    /// - `HostAnnouncement`: updates the host assignment tracker.
     pub fn start(&self) -> Result<(), FlowError> {
         let messenger = self
             .messenger
@@ -461,55 +566,83 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
         let flow_id = self.id;
         let document = Arc::clone(&self.document);
         let host_assignment = Arc::clone(&self.host_assignment);
-        let pending = Arc::clone(&self.pending_edits);
-        let policy = self.policy.clone();
-        let device_uuid = self.device_uuid;
+        let messenger_task = Arc::clone(messenger);
+        let state_stream = self.state_stream.clone();
+        let storage_path = self.storage_path.clone();
         let mut shutdown_rx = self.shutdown_tx.subscribe();
 
-        eprintln!("[drip_hosted] start(): listening for flow_id={}", flow_id);
         tokio::spawn(async move {
             loop {
                 tokio::select! {
                     result = rx.recv() => {
                         let envelope = match result {
                             Ok(e) => e,
-                            Err(e) => {
-                                eprintln!("[drip_hosted] rx.recv error: {:?}", e);
-                                continue;
-                            }
+                            Err(_) => continue,
                         };
-                        eprintln!("[drip_hosted] received envelope: msg_type={:?} src={} payload_len={}", envelope.message_type, envelope.source, envelope.payload.len());
                         if envelope.message_type != MessageType::FlowSync {
-                            eprintln!("[drip_hosted] skipping non-FlowSync message");
                             continue;
                         }
                         let msg = match FlowSyncMessage::from_cbor(&envelope.payload) {
                             Ok(m) => m,
-                            Err(e) => {
-                                eprintln!("[drip_hosted] CBOR decode error: {:?}", e);
-                                continue;
-                            }
+                            Err(_) => continue,
                         };
-                        // Only handle messages for our flow
                         let msg_flow_id = match &msg {
                             FlowSyncMessage::HorizonExchange { flow_id, .. } => *flow_id,
                             FlowSyncMessage::OperationBatch { flow_id, .. } => *flow_id,
                             FlowSyncMessage::HostAnnouncement { flow_id, .. } => *flow_id,
                         };
-                        eprintln!("[drip_hosted] msg_flow_id={} our_flow_id={} match={}", msg_flow_id, flow_id, msg_flow_id == flow_id);
                         if msg_flow_id != flow_id {
-                            eprintln!("[drip_hosted] DROPPING: flow_id mismatch");
                             continue;
                         }
-                        Self::handle_flow_sync_static(
-                            &document,
-                            &host_assignment,
-                            &pending,
-                            &policy,
-                            device_uuid,
-                            envelope.source,
-                            msg,
-                        );
+                        match msg {
+                            FlowSyncMessage::HorizonExchange { flow_id: fid, horizon: peer_horizon } => {
+                                // Compute the ops this peer hasn't seen and send them back.
+                                let ops_to_send: Vec<OpEnvelope> = match document.read() {
+                                    Ok(doc) => doc.operations_since(&peer_horizon)
+                                        .into_iter().cloned().collect(),
+                                    Err(_) => Vec::new(),
+                                };
+                                if !ops_to_send.is_empty() {
+                                    let response = FlowSyncMessage::OperationBatch {
+                                        flow_id: fid,
+                                        ops: ops_to_send,
+                                    };
+                                    if let Ok(payload) = response.to_cbor() {
+                                        let m = Arc::clone(&messenger_task);
+                                        let source = envelope.source;
+                                        tokio::spawn(async move {
+                                            let _ = m.send_to(source, MessageType::FlowSync, &payload).await;
+                                        });
+                                    }
+                                }
+                            }
+                            FlowSyncMessage::OperationBatch { ops, .. } => {
+                                // Apply ops; collect only the ones that were genuinely new.
+                                let applied: Vec<OpEnvelope> = match document.write() {
+                                    Ok(mut doc) => ops.into_iter()
+                                        .filter_map(|op| {
+                                            if doc.apply_remote(op.clone()) { Some(op) } else { None }
+                                        })
+                                        .collect(),
+                                    Err(_) => Vec::new(),
+                                };
+                                if !applied.is_empty() {
+                                    // Persist to disk (memorization role lives in the flow layer).
+                                    if let Some(ref path) = storage_path {
+                                        for op in &applied {
+                                            append_op_to_path(path, op);
+                                        }
+                                    }
+                                    // Notify UI subscribers so polling consumers see the new state.
+                                    state_stream.notify_subscribers();
+                                }
+                            }
+                            FlowSyncMessage::HostAnnouncement { host_id, epoch, .. } => {
+                                if let Ok(mut ha) = host_assignment.write() {
+                                    ha.accept_announcement(host_id, epoch);
+                                }
+                            }
+                        }
                     }
                     _ = shutdown_rx.recv() => {
                         break;
@@ -556,6 +689,11 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
                     doc.apply_local(op)
                 };
 
+                // Persist before broadcasting (local ops are part of the op log too).
+                if let Some(ref path) = self.storage_path {
+                    append_op_to_path(path, &envelope);
+                }
+
                 // Broadcast to peers if we have a messenger
                 if let Some(messenger) = &self.messenger {
                     let msg = FlowSyncMessage::OperationBatch {
@@ -573,6 +711,29 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
                 Ok(envelope)
             }
         }
+    }
+
+    /// Apply a remote operation from an external caller (manual sync, FFI).
+    ///
+    /// Applies the op to the in-memory document, persists it if a storage path
+    /// is configured, and notifies stream subscribers. Returns `true` if the op
+    /// was new (not a duplicate).
+    ///
+    /// The background `start()` task uses an equivalent path internally for ops
+    /// that arrive over the network; this method is for callers that bypass the
+    /// task (e.g., the `soradyne_flow_apply_remote` FFI function).
+    pub fn apply_remote_op(&self, envelope: OpEnvelope) -> bool {
+        let is_new = match self.document.write() {
+            Ok(mut doc) => doc.apply_remote(envelope.clone()),
+            Err(_) => return false,
+        };
+        if is_new {
+            if let Some(ref path) = self.storage_path {
+                append_op_to_path(path, &envelope);
+            }
+            self.state_stream.notify_subscribers();
+        }
+        is_new
     }
 
     /// Evaluate which piece should host this flow based on the policy and
@@ -774,48 +935,52 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
         Ok(())
     }
 
-    /// Process an incoming FlowSyncMessage.
-    pub fn handle_flow_sync(&self, source: Uuid, msg: FlowSyncMessage) {
-        Self::handle_flow_sync_static(
+    /// Process an incoming FlowSyncMessage (direct call, not via the background task).
+    pub fn handle_flow_sync(&self, _source: Uuid, msg: FlowSyncMessage) {
+        let applied = Self::handle_flow_sync_static(
             &self.document,
             &self.host_assignment,
-            &self.pending_edits,
-            &self.policy,
-            self.device_uuid,
-            source,
             msg,
         );
+        if !applied.is_empty() {
+            if let Some(ref path) = self.storage_path {
+                for op in &applied {
+                    append_op_to_path(path, op);
+                }
+            }
+            self.state_stream.notify_subscribers();
+        }
     }
 
-    /// Static handler (used by both the sync task and direct calls).
+    /// Static handler for direct (non-task) calls via `handle_flow_sync`.
+    /// Returns the `OpEnvelope`s that were genuinely new so the caller can
+    /// persist them and notify subscribers.
     fn handle_flow_sync_static(
         document: &Arc<std::sync::RwLock<ConvergentDocument<S>>>,
         host_assignment: &Arc<std::sync::RwLock<HostAssignment>>,
-        _pending: &Arc<std::sync::RwLock<Vec<Operation>>>,
-        _policy: &DripHostPolicy,
-        _device_uuid: Uuid,
-        _source: Uuid,
         msg: FlowSyncMessage,
-    ) {
+    ) -> Vec<OpEnvelope> {
         match msg {
             FlowSyncMessage::HorizonExchange { .. } => {
-                // Peer is requesting sync — we'd respond with our ops since
-                // their horizon. For now, handled at the orchestration layer
-                // (the caller pairs HorizonExchange with OperationBatch).
+                // HorizonExchange responses require the messenger; callers with
+                // &self access (handle_flow_sync) handle this separately.
+                Vec::new()
             }
             FlowSyncMessage::OperationBatch { ops, .. } => {
-                if let Ok(mut doc) = document.write() {
-                    for op in ops {
-                        doc.apply_remote(op);
-                    }
+                match document.write() {
+                    Ok(mut doc) => ops.into_iter()
+                        .filter_map(|op| {
+                            if doc.apply_remote(op.clone()) { Some(op) } else { None }
+                        })
+                        .collect(),
+                    Err(_) => Vec::new(),
                 }
             }
-            FlowSyncMessage::HostAnnouncement {
-                host_id, epoch, ..
-            } => {
+            FlowSyncMessage::HostAnnouncement { host_id, epoch, .. } => {
                 if let Ok(mut ha) = host_assignment.write() {
                     ha.accept_announcement(host_id, epoch);
                 }
+                Vec::new()
             }
         }
     }

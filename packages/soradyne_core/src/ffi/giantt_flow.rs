@@ -105,14 +105,18 @@ fn device_uuid_from_id(device_id: &str) -> Uuid {
     Uuid::from_bytes(bytes)
 }
 
-/// A Giantt-specific flow wrapping a DripHostedFlow
+/// A Giantt-specific flow wrapping a DripHostedFlow.
+///
+/// This wrapper is intentionally thin: all persistence, sync, and CRDT
+/// convergence live inside `DripHostedFlow`. This struct handles only
+/// Giantt-schema-specific concerns: op pre-processing (auto-fill of
+/// RemoveFromSet add-IDs) and state serialization to `.giantt` text.
 pub struct GianttFlow {
     flow: DripHostedFlow<GianttSchema>,
-    storage_path: Option<PathBuf>,
 }
 
 impl GianttFlow {
-    /// Create a new in-memory flow (for testing)
+    /// Create a new in-memory flow (for testing).
     pub fn new_in_memory(device_id: DeviceId, flow_uuid: Uuid) -> Self {
         let device_uuid = device_uuid_from_id(&device_id);
         let config = FlowConfig {
@@ -128,11 +132,13 @@ impl GianttFlow {
                 device_uuid,
                 device_id,
             ),
-            storage_path: None,
         }
     }
 
-    /// Create a new persistent flow
+    /// Create a persistent flow backed by an append-only op log.
+    ///
+    /// Persistence (load on startup, append on every op) is handled entirely
+    /// by `DripHostedFlow::new_persistent` — no application-layer flush needed.
     pub fn new_persistent(device_id: DeviceId, storage_path: PathBuf, flow_uuid: Uuid) -> Self {
         let device_uuid = device_uuid_from_id(&device_id);
         let config = FlowConfig {
@@ -140,19 +146,16 @@ impl GianttFlow {
             type_name: "drip_hosted:giantt".to_string(),
             params: serde_json::json!({}),
         };
-        let mut flow = Self {
-            flow: DripHostedFlow::new(
+        Self {
+            flow: DripHostedFlow::new_persistent(
                 config,
                 GianttSchema,
                 DripHostPolicy::default(),
                 device_uuid,
                 device_id,
+                storage_path,
             ),
-            storage_path: Some(storage_path),
-        };
-
-        flow.load_from_disk();
-        flow
+        }
     }
 
     /// Apply a local operation.
@@ -186,25 +189,19 @@ impl GianttFlow {
             other => other,
         };
 
-        // OfflineMerge never fails for apply_edit
-        let envelope = self.flow.apply_edit(op).unwrap();
-        self.append_op(&envelope);
-        envelope
+        // OfflineMerge never fails for apply_edit; persistence is handled by the flow.
+        self.flow.apply_edit(op).unwrap()
     }
 
-    /// Apply a remote operation (received from another device).
+    /// Apply a remote operation (received from another device via manual sync or FFI).
     ///
-    /// The op is appended to the on-disk log so it survives restart.
+    /// Delegates to `DripHostedFlow::apply_remote_op`, which handles both
+    /// in-memory application and persistence.
     pub fn apply_remote(&mut self, envelope: OpEnvelope) {
-        self.append_op(&envelope);
-        self.flow
-            .document()
-            .write()
-            .unwrap()
-            .apply_remote(envelope);
+        self.flow.apply_remote_op(envelope);
     }
 
-    /// Get all operations (for syncing to other devices)
+    /// Get all operations (for syncing to other devices).
     pub fn all_operations(&self) -> Vec<OpEnvelope> {
         self.flow
             .document()
@@ -234,62 +231,6 @@ impl GianttFlow {
             std::fs::create_dir_all(parent)?;
         }
         std::fs::write(path, text)
-    }
-
-    /// Append a single op envelope to the on-disk log.
-    ///
-    /// The log is append-only: each new op is one JSON line. On restart,
-    /// `load_from_disk` replays the log to reconstruct in-memory state.
-    /// Duplicate lines are harmless — `apply_remote` is idempotent.
-    fn append_op(&self, envelope: &OpEnvelope) {
-        let Some(ref path) = self.storage_path else {
-            return;
-        };
-
-        if let Err(e) = std::fs::create_dir_all(path) {
-            eprintln!("[giantt_flow] append_op: failed to create dir: {}", e);
-            return;
-        }
-
-        let ops_path = path.join("operations.jsonl");
-        match serde_json::to_string(envelope) {
-            Ok(json) => {
-                use std::io::Write;
-                match std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&ops_path)
-                {
-                    Ok(mut file) => {
-                        if let Err(e) = writeln!(file, "{}", json) {
-                            eprintln!("[giantt_flow] append_op: write failed: {}", e);
-                        }
-                    }
-                    Err(e) => eprintln!("[giantt_flow] append_op: open failed: {}", e),
-                }
-            }
-            Err(e) => eprintln!("[giantt_flow] append_op: serialize failed: {}", e),
-        }
-    }
-
-    /// Load operations from disk
-    fn load_from_disk(&mut self) {
-        if let Some(ref path) = self.storage_path {
-            let ops_path = path.join("operations.jsonl");
-            if ops_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&ops_path) {
-                    for line in content.lines() {
-                        if let Ok(envelope) = serde_json::from_str::<OpEnvelope>(line) {
-                            self.flow
-                                .document()
-                                .write()
-                                .unwrap()
-                                .apply_remote(envelope);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /// Get a reference to the underlying DripHostedFlow
@@ -776,15 +717,15 @@ pub extern "C" fn soradyne_flow_connect_tcp(
 
         eprintln!("[giantt_tcp] connected: local={} peer={}", local_uuid, peer_id);
 
-        // ── 6. Initial op push — send all local ops to peer ───────────────
-        // DripHostedFlow::start() only listens; neither side sends first.
-        // We send our full OperationBatch immediately so the peer can apply
-        // any ops we already have (and vice-versa — both sides do this).
+        // ── 6. Horizon exchange — tell the peer what we have; they send back the diff ──
+        // Both sides do this simultaneously. Each side's start() task receives the
+        // other's HorizonExchange and responds with only the ops the sender is missing.
+        // This replaces the old full-dump approach: sync cost is now O(delta), not O(total).
         {
             use crate::ble::gatt::MessageType;
             use crate::flow::flow_core::Flow;
             use crate::flow::types::drip_hosted::FlowSyncMessage;
-            let (flow_id, local_ops) = {
+            let (flow_id, local_horizon) = {
                 let flow = flow_arc.lock().map_err(|_| {
                     crate::ble::BleError::ConnectionError("flow lock".into())
                 })?;
@@ -792,18 +733,15 @@ pub extern "C" fn soradyne_flow_connect_tcp(
                 let doc = flow.drip_flow().document().read().map_err(|_| {
                     crate::ble::BleError::ConnectionError("doc lock".into())
                 })?;
-                let ops: Vec<OpEnvelope> = doc.all_operations().cloned().collect();
-                (id, ops)
+                let horizon = doc.horizon().clone();
+                (id, horizon)
             };
-            if !local_ops.is_empty() {
-                let msg = FlowSyncMessage::OperationBatch {
-                    flow_id,
-                    ops: local_ops,
-                };
-                if let Ok(payload) = msg.to_cbor() {
-                    messenger.send_to(peer_id, MessageType::FlowSync, &payload).await.ok();
-                    eprintln!("[giantt_tcp] sent initial op batch to peer");
-                }
+            let msg = FlowSyncMessage::HorizonExchange {
+                flow_id,
+                horizon: local_horizon,
+            };
+            if let Ok(payload) = msg.to_cbor() {
+                messenger.send_to(peer_id, MessageType::FlowSync, &payload).await.ok();
             }
         }
 

@@ -30,7 +30,3 @@ impl Heartrate {
 /// This would typically be used as a stream within a larger Flow.
 pub type HeartrateChannel = DataChannel<Heartrate>;
 
-/// DEPRECATED: Use HeartrateChannel instead.
-#[deprecated(since = "0.2.0", note = "Use HeartrateChannel instead")]
-pub type HeartrateFlow = DataChannel<Heartrate>;
-

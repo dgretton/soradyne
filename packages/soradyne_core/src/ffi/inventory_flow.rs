@@ -69,11 +69,7 @@ impl InventoryRegistry {
     }
 
     fn close(&mut self, uuid: &str) {
-        if let Some(flow) = self.flows.remove(uuid) {
-            if let Ok(mut flow) = flow.lock() {
-                flow.flush();
-            }
-        }
+        self.flows.remove(uuid);
     }
 }
 
@@ -89,15 +85,17 @@ fn device_uuid_from_id(device_id: &str) -> Uuid {
     Uuid::from_bytes(bytes)
 }
 
-/// An Inventory-specific flow wrapping a DripHostedFlow
+/// An Inventory-specific flow wrapping a DripHostedFlow.
+///
+/// Thin schema wrapper: persistence and sync live inside `DripHostedFlow`.
+/// This struct handles only Inventory-schema-specific op pre-processing
+/// and state serialization.
 pub struct InventoryFlow {
     flow: DripHostedFlow<InventorySchema>,
-    storage_path: Option<PathBuf>,
-    dirty: bool,
 }
 
 impl InventoryFlow {
-    /// Create a new in-memory flow (for testing)
+    /// Create a new in-memory flow (for testing).
     pub fn new_in_memory(device_id: DeviceId) -> Self {
         let device_uuid = device_uuid_from_id(&device_id);
         let config = FlowConfig {
@@ -113,12 +111,10 @@ impl InventoryFlow {
                 device_uuid,
                 device_id,
             ),
-            storage_path: None,
-            dirty: false,
         }
     }
 
-    /// Create a new persistent flow
+    /// Create a persistent flow backed by an append-only op log.
     pub fn new_persistent(device_id: DeviceId, storage_path: PathBuf) -> Self {
         let device_uuid = device_uuid_from_id(&device_id);
         let config = FlowConfig {
@@ -126,20 +122,16 @@ impl InventoryFlow {
             type_name: "drip_hosted:inventory".to_string(),
             params: serde_json::json!({}),
         };
-        let mut flow = Self {
-            flow: DripHostedFlow::new(
+        Self {
+            flow: DripHostedFlow::new_persistent(
                 config,
                 InventorySchema,
                 DripHostPolicy::default(),
                 device_uuid,
                 device_id,
+                storage_path,
             ),
-            storage_path: Some(storage_path),
-            dirty: false,
-        };
-
-        flow.load_from_disk();
-        flow
+        }
     }
 
     /// Apply a local operation
@@ -171,21 +163,13 @@ impl InventoryFlow {
             other => other,
         };
 
-        // OfflineMerge never fails for apply_edit
-        let envelope = self.flow.apply_edit(op).unwrap();
-        self.dirty = true;
-        self.flush();
-        envelope
+        // OfflineMerge never fails for apply_edit; persistence is handled by the flow.
+        self.flow.apply_edit(op).unwrap()
     }
 
-    /// Apply a remote operation (received from another device)
+    /// Apply a remote operation (received from another device via manual sync or FFI).
     pub fn apply_remote(&mut self, envelope: OpEnvelope) {
-        self.flow
-            .document()
-            .write()
-            .unwrap()
-            .apply_remote(envelope);
-        self.dirty = true;
+        self.flow.apply_remote_op(envelope);
     }
 
     /// Get all operations (for syncing to other devices)
@@ -206,128 +190,7 @@ impl InventoryFlow {
         serialize_inventory_state(&inventory_state)
     }
 
-    /// Persist operations to disk
-    pub fn flush(&mut self) {
-        if !self.dirty {
-            return;
-        }
-
-        let Some(ref path) = self.storage_path else {
-            return;
-        };
-
-        if let Err(e) = std::fs::create_dir_all(path) {
-            eprintln!(
-                "[inventory_flow] flush: failed to create dir {:?}: {}",
-                path, e
-            );
-            return;
-        }
-
-        let ops_path = path.join("operations.jsonl");
-        let doc = self.flow.document().read().unwrap();
-        let ops: Vec<_> = doc.all_operations().collect();
-        let op_count = ops.len();
-
-        // Write to a temp file first, then rename for atomicity
-        let tmp_path = path.join("operations.jsonl.tmp");
-
-        let result = (|| -> std::io::Result<()> {
-            use std::io::Write;
-            let file = std::fs::File::create(&tmp_path)?;
-            let mut writer = std::io::BufWriter::new(file);
-            let mut written = 0usize;
-            for op in &ops {
-                let json = serde_json::to_string(op)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-                writeln!(writer, "{}", json)?;
-                written += 1;
-            }
-            writer.flush()?;
-            eprintln!(
-                "[inventory_flow] flush: wrote {}/{} ops to {:?}",
-                written, op_count, tmp_path
-            );
-            Ok(())
-        })();
-
-        match result {
-            Ok(()) => {
-                if let Err(e) = std::fs::rename(&tmp_path, &ops_path) {
-                    eprintln!(
-                        "[inventory_flow] flush: rename {:?} -> {:?} failed: {}",
-                        tmp_path, ops_path, e
-                    );
-                    return;
-                }
-                self.dirty = false;
-            }
-            Err(e) => {
-                eprintln!("[inventory_flow] flush: write failed: {}", e);
-                // Clean up partial temp file
-                let _ = std::fs::remove_file(&tmp_path);
-                // dirty remains true so next flush retries
-            }
-        }
-    }
-
-    /// Load operations from disk
-    fn load_from_disk(&mut self) {
-        let Some(ref path) = self.storage_path else {
-            return;
-        };
-
-        let ops_path = path.join("operations.jsonl");
-        if !ops_path.exists() {
-            eprintln!(
-                "[inventory_flow] load: no operations file at {:?}",
-                ops_path
-            );
-            return;
-        }
-
-        let content = match std::fs::read_to_string(&ops_path) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!(
-                    "[inventory_flow] load: failed to read {:?}: {}",
-                    ops_path, e
-                );
-                return;
-            }
-        };
-
-        let mut loaded = 0usize;
-        let mut skipped = 0usize;
-        for (i, line) in content.lines().enumerate() {
-            match serde_json::from_str::<OpEnvelope>(line) {
-                Ok(envelope) => {
-                    self.flow
-                        .document()
-                        .write()
-                        .unwrap()
-                        .apply_remote(envelope);
-                    loaded += 1;
-                }
-                Err(e) => {
-                    eprintln!(
-                        "[inventory_flow] load: skipping line {} in {:?}: {}",
-                        i + 1,
-                        ops_path,
-                        e
-                    );
-                    skipped += 1;
-                }
-            }
-        }
-
-        eprintln!(
-            "[inventory_flow] load: {} ops loaded, {} skipped from {:?}",
-            loaded, skipped, ops_path
-        );
-    }
-
-    /// Get a reference to the underlying DripHostedFlow
+/// Get a reference to the underlying DripHostedFlow
     pub fn drip_flow(&self) -> &DripHostedFlow<InventorySchema> {
         &self.flow
     }
@@ -431,10 +294,7 @@ pub extern "C" fn soradyne_inventory_close(handle: *mut std::ffi::c_void) {
     }
 
     unsafe {
-        let arc = Arc::from_raw(handle as *const Mutex<InventoryFlow>);
-        if let Ok(mut flow) = arc.lock() {
-            flow.flush();
-        };
+        let _ = Arc::from_raw(handle as *const Mutex<InventoryFlow>);
     }
 }
 
@@ -563,7 +423,6 @@ pub extern "C" fn soradyne_inventory_apply_remote(
             for op in ops {
                 flow.apply_remote(op);
             }
-            flow.flush();
             0
         }
         Err(_) => -1,

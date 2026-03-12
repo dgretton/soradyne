@@ -95,12 +95,13 @@ impl<S: DocumentSchema> ConvergentDocument<S> {
         envelope
     }
 
-    /// Apply a remote operation (already wrapped)
-    pub fn apply_remote(&mut self, envelope: OpEnvelope) {
+    /// Apply a remote operation (already wrapped).
+    /// Returns `true` if the operation was new, `false` if already present.
+    pub fn apply_remote(&mut self, envelope: OpEnvelope) -> bool {
         // Skip if we already have this operation
         let key = (envelope.author.clone(), envelope.seq);
         if self.operations.contains_key(&key) {
-            return;
+            return false;
         }
         // Advance next_seq if this is our own op loaded from persistent storage,
         // so new apply_local calls don't collide with previously persisted seqs.
@@ -108,6 +109,7 @@ impl<S: DocumentSchema> ConvergentDocument<S> {
             self.next_seq = envelope.seq + 1;
         }
         self.store_operation(envelope);
+        true
     }
 
     /// Store an operation and update indexes
