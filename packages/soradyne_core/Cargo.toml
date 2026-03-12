@@ -66,6 +66,7 @@ ed25519-dalek = { version = "2", features = ["serde", "rand_core"] }
 x25519-dalek = { version = "2", features = ["static_secrets", "serde"] }
 zeroize = { version = "1", features = ["derive"] }
 hkdf = "0.12"
+snow = "0.9"
 
 # BLE central (Mac/Linux/Windows) — opt-in via --features ble-central
 btleplug = { version = "0.11", optional = true }

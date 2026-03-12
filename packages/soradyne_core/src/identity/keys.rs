@@ -115,6 +115,13 @@ impl DeviceIdentity {
         self.dh_public().to_bytes()
     }
 
+    /// X25519 static secret as raw bytes (for Noise handshake builder).
+    ///
+    /// Crate-internal: only used by `ble::session` for constructing `snow::Keypair`.
+    pub(crate) fn dh_secret_bytes(&self) -> [u8; 32] {
+        self.dh_secret.to_bytes()
+    }
+
     /// Load from a JSON keystore file.
     pub fn load(path: &Path) -> Result<Self, IdentityError> {
         let data = std::fs::read(path).map_err(|e| IdentityError::IoError(e.to_string()))?;

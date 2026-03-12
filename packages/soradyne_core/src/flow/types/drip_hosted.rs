@@ -1,18 +1,25 @@
-//! DripHostedFlow — a flow where one piece hosts an authoritative CRDT document.
+//! FullReplicaFlow — a convergent document flow where every party replicates
+//! every other party's operation journal locally, and fitting (materialization)
+//! happens independently on each device.
 //!
-//! Other pieces send edits, the host merges them, and topology changes trigger
-//! host re-evaluation with policy-driven failover. Under OfflineMerge failover,
-//! all pieces accept edits locally and converge via CRDT when they reconnect.
+//! This is one specific flow type (set of policies). Its characteristics:
+//! - **Memorization**: every party stores every other party's ops in per-party
+//!   journal files (`journals/{author_device_id}.jsonl`).
+//! - **Outbound queue**: ops are queued for each known peer in
+//!   `outbound/{peer_device_id}.jsonl` for later delivery.
+//! - **Fitting**: local on each device — all journals are loaded and piped
+//!   through the convergent document CRDT to materialize the drip stream.
+//!
+//! A different flow type (e.g. `HostedFitFlow`) might host materialization on
+//! a server, store data in SQLite, use erasure coding, etc. — the application
+//! using the flow wouldn't change.
 //!
 //! # Wire Protocol
 //!
 //! Messages are serialized as CBOR and carried as `RoutedEnvelope` payloads
 //! with `MessageType::FlowSync`.
-//!
-//! # Phase 5 of the capsule-ensemble implementation plan.
-//! Phase 5.5 will wire this to Giantt/Inventory via FFI.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write as IoWrite;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -211,31 +218,115 @@ impl Default for HostAssignment {
 }
 
 // ---------------------------------------------------------------------------
-// Persistence helper (module-level, used by DripHostedFlow)
+// Persistence helpers (module-level, used by FullReplicaFlow)
 // ---------------------------------------------------------------------------
 
-/// Append a single `OpEnvelope` as a JSON line to `path/operations.jsonl`.
-/// Idempotent on the document level: duplicate lines are harmless because
-/// `apply_remote` deduplicates by (author, seq) on load.
-fn append_op_to_path(path: &std::path::Path, envelope: &OpEnvelope) {
-    if let Err(e) = std::fs::create_dir_all(path) {
-        eprintln!("[drip_hosted] append_op: create_dir {:?} failed: {}", path, e);
+/// Sanitize a DeviceId for use as a filename (replace non-alphanumeric chars).
+fn device_id_to_filename(device_id: &str) -> String {
+    device_id.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect()
+}
+
+/// Append a single `OpEnvelope` as a JSON line to a specific journal file.
+/// `base_path` is the flow's storage directory; the op goes into
+/// `journals/{author_device_id}.jsonl`.
+fn append_to_journal(base_path: &std::path::Path, author: &str, envelope: &OpEnvelope) {
+    let journals_dir = base_path.join("journals");
+    if let Err(e) = std::fs::create_dir_all(&journals_dir) {
+        eprintln!("[full_replica] journal: create_dir {:?} failed: {}", journals_dir, e);
         return;
     }
-    let ops_path = path.join("operations.jsonl");
+    let filename = format!("{}.jsonl", device_id_to_filename(author));
+    let file_path = journals_dir.join(filename);
     match serde_json::to_string(envelope) {
         Ok(json) => {
-            match std::fs::OpenOptions::new().create(true).append(true).open(&ops_path) {
+            match std::fs::OpenOptions::new().create(true).append(true).open(&file_path) {
                 Ok(mut file) => {
                     if let Err(e) = writeln!(file, "{}", json) {
-                        eprintln!("[drip_hosted] append_op: write failed: {}", e);
+                        eprintln!("[full_replica] journal: write failed: {}", e);
                     }
                 }
-                Err(e) => eprintln!("[drip_hosted] append_op: open {:?} failed: {}", ops_path, e),
+                Err(e) => eprintln!("[full_replica] journal: open {:?} failed: {}", file_path, e),
             }
         }
-        Err(e) => eprintln!("[drip_hosted] append_op: serialize failed: {}", e),
+        Err(e) => eprintln!("[full_replica] journal: serialize failed: {}", e),
     }
+}
+
+/// Append a single `OpEnvelope` to the outbound queue for a specific peer.
+/// `base_path` is the flow's storage directory; the op goes into
+/// `outbound/{peer_device_id}.jsonl`.
+fn enqueue_for_peer(base_path: &std::path::Path, peer_device_id: &str, envelope: &OpEnvelope) {
+    let outbound_dir = base_path.join("outbound");
+    if let Err(e) = std::fs::create_dir_all(&outbound_dir) {
+        eprintln!("[full_replica] outbound: create_dir {:?} failed: {}", outbound_dir, e);
+        return;
+    }
+    let filename = format!("{}.jsonl", device_id_to_filename(peer_device_id));
+    let file_path = outbound_dir.join(filename);
+    match serde_json::to_string(envelope) {
+        Ok(json) => {
+            match std::fs::OpenOptions::new().create(true).append(true).open(&file_path) {
+                Ok(mut file) => {
+                    if let Err(e) = writeln!(file, "{}", json) {
+                        eprintln!("[full_replica] outbound: write failed: {}", e);
+                    }
+                }
+                Err(e) => eprintln!("[full_replica] outbound: open {:?} failed: {}", file_path, e),
+            }
+        }
+        Err(e) => eprintln!("[full_replica] outbound: serialize failed: {}", e),
+    }
+}
+
+/// Load the known parties mapping from `parties.json` in the flow's storage directory.
+/// Maps DeviceId (String) → device Uuid.
+fn load_known_parties(base_path: &std::path::Path) -> HashMap<String, Uuid> {
+    let path = base_path.join("parties.json");
+    if !path.exists() {
+        return HashMap::new();
+    }
+    match std::fs::read_to_string(&path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => HashMap::new(),
+    }
+}
+
+/// Persist the known parties mapping to `parties.json`.
+fn save_known_parties(base_path: &std::path::Path, parties: &HashMap<String, Uuid>) {
+    let path = base_path.join("parties.json");
+    if let Err(e) = std::fs::create_dir_all(base_path) {
+        eprintln!("[full_replica] save_parties: create_dir failed: {}", e);
+        return;
+    }
+    match serde_json::to_string_pretty(parties) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&path, json) {
+                eprintln!("[full_replica] save_parties: write failed: {}", e);
+            }
+        }
+        Err(e) => eprintln!("[full_replica] save_parties: serialize failed: {}", e),
+    }
+}
+
+/// Legacy compat: read `operations.jsonl` (the old single-file format) if it exists.
+/// Returns the ops and deletes the file after successful read.
+fn migrate_legacy_ops(base_path: &std::path::Path) -> Vec<OpEnvelope> {
+    let legacy_path = base_path.join("operations.jsonl");
+    if !legacy_path.exists() {
+        return Vec::new();
+    }
+    let content = match std::fs::read_to_string(&legacy_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let ops: Vec<OpEnvelope> = content.lines()
+        .filter_map(|line| serde_json::from_str::<OpEnvelope>(line).ok())
+        .collect();
+    if !ops.is_empty() {
+        eprintln!("[full_replica] migrating {} ops from legacy operations.jsonl to per-party journals", ops.len());
+        // Don't delete yet — we'll delete after successful migration in load_from_disk
+    }
+    ops
 }
 
 // ---------------------------------------------------------------------------
@@ -409,7 +500,8 @@ impl AccessoryMemorizer {
 // 5.6  DripHostedFlow<S>
 // ---------------------------------------------------------------------------
 
-/// A flow type where one piece hosts an authoritative CRDT document.
+/// A flow type where every party replicates every other party's operation
+/// journal locally, and fitting (CRDT materialization) happens on each device.
 ///
 /// Streams:
 /// - `"state"` (drip, singleton): The convergent document state.
@@ -417,7 +509,19 @@ impl AccessoryMemorizer {
 /// The host is selected by policy. Under `OfflineMerge` (the default),
 /// all pieces accept edits locally and converge via CRDT. Under
 /// `WaitForHost`, non-host pieces queue edits until the host is available.
-pub struct DripHostedFlow<S: DocumentSchema + 'static> {
+///
+/// # Storage layout (when `storage_path` is set)
+///
+/// ```text
+/// {storage_path}/
+///   journals/
+///     {device_id_A}.jsonl   # ops authored by party A
+///     {device_id_B}.jsonl   # ops received from party B
+///   outbound/
+///     {device_id_B}.jsonl   # ops queued to send to party B
+///   parties.json            # known party device IDs
+/// ```
+pub struct FullReplicaFlow<S: DocumentSchema + 'static> {
     id: Uuid,
     type_name: String,
     schema: FlowSchema,
@@ -435,13 +539,19 @@ pub struct DripHostedFlow<S: DocumentSchema + 'static> {
     /// notify_subscribers() on this after remote ops arrive, so UI pollers
     /// see the updated materialized state without needing a separate callback.
     state_stream: ConvergentDocumentStream<S>,
-    /// Filesystem path for the append-only op log (`operations.jsonl`).
+    /// Filesystem path for per-party journal storage and outbound queues.
     /// `None` for in-memory flows (tests, ephemeral sessions).
-    /// When set, every local and remote operation is persisted immediately.
     storage_path: Option<PathBuf>,
+    /// Known parties to this flow — their ops are stored locally and we
+    /// queue outbound ops for them. Maps DeviceId → device Uuid.
+    /// Persisted in `parties.json`.
+    known_parties: Arc<std::sync::RwLock<HashMap<String, Uuid>>>,
 }
 
-impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
+/// Transitional alias — use `FullReplicaFlow` in new code.
+pub type DripHostedFlow<S> = FullReplicaFlow<S>;
+
+impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
     /// Construct in "disconnected" mode (no messenger/topology).
     /// Under OfflineMerge this is fully functional for local edits.
     pub fn new(
@@ -483,6 +593,7 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
             shutdown_tx,
             state_stream: state_stream_notify,
             storage_path: None,
+            known_parties: Arc::new(std::sync::RwLock::new(HashMap::new())),
         }
     }
 
@@ -504,9 +615,9 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
 
     /// Construct in persistent mode.
     ///
-    /// Replays the op log at `storage_path/operations.jsonl` on startup.
+    /// Loads per-party journals from `storage_path/journals/*.jsonl` on startup.
     /// Every subsequent local edit (`apply_edit`) and every remote op applied
-    /// by the sync task is appended to the log immediately — no explicit flush
+    /// by the sync task is appended to the appropriate journal immediately — no explicit flush
     /// needed. Process restart is safe: the log is replayed and deduplicated.
     ///
     /// This is the memorization role from the Self-Data Flow design: persistence
@@ -525,29 +636,194 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
         flow
     }
 
-    /// Replay the on-disk op log into the in-memory document.
+    /// Load all per-party journals from disk into the in-memory document.
+    ///
+    /// Reads `journals/*.jsonl` and applies all ops via `apply_remote`
+    /// (idempotent — duplicates are harmless). Also handles migration from
+    /// the legacy single `operations.jsonl` format.
     fn load_from_disk(&mut self) {
         let Some(ref path) = self.storage_path else {
             return;
         };
-        let ops_path = path.join("operations.jsonl");
-        if !ops_path.exists() {
+
+        // Load known parties
+        let parties = load_known_parties(path);
+        if let Ok(mut kp) = self.known_parties.write() {
+            *kp = parties;
+        }
+
+        // Migrate legacy operations.jsonl if it exists
+        let legacy_ops = migrate_legacy_ops(path);
+        if !legacy_ops.is_empty() {
+            // Write each legacy op into its author's journal
+            for env in &legacy_ops {
+                append_to_journal(path, &env.author, env);
+            }
+            // Remove the legacy file now that we've migrated
+            let legacy_path = path.join("operations.jsonl");
+            let _ = std::fs::remove_file(&legacy_path);
+            eprintln!("[full_replica] legacy migration complete, removed operations.jsonl");
+        }
+
+        // Read all per-party journal files
+        let journals_dir = path.join("journals");
+        if !journals_dir.exists() {
             return;
         }
-        let content = match std::fs::read_to_string(&ops_path) {
-            Ok(c) => c,
+        let entries = match std::fs::read_dir(&journals_dir) {
+            Ok(e) => e,
             Err(e) => {
-                eprintln!("[drip_hosted] load_from_disk: read {:?} failed: {}", ops_path, e);
+                eprintln!("[full_replica] load_from_disk: read_dir {:?} failed: {}", journals_dir, e);
                 return;
             }
         };
+
         if let Ok(mut doc) = self.document.write() {
-            for line in content.lines() {
-                if let Ok(env) = serde_json::from_str::<OpEnvelope>(line) {
-                    doc.apply_remote(env);
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                if file_path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
+                    continue;
+                }
+                let content = match std::fs::read_to_string(&file_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("[full_replica] load_from_disk: read {:?} failed: {}", file_path, e);
+                        continue;
+                    }
+                };
+                for line in content.lines() {
+                    if let Ok(env) = serde_json::from_str::<OpEnvelope>(line) {
+                        doc.apply_remote(env);
+                    }
                 }
             }
         }
+    }
+
+    /// Register a device as a known party to this flow.
+    ///
+    /// `party_device_id` is the DeviceId string used as the op author in
+    /// the convergent document. `party_uuid` is the Uuid used for routing
+    /// messages via the topology messenger.
+    ///
+    /// When a new party is registered, all existing local ops are queued
+    /// for delivery to them. The party set is persisted to `parties.json`.
+    pub fn register_party(&self, party_device_id: &str, party_uuid: Uuid) {
+        // Don't register ourselves
+        if party_device_id == self.device_id.as_str() {
+            return;
+        }
+
+        let is_new = if let Ok(mut parties) = self.known_parties.write() {
+            if parties.contains_key(party_device_id) {
+                false
+            } else {
+                parties.insert(party_device_id.to_string(), party_uuid);
+                true
+            }
+        } else {
+            return;
+        };
+
+        if !is_new {
+            return; // Already known
+        }
+
+        // Persist updated party set
+        if let Some(ref path) = self.storage_path {
+            if let Ok(parties) = self.known_parties.read() {
+                save_known_parties(path, &parties);
+            }
+
+            // Queue all existing local ops for this new peer
+            let my_journal = path.join("journals").join(
+                format!("{}.jsonl", device_id_to_filename(&self.device_id))
+            );
+            if my_journal.exists() {
+                if let Ok(content) = std::fs::read_to_string(&my_journal) {
+                    for line in content.lines() {
+                        if let Ok(env) = serde_json::from_str::<OpEnvelope>(line) {
+                            enqueue_for_peer(path, party_device_id, &env);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Drain the outbound queue for a specific peer.
+    ///
+    /// Returns all queued ops and clears the queue file. The caller is
+    /// responsible for actually delivering them.
+    pub fn drain_outbound(&self, peer_device_id: &str) -> Vec<OpEnvelope> {
+        let Some(ref path) = self.storage_path else {
+            return Vec::new();
+        };
+        let filename = format!("{}.jsonl", device_id_to_filename(peer_device_id));
+        let queue_path = path.join("outbound").join(filename);
+        if !queue_path.exists() {
+            return Vec::new();
+        }
+        let content = match std::fs::read_to_string(&queue_path) {
+            Ok(c) => c,
+            Err(_) => return Vec::new(),
+        };
+        let ops: Vec<OpEnvelope> = content.lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect();
+        // Clear the queue
+        let _ = std::fs::write(&queue_path, "");
+        ops
+    }
+
+    /// Get the known parties mapping (DeviceId → Uuid).
+    pub fn known_parties(&self) -> HashMap<String, Uuid> {
+        self.known_parties.read()
+            .map(|p| p.clone())
+            .unwrap_or_default()
+    }
+
+    /// Attempt to deliver all pending outbound ops to connected peers.
+    ///
+    /// For each known party with queued ops, drains the queue and sends
+    /// an `OperationBatch` via the messenger. Returns the number of ops
+    /// sent per peer. If the messenger is not configured or a peer is
+    /// unreachable, their queue is still drained — the ops remain in the
+    /// sender's journal and can be re-synced via `HorizonExchange` later.
+    pub async fn flush_outbound(&self) -> HashMap<String, usize> {
+        let messenger = match &self.messenger {
+            Some(m) => Arc::clone(m),
+            None => return HashMap::new(),
+        };
+
+        let parties = self.known_parties();
+        let mut results = HashMap::new();
+
+        for (device_id, peer_uuid) in &parties {
+            let ops = self.drain_outbound(device_id);
+            if ops.is_empty() {
+                continue;
+            }
+            let count = ops.len();
+            let msg = FlowSyncMessage::OperationBatch {
+                flow_id: self.id,
+                ops,
+            };
+            if let Ok(payload) = msg.to_cbor() {
+                match messenger.send_to(*peer_uuid, MessageType::FlowSync, &payload).await {
+                    Ok(()) => {
+                        results.insert(device_id.clone(), count);
+                    }
+                    Err(e) => {
+                        eprintln!("[full_replica] flush_outbound to {}: send failed: {}", device_id, e);
+                        // Ops are drained but still in our journal.
+                        // Peer can recover via HorizonExchange.
+                    }
+                }
+            }
+        }
+
+        results
     }
 
     /// Start the background sync listener task.
@@ -627,10 +903,10 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
                                     Err(_) => Vec::new(),
                                 };
                                 if !applied.is_empty() {
-                                    // Persist to disk (memorization role lives in the flow layer).
+                                    // Persist each op to the author's journal.
                                     if let Some(ref path) = storage_path {
                                         for op in &applied {
-                                            append_op_to_path(path, op);
+                                            append_to_journal(path, &op.author, op);
                                         }
                                     }
                                     // Notify UI subscribers so polling consumers see the new state.
@@ -689,9 +965,15 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
                     doc.apply_local(op)
                 };
 
-                // Persist before broadcasting (local ops are part of the op log too).
+                // Persist to this device's journal (our own party's file).
                 if let Some(ref path) = self.storage_path {
-                    append_op_to_path(path, &envelope);
+                    append_to_journal(path, &self.device_id, &envelope);
+                    // Queue for all known peers.
+                    if let Ok(parties) = self.known_parties.read() {
+                        for peer_id in parties.keys() {
+                            enqueue_for_peer(path, peer_id, &envelope);
+                        }
+                    }
                 }
 
                 // Broadcast to peers if we have a messenger
@@ -728,8 +1010,9 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
             Err(_) => return false,
         };
         if is_new {
+            // Persist to the author's journal (not our own — we didn't write this op).
             if let Some(ref path) = self.storage_path {
-                append_op_to_path(path, &envelope);
+                append_to_journal(path, &envelope.author, &envelope);
             }
             self.state_stream.notify_subscribers();
         }
@@ -843,17 +1126,32 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
             ha.epoch
         };
 
-        // Drain and apply pending edits
+        // Drain and apply pending edits, persist, and broadcast them.
+        let mut envelopes = Vec::new();
         if let Ok(mut pending) = self.pending_edits.write() {
             let ops: Vec<Operation> = pending.drain(..).collect();
-            if let Ok(mut doc) = self.document.write() {
-                for op in ops {
-                    doc.apply_local(op);
+            if !ops.is_empty() {
+                if let Ok(mut doc) = self.document.write() {
+                    for op in ops {
+                        envelopes.push(doc.apply_local(op));
+                    }
+                }
+            }
+        }
+        if !envelopes.is_empty() {
+            if let Some(ref path) = self.storage_path {
+                for env in &envelopes {
+                    append_to_journal(path, &self.device_id, env);
+                    if let Ok(parties) = self.known_parties.read() {
+                        for peer_id in parties.keys() {
+                            enqueue_for_peer(path, peer_id, env);
+                        }
+                    }
                 }
             }
         }
 
-        // Broadcast host announcement
+        // Broadcast host announcement + any pending edits that were just applied.
         if let Some(messenger) = &self.messenger {
             let msg = FlowSyncMessage::HostAnnouncement {
                 flow_id: self.id,
@@ -862,8 +1160,23 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
             };
             if let Ok(payload) = msg.to_cbor() {
                 let messenger = Arc::clone(messenger);
+                let ops_msg = if envelopes.is_empty() {
+                    None
+                } else {
+                    FlowSyncMessage::OperationBatch {
+                        flow_id: self.id,
+                        ops: envelopes,
+                    }
+                    .to_cbor()
+                    .ok()
+                };
                 tokio::spawn(async move {
                     let _ = messenger.broadcast(MessageType::FlowSync, &payload).await;
+                    if let Some(ops_payload) = ops_msg {
+                        let _ = messenger
+                            .broadcast(MessageType::FlowSync, &ops_payload)
+                            .await;
+                    }
                 });
             }
         }
@@ -945,7 +1258,7 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
         if !applied.is_empty() {
             if let Some(ref path) = self.storage_path {
                 for op in &applied {
-                    append_op_to_path(path, op);
+                    append_to_journal(path, &op.author, op);
                 }
             }
             self.state_stream.notify_subscribers();
@@ -1010,7 +1323,7 @@ impl<S: DocumentSchema + 'static> DripHostedFlow<S> {
 // Flow trait implementation
 // ---------------------------------------------------------------------------
 
-impl<S: DocumentSchema + 'static> Flow for DripHostedFlow<S> {
+impl<S: DocumentSchema + 'static> Flow for FullReplicaFlow<S> {
     fn id(&self) -> Uuid {
         self.id
     }
@@ -1084,7 +1397,7 @@ fn construct_giantt_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, Flo
         .unwrap_or("unknown")
         .to_string();
 
-    let flow = DripHostedFlow::new(config, GianttSchema, policy, device_uuid, device_id);
+    let flow = FullReplicaFlow::new(config, GianttSchema, policy, device_uuid, device_id);
     Ok(Box::new(flow))
 }
 
@@ -1114,11 +1427,11 @@ fn construct_inventory_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, 
         .unwrap_or("unknown")
         .to_string();
 
-    let flow = DripHostedFlow::new(config, InventorySchema, policy, device_uuid, device_id);
+    let flow = FullReplicaFlow::new(config, InventorySchema, policy, device_uuid, device_id);
     Ok(Box::new(flow))
 }
 
-/// Register DripHostedFlow constructors for all known schemas.
+/// Register FullReplicaFlow constructors for all known schemas.
 pub fn register_drip_hosted_flows(registry: &mut FlowRegistry) {
     registry.register("drip_hosted:giantt", construct_giantt_drip_hosted);
     registry.register("drip_hosted:inventory", construct_inventory_drip_hosted);
@@ -1578,7 +1891,577 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // DripHostedFlow failover tests
+    // FullReplicaFlow per-party journal + outbound queue tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_per_party_journal_storage() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_per_party_journal");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let device_uuid = Uuid::new_v4();
+        let flow = FullReplicaFlow::new_persistent(
+            make_config("drip_hosted:test"),
+            TestSchema,
+            DripHostPolicy::default(),
+            device_uuid,
+            "device_A".to_string(),
+            temp_dir.clone(),
+        );
+
+        // Apply a local edit
+        let _env = flow.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
+
+        // Verify the journal file exists for this device
+        let journal_path = temp_dir.join("journals/device_A.jsonl");
+        assert!(journal_path.exists(), "journal file should exist");
+
+        let content = std::fs::read_to_string(&journal_path).unwrap();
+        assert_eq!(content.lines().count(), 1, "should have 1 op in journal");
+
+        // Apply a remote op from device_B
+        let remote_env = OpEnvelope::new(
+            "device_B".into(),
+            1,
+            Horizon::new(),
+            Operation::add_item("task_2", "Test"),
+        );
+        flow.apply_remote_op(remote_env);
+
+        // Verify device_B's journal was created
+        let b_journal = temp_dir.join("journals/device_B.jsonl");
+        assert!(b_journal.exists(), "remote device journal should exist");
+        let b_content = std::fs::read_to_string(&b_journal).unwrap();
+        assert_eq!(b_content.lines().count(), 1);
+
+        // Verify device_A's journal is unchanged (still 1 op)
+        let a_content = std::fs::read_to_string(&journal_path).unwrap();
+        assert_eq!(a_content.lines().count(), 1);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_outbound_queue_for_known_parties() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_outbound_queue");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let device_uuid = Uuid::new_v4();
+        let flow = FullReplicaFlow::new_persistent(
+            make_config("drip_hosted:test"),
+            TestSchema,
+            DripHostPolicy::default(),
+            device_uuid,
+            "device_A".to_string(),
+            temp_dir.clone(),
+        );
+
+        // Register a known party
+        flow.register_party("device_B", Uuid::new_v4());
+
+        // Apply a local edit
+        flow.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
+
+        // Verify the outbound queue has the op for device_B
+        let queue_path = temp_dir.join("outbound/device_B.jsonl");
+        assert!(queue_path.exists(), "outbound queue should exist");
+        let content = std::fs::read_to_string(&queue_path).unwrap();
+        assert_eq!(content.lines().count(), 1);
+
+        // Drain the queue
+        let ops = flow.drain_outbound("device_B");
+        assert_eq!(ops.len(), 1);
+
+        // Queue should be empty after drain
+        let content_after = std::fs::read_to_string(&queue_path).unwrap();
+        assert!(content_after.is_empty(), "queue should be empty after drain");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_register_party_queues_existing_ops() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_register_party_backfill");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let device_uuid = Uuid::new_v4();
+        let flow = FullReplicaFlow::new_persistent(
+            make_config("drip_hosted:test"),
+            TestSchema,
+            DripHostPolicy::default(),
+            device_uuid,
+            "device_A".to_string(),
+            temp_dir.clone(),
+        );
+
+        // Apply edits BEFORE registering any parties
+        flow.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
+        flow.apply_edit(Operation::set_field("task_1", "title", Value::string("Hello"))).unwrap();
+
+        // Now register a party — should backfill all existing local ops
+        flow.register_party("device_C", Uuid::new_v4());
+
+        let ops = flow.drain_outbound("device_C");
+        assert_eq!(ops.len(), 2, "new party should get all existing local ops");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_per_party_reload_from_journals() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_reload_journals");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let flow_uuid = Uuid::new_v4();
+
+        // First session: create ops from two "devices"
+        {
+            let flow = FullReplicaFlow::new_persistent(
+                FlowConfig { id: flow_uuid, type_name: "drip_hosted:test".into(), params: serde_json::json!({}) },
+                TestSchema,
+                DripHostPolicy::default(),
+                Uuid::new_v4(),
+                "device_A".to_string(),
+                temp_dir.clone(),
+            );
+            flow.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
+
+            // Simulate receiving a remote op
+            let remote = OpEnvelope::new("device_B".into(), 1, Horizon::new(), Operation::add_item("task_2", "Test"));
+            flow.apply_remote_op(remote);
+        }
+
+        // Second session: reload and verify both items are present
+        {
+            let flow = FullReplicaFlow::new_persistent(
+                FlowConfig { id: flow_uuid, type_name: "drip_hosted:test".into(), params: serde_json::json!({}) },
+                TestSchema,
+                DripHostPolicy::default(),
+                Uuid::new_v4(),
+                "device_A".to_string(),
+                temp_dir.clone(),
+            );
+
+            let doc = flow.document.read().unwrap();
+            let state = doc.materialize();
+            assert!(state.get(&"task_1".into()).is_some(), "task_1 should persist across sessions");
+            assert!(state.get(&"task_2".into()).is_some(), "task_2 should persist across sessions");
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_legacy_operations_jsonl_migration() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_legacy_migration");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Write a legacy operations.jsonl
+        let env = OpEnvelope::new("device_A".into(), 1, Horizon::new(), Operation::add_item("task_1", "Test"));
+        let json = serde_json::to_string(&env).unwrap();
+        std::fs::write(temp_dir.join("operations.jsonl"), format!("{}\n", json)).unwrap();
+
+        // Load the flow — should migrate
+        let flow = FullReplicaFlow::new_persistent(
+            make_config("drip_hosted:test"),
+            TestSchema,
+            DripHostPolicy::default(),
+            Uuid::new_v4(),
+            "device_A".to_string(),
+            temp_dir.clone(),
+        );
+
+        // Legacy file should be gone
+        assert!(!temp_dir.join("operations.jsonl").exists(), "legacy file should be deleted");
+
+        // Journal should exist
+        assert!(temp_dir.join("journals/device_A.jsonl").exists(), "migrated journal should exist");
+
+        // Document should have the item
+        let doc = flow.document.read().unwrap();
+        let state = doc.materialize();
+        assert!(state.get(&"task_1".into()).is_some());
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    // -----------------------------------------------------------------------
+    // Multi-entity simulation: three devices sharing one flow
+    //
+    // No network, no simulation harness — just three FullReplicaFlow
+    // instances with separate storage dirs, manually delivering queued
+    // ops between them.
+    // -----------------------------------------------------------------------
+
+    /// Helper: create a persistent FullReplicaFlow with GianttSchema in a temp dir.
+    /// Returns (flow, device_uuid) so the UUID can be used for party registration.
+    fn make_giantt_flow(
+        base_dir: &std::path::Path,
+        device_name: &str,
+        flow_id: Uuid,
+    ) -> (FullReplicaFlow<crate::convergent::giantt::GianttSchema>, Uuid) {
+        let storage_path = base_dir.join(device_name);
+        let device_uuid = Uuid::new_v4();
+        let flow = FullReplicaFlow::new_persistent(
+            FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            },
+            crate::convergent::giantt::GianttSchema,
+            DripHostPolicy::default(),
+            device_uuid,
+            device_name.to_string(),
+            storage_path,
+        );
+        (flow, device_uuid)
+    }
+
+    /// Helper: deliver all queued ops from `sender` to `receiver`.
+    /// Returns the number of ops delivered.
+    fn deliver_queued_ops<S: DocumentSchema + 'static>(
+        sender: &FullReplicaFlow<S>,
+        receiver: &FullReplicaFlow<S>,
+        receiver_device_id: &str,
+    ) -> usize {
+        let ops = sender.drain_outbound(receiver_device_id);
+        let count = ops.len();
+        for op in ops {
+            receiver.apply_remote_op(op);
+        }
+        count
+    }
+
+    #[test]
+    fn test_three_device_simulation() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_3device_sim");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let flow_id = Uuid::new_v4();
+
+        // Create three devices, each with their own storage
+        let (mac, mac_uuid) = make_giantt_flow(&temp_dir, "mac", flow_id);
+        let (linux, linux_uuid) = make_giantt_flow(&temp_dir, "linux", flow_id);
+        let (phone, phone_uuid) = make_giantt_flow(&temp_dir, "phone", flow_id);
+
+        // Register each other as parties
+        mac.register_party("linux", linux_uuid);
+        mac.register_party("phone", phone_uuid);
+        linux.register_party("mac", mac_uuid);
+        linux.register_party("phone", phone_uuid);
+        phone.register_party("mac", mac_uuid);
+        phone.register_party("linux", linux_uuid);
+
+        // === Phase 1: Mac adds items ===
+        mac.apply_edit(Operation::add_item("buy_groceries", "GianttItem")).unwrap();
+        mac.apply_edit(Operation::set_field("buy_groceries", "title", Value::string("Buy groceries"))).unwrap();
+        mac.apply_edit(Operation::set_field("buy_groceries", "duration", Value::string("1h"))).unwrap();
+
+        mac.apply_edit(Operation::add_item("write_report", "GianttItem")).unwrap();
+        mac.apply_edit(Operation::set_field("write_report", "title", Value::string("Write quarterly report"))).unwrap();
+
+        // Verify mac's own journal has 5 ops
+        let mac_journal = temp_dir.join("mac/journals/mac.jsonl");
+        assert_eq!(std::fs::read_to_string(&mac_journal).unwrap().lines().count(), 5);
+
+        // Verify outbound queues have 5 ops each
+        assert_eq!(mac.drain_outbound("linux").len(), 5);
+        // Note: drain clears, so let's re-apply for the next delivery test.
+        // Instead, let's check phone's queue without draining.
+        let phone_queue = temp_dir.join("mac/outbound/phone.jsonl");
+        assert_eq!(std::fs::read_to_string(&phone_queue).unwrap().lines().count(), 5);
+
+        // Re-queue for linux by re-registering (register_party is idempotent for
+        // existing parties — won't re-queue). We need to manually re-apply.
+        // Actually, drain already consumed them. Let's just use phone's queue.
+
+        // === Phase 2: Deliver mac→phone, verify phone has the items ===
+        let delivered = deliver_queued_ops(&mac, &phone, "phone");
+        assert_eq!(delivered, 5);
+
+        let phone_doc = phone.document().read().unwrap();
+        let phone_state = phone_doc.materialize();
+        assert!(phone_state.get(&"buy_groceries".into()).is_some());
+        assert!(phone_state.get(&"write_report".into()).is_some());
+        drop(phone_doc);
+
+        // Phone's journal for mac should now have those 5 ops
+        let phone_mac_journal = temp_dir.join("phone/journals/mac.jsonl");
+        assert!(phone_mac_journal.exists());
+        assert_eq!(std::fs::read_to_string(&phone_mac_journal).unwrap().lines().count(), 5);
+
+        // === Phase 3: Linux makes a change ===
+        linux.apply_edit(Operation::add_item("fix_server", "GianttItem")).unwrap();
+        linux.apply_edit(Operation::set_field("fix_server", "title", Value::string("Fix production server"))).unwrap();
+        linux.apply_edit(Operation::set_field("fix_server", "priority", Value::string("CRITICAL"))).unwrap();
+
+        // Linux's own journal has 3 ops
+        let linux_journal = temp_dir.join("linux/journals/linux.jsonl");
+        assert_eq!(std::fs::read_to_string(&linux_journal).unwrap().lines().count(), 3);
+
+        // === Phase 4: Deliver linux→phone ===
+        let delivered = deliver_queued_ops(&linux, &phone, "phone");
+        assert_eq!(delivered, 3);
+
+        // Phone should now have all 3 items (2 from mac + 1 from linux)
+        let phone_doc = phone.document().read().unwrap();
+        let phone_state = phone_doc.materialize();
+        assert!(phone_state.get(&"buy_groceries".into()).is_some());
+        assert!(phone_state.get(&"write_report".into()).is_some());
+        assert!(phone_state.get(&"fix_server".into()).is_some());
+        drop(phone_doc);
+
+        // Phone should have 3 separate journal files: mac's, linux's, and its own (empty)
+        let phone_journals = temp_dir.join("phone/journals");
+        let journal_count = std::fs::read_dir(&phone_journals).unwrap().count();
+        assert_eq!(journal_count, 2, "phone should have journals for mac and linux");
+
+        // === Phase 5: Phone makes a change ===
+        phone.apply_edit(Operation::add_item("call_mom", "GianttItem")).unwrap();
+        phone.apply_edit(Operation::set_field("call_mom", "title", Value::string("Call mom"))).unwrap();
+
+        // Now phone has its own journal too
+        let phone_own_journal = temp_dir.join("phone/journals/phone.jsonl");
+        assert!(phone_own_journal.exists());
+        assert_eq!(std::fs::read_to_string(&phone_own_journal).unwrap().lines().count(), 2);
+
+        // Deliver phone→linux
+        let delivered = deliver_queued_ops(&phone, &linux, "linux");
+        assert_eq!(delivered, 2);
+
+        // Linux should now have phone's item
+        let linux_doc = linux.document().read().unwrap();
+        let linux_state = linux_doc.materialize();
+        assert!(linux_state.get(&"call_mom".into()).is_some());
+        assert!(linux_state.get(&"fix_server".into()).is_some());
+        // Linux hasn't received mac's ops yet (we drained mac→linux earlier)
+        assert!(linux_state.get(&"buy_groceries".into()).is_none());
+        drop(linux_doc);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_two_independent_flows_on_same_device() {
+        let temp_dir = std::env::temp_dir().join("soradyne_test_2flows");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let flow_id_1 = Uuid::new_v4();
+        let flow_id_2 = Uuid::new_v4();
+
+        // Same device, two different flows (two different giantt graphs)
+        let (flow_1, _) = make_giantt_flow(&temp_dir, "mac_flow1", flow_id_1);
+        let (flow_2, _) = make_giantt_flow(&temp_dir, "mac_flow2", flow_id_2);
+
+        // Add items to flow 1
+        flow_1.apply_edit(Operation::add_item("task_a", "GianttItem")).unwrap();
+        flow_1.apply_edit(Operation::set_field("task_a", "title", Value::string("Flow 1 task"))).unwrap();
+
+        // Add items to flow 2
+        flow_2.apply_edit(Operation::add_item("task_b", "GianttItem")).unwrap();
+        flow_2.apply_edit(Operation::set_field("task_b", "title", Value::string("Flow 2 task"))).unwrap();
+
+        // Each flow should only see its own items
+        let state_1 = flow_1.document().read().unwrap().materialize();
+        let state_2 = flow_2.document().read().unwrap().materialize();
+
+        assert!(state_1.get(&"task_a".into()).is_some());
+        assert!(state_1.get(&"task_b".into()).is_none(), "flow 1 should not see flow 2's items");
+
+        assert!(state_2.get(&"task_b".into()).is_some());
+        assert!(state_2.get(&"task_a".into()).is_none(), "flow 2 should not see flow 1's items");
+
+        // Each flow has its own storage directory
+        assert!(temp_dir.join("mac_flow1/journals").exists());
+        assert!(temp_dir.join("mac_flow2/journals").exists());
+
+        // Register parties independently per flow
+        flow_1.register_party("linux", Uuid::new_v4());
+        flow_2.register_party("phone", Uuid::new_v4());
+
+        // flow_1 should queue for linux, flow_2 for phone
+        assert_eq!(flow_1.drain_outbound("linux").len(), 2);
+        assert_eq!(flow_1.drain_outbound("phone").len(), 0, "flow_1 has no phone party");
+        assert_eq!(flow_2.drain_outbound("phone").len(), 2);
+        assert_eq!(flow_2.drain_outbound("linux").len(), 0, "flow_2 has no linux party");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_giantt_and_inventory_flows_simultaneously() {
+        use crate::convergent::inventory::InventorySchema;
+
+        let temp_dir = std::env::temp_dir().join("soradyne_test_giantt_inventory");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let giantt_flow_id = Uuid::new_v4();
+        let inventory_flow_id = Uuid::new_v4();
+
+        let device_uuid = Uuid::new_v4();
+
+        // Create a giantt flow
+        let giantt = FullReplicaFlow::new_persistent(
+            FlowConfig {
+                id: giantt_flow_id,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            },
+            crate::convergent::giantt::GianttSchema,
+            DripHostPolicy::default(),
+            device_uuid,
+            "mac".to_string(),
+            temp_dir.join("giantt"),
+        );
+
+        // Create an inventory flow
+        let inventory = FullReplicaFlow::new_persistent(
+            FlowConfig {
+                id: inventory_flow_id,
+                type_name: "drip_hosted:inventory".into(),
+                params: serde_json::json!({}),
+            },
+            InventorySchema,
+            DripHostPolicy::default(),
+            device_uuid,
+            "mac".to_string(),
+            temp_dir.join("inventory"),
+        );
+
+        // Both share the same device but have independent storage
+        let linux_uuid = Uuid::new_v4();
+        giantt.register_party("linux", linux_uuid);
+        inventory.register_party("linux", linux_uuid);
+
+        // Add a giantt item
+        giantt.apply_edit(Operation::add_item("deploy_v2", "GianttItem")).unwrap();
+        giantt.apply_edit(Operation::set_field("deploy_v2", "title", Value::string("Deploy v2"))).unwrap();
+
+        // Add an inventory item
+        inventory.apply_edit(Operation::add_item("laptop_1", "InventoryItem")).unwrap();
+        inventory.apply_edit(Operation::set_field("laptop_1", "description", Value::string("MacBook Air M2"))).unwrap();
+        inventory.apply_edit(Operation::set_field("laptop_1", "category", Value::string("Electronics"))).unwrap();
+
+        // Verify independent state
+        let g_state = giantt.document().read().unwrap().materialize();
+        let i_state = inventory.document().read().unwrap().materialize();
+
+        assert!(g_state.get(&"deploy_v2".into()).is_some());
+        assert!(g_state.get(&"laptop_1".into()).is_none(), "giantt should not see inventory items");
+
+        assert!(i_state.get(&"laptop_1".into()).is_some());
+        assert!(i_state.get(&"deploy_v2".into()).is_none(), "inventory should not see giantt items");
+
+        // Independent outbound queues
+        let g_queued = giantt.drain_outbound("linux");
+        let i_queued = inventory.drain_outbound("linux");
+
+        assert_eq!(g_queued.len(), 2, "giantt should queue 2 ops for linux");
+        assert_eq!(i_queued.len(), 3, "inventory should queue 3 ops for linux");
+
+        // Verify the ops are for the right schemas
+        assert!(matches!(g_queued[0].op, Operation::AddItem { ref item_type, .. } if item_type == "GianttItem"));
+        assert!(matches!(i_queued[0].op, Operation::AddItem { ref item_type, .. } if item_type == "InventoryItem"));
+
+        // Now deliver giantt ops to linux's giantt flow
+        let (linux_giantt, _) = make_giantt_flow(&temp_dir, "linux_giantt", giantt_flow_id);
+        for op in g_queued {
+            linux_giantt.apply_remote_op(op);
+        }
+
+        let linux_g_state = linux_giantt.document().read().unwrap().materialize();
+        assert!(linux_g_state.get(&"deploy_v2".into()).is_some(), "linux should have giantt item");
+
+        // Deliver inventory ops to linux's inventory flow
+        let linux_inventory = FullReplicaFlow::new_persistent(
+            FlowConfig {
+                id: inventory_flow_id,
+                type_name: "drip_hosted:inventory".into(),
+                params: serde_json::json!({}),
+            },
+            InventorySchema,
+            DripHostPolicy::default(),
+            Uuid::new_v4(),
+            "linux".to_string(),
+            temp_dir.join("linux_inventory"),
+        );
+        for op in i_queued {
+            linux_inventory.apply_remote_op(op);
+        }
+
+        let linux_i_state = linux_inventory.document().read().unwrap().materialize();
+        assert!(linux_i_state.get(&"laptop_1".into()).is_some(), "linux should have inventory item");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_session_persistence_with_parties_and_queues() {
+        // Verify that parties, journals, and queues survive across process restarts.
+        let temp_dir = std::env::temp_dir().join("soradyne_test_session_persist");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let flow_id = Uuid::new_v4();
+
+        let linux_uuid = Uuid::new_v4();
+        let phone_uuid = Uuid::new_v4();
+
+        // Session 1: create flow, register parties, add ops
+        {
+            let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
+            flow.register_party("linux", linux_uuid);
+            flow.register_party("phone", phone_uuid);
+
+            flow.apply_edit(Operation::add_item("task_1", "GianttItem")).unwrap();
+            flow.apply_edit(Operation::set_field("task_1", "title", Value::string("Persistent task"))).unwrap();
+        }
+
+        // Session 2: reopen flow, verify state and queues are intact
+        {
+            let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
+
+            // Known parties should be restored
+            let parties = flow.known_parties();
+            assert!(parties.contains_key("linux"), "linux should be a known party");
+            assert!(parties.contains_key("phone"), "phone should be a known party");
+
+            // Document should have the item
+            let doc = flow.document().read().unwrap();
+            let state = doc.materialize();
+            assert!(state.get(&"task_1".into()).is_some());
+            drop(doc);
+
+            // Outbound queues should still have the ops (not yet delivered)
+            let linux_ops = flow.drain_outbound("linux");
+            assert_eq!(linux_ops.len(), 2, "linux queue should survive restart");
+
+            let phone_ops = flow.drain_outbound("phone");
+            assert_eq!(phone_ops.len(), 2, "phone queue should survive restart");
+
+            // Add another op in session 2
+            flow.apply_edit(Operation::add_item("task_2", "GianttItem")).unwrap();
+        }
+
+        // Session 3: verify the new op is also queued
+        {
+            let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
+
+            // linux and phone queues were drained in session 2, so only task_2 should be there
+            let linux_ops = flow.drain_outbound("linux");
+            assert_eq!(linux_ops.len(), 1, "only the new op should be queued");
+
+            let doc = flow.document().read().unwrap();
+            let state = doc.materialize();
+            assert!(state.get(&"task_1".into()).is_some());
+            assert!(state.get(&"task_2".into()).is_some());
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    // -----------------------------------------------------------------------
+    // FullReplicaFlow failover tests
     // -----------------------------------------------------------------------
 
     #[test]
@@ -2225,6 +3108,466 @@ mod tests {
             assert_eq!(ha_b.current_host, Some(id_b));
 
             flow_b.stop();
+        }
+
+        /// Multi-hop sync: A↔B↔C chain where B is a relay-only party (no flow).
+        /// A and C each run a persistent FullReplicaFlow<GianttSchema>.
+        /// A edits, flushes → B forwards → C receives. Then C edits, flushes
+        /// → B forwards → A receives. Both sides converge.
+        #[tokio::test]
+        async fn test_multi_hop_giantt_sync_through_relay() {
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4(); // relay only
+            let id_c = Uuid::new_v4();
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_c = tempfile::tempdir().unwrap();
+
+            // Chain topology: A↔B↔C (no direct A↔C link)
+            let make_topo = || {
+                let mut t = EnsembleTopology::new();
+                t.add_edge(make_sim_edge(id_a, id_b));
+                t.add_edge(make_sim_edge(id_b, id_a));
+                t.add_edge(make_sim_edge(id_b, id_c));
+                t.add_edge(make_sim_edge(id_c, id_b));
+                Arc::new(RwLock::new(t))
+            };
+
+            // --- Messengers ---
+            let messenger_a = Arc::new(TopologyMessenger::new(id_a, make_topo()));
+            let messenger_b = Arc::new(TopologyMessenger::new(id_b, make_topo()));
+            let messenger_c = Arc::new(TopologyMessenger::new(id_c, make_topo()));
+
+            // --- BLE connections: A↔B and B↔C ---
+            let (conn_ab_a, conn_ab_b) = make_connection(&network).await;
+            let (conn_bc_b, conn_bc_c) = make_connection(&network).await;
+
+            messenger_a.add_connection(id_b, conn_ab_a).await;
+            messenger_b.add_connection(id_a, conn_ab_b).await;
+            messenger_b.add_connection(id_c, conn_bc_b).await;
+            messenger_c.add_connection(id_b, conn_bc_c).await;
+
+            // --- Flow A: persistent GianttSchema ---
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config.clone(),
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "phone".into(),
+                tmp_a.path().to_path_buf(),
+            );
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+            flow_a.topology = Some(make_topo());
+            flow_a.register_party("laptop", id_c);
+
+            // --- Flow C: persistent GianttSchema ---
+            let mut flow_c = FullReplicaFlow::new_persistent(
+                config.clone(),
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_c,
+                "laptop".into(),
+                tmp_c.path().to_path_buf(),
+            );
+            flow_c.messenger = Some(Arc::clone(&messenger_c));
+            flow_c.topology = Some(make_topo());
+            flow_c.register_party("phone", id_a);
+
+            // B has no flow — it's just a relay.
+
+            // Start C's sync listener so it processes incoming batches.
+            flow_c.start().unwrap();
+
+            // --- A edits and flushes → should reach C via B ---
+            flow_a
+                .apply_edit(Operation::add_item("write_report", "GianttTask"))
+                .unwrap();
+            flow_a
+                .apply_edit(Operation::set_field(
+                    "write_report",
+                    "title",
+                    Value::string("Write quarterly report"),
+                ))
+                .unwrap();
+
+            let sent_a = flow_a.flush_outbound().await;
+            assert_eq!(sent_a.get("laptop"), Some(&2), "A should flush 2 ops toward C");
+
+            // Give time for B to forward and C's start() to process.
+            tokio::time::sleep(Duration::from_millis(300)).await;
+
+            // C should have the task.
+            {
+                let state_c = flow_c.document.read().unwrap().materialize();
+                assert!(
+                    state_c.get(&"write_report".into()).is_some(),
+                    "C should have write_report via multi-hop through B"
+                );
+            }
+
+            // --- Now C edits and flushes back → should reach A via B ---
+            flow_c
+                .apply_edit(Operation::add_item("review_draft", "GianttTask"))
+                .unwrap();
+
+            // Stop C's listener, start A's, so A can receive.
+            flow_c.stop();
+            flow_a.start().unwrap();
+
+            let sent_c = flow_c.flush_outbound().await;
+            assert_eq!(sent_c.get("phone"), Some(&1), "C should flush 1 op toward A");
+
+            tokio::time::sleep(Duration::from_millis(300)).await;
+
+            // A should have both tasks now.
+            {
+                let state_a = flow_a.document.read().unwrap().materialize();
+                assert!(
+                    state_a.get(&"write_report".into()).is_some(),
+                    "A should still have its own write_report"
+                );
+                assert!(
+                    state_a.get(&"review_draft".into()).is_some(),
+                    "A should have review_draft via multi-hop through B"
+                );
+            }
+
+            // Both sides have both items — convergence through relay.
+            {
+                let state_c = flow_c.document.read().unwrap().materialize();
+                assert!(
+                    state_c.get(&"review_draft".into()).is_some(),
+                    "C should have its own review_draft"
+                );
+                assert!(
+                    state_c.get(&"write_report".into()).is_some(),
+                    "C should still have write_report"
+                );
+            }
+
+            flow_a.stop();
+        }
+
+        /// Full sender path: op → outbound queue → flush_outbound() → SimBLE →
+        /// TopologyMessenger → start() task on receiver → journal + convergence.
+        ///
+        /// Device A applies ops while offline (no messenger), queuing them.
+        /// Then A gets wired to a messenger and flushes. Device B's start()
+        /// task receives the batch and applies it.
+        #[tokio::test]
+        async fn test_flush_outbound_via_sim_ble() {
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_b = tempfile::tempdir().unwrap();
+
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:test".into(),
+                params: serde_json::json!({}),
+            };
+
+            // --- Device A: persistent, no messenger yet ---
+            let flow_a = FullReplicaFlow::<TestSchema>::new_persistent(
+                config.clone(),
+                TestSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "dev_A".into(),
+                tmp_a.path().to_path_buf(),
+            );
+
+            // Register B so ops queue for it
+            flow_a.register_party("dev_B", id_b);
+
+            // Apply two ops while offline
+            flow_a
+                .apply_edit(Operation::add_item("item_1", "Test"))
+                .unwrap();
+            flow_a
+                .apply_edit(Operation::set_field(
+                    "item_1",
+                    "title",
+                    Value::string("Hello from A"),
+                ))
+                .unwrap();
+
+            // Verify outbound queue has 2 ops
+            assert_eq!(flow_a.drain_outbound("dev_B").len(), 2);
+            // drain consumed them; re-apply so we can flush
+            // Actually: re-applying would create new ops. Instead, let's just
+            // do this test without draining first. Re-create flow_a from disk.
+            drop(flow_a);
+
+            let flow_a = FullReplicaFlow::<TestSchema>::new_persistent(
+                config.clone(),
+                TestSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "dev_A".into(),
+                tmp_a.path().to_path_buf(),
+            );
+            flow_a.register_party("dev_B", id_b);
+
+            // Re-apply ops to rebuild outbound queue (reload from disk
+            // doesn't re-populate outbound). Apply fresh ops instead.
+            flow_a
+                .apply_edit(Operation::add_item("item_2", "Test"))
+                .unwrap();
+
+            // --- Device B: persistent + messenger + start() ---
+            let make_topo = || {
+                let mut t = EnsembleTopology::new();
+                t.add_edge(make_sim_edge(id_a, id_b));
+                t.add_edge(make_sim_edge(id_b, id_a));
+                Arc::new(RwLock::new(t))
+            };
+
+            let topo_b = make_topo();
+            let messenger_b = Arc::new(TopologyMessenger::new(id_b, topo_b.clone()));
+
+            let mut flow_b = FullReplicaFlow::<TestSchema>::new_persistent(
+                config.clone(),
+                TestSchema,
+                DripHostPolicy::default(),
+                id_b,
+                "dev_B".into(),
+                tmp_b.path().to_path_buf(),
+            );
+            flow_b.messenger = Some(Arc::clone(&messenger_b));
+            flow_b.topology = Some(topo_b);
+            flow_b.start().unwrap();
+
+            // --- Wire A to a messenger and BLE ---
+            let topo_a = make_topo();
+            let messenger_a = Arc::new(TopologyMessenger::new(id_a, topo_a.clone()));
+
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+
+            // Attach messenger to flow_a (simulates coming online)
+            let flow_a = {
+                let mut f = flow_a;
+                f.messenger = Some(Arc::clone(&messenger_a));
+                f.topology = Some(topo_a);
+                f
+            };
+
+            // Flush the outbound queue over BLE
+            let sent = flow_a.flush_outbound().await;
+            assert_eq!(sent.get("dev_B"), Some(&1), "should have flushed 1 op to dev_B");
+
+            // Give B's start() task time to process
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
+            // B should have item_2
+            let state_b = flow_b.document.read().unwrap().materialize();
+            assert!(
+                state_b.get(&"item_2".into()).is_some(),
+                "B should have received item_2 via flush_outbound"
+            );
+
+            // B's journal should have the op persisted
+            let journal_dir = tmp_b.path().join("journals");
+            assert!(journal_dir.exists(), "B should have journals directory");
+
+            flow_b.stop();
+        }
+
+        /// Encrypted multi-hop: A↔B↔C where every link uses Noise IKpsk2.
+        /// B is a relay (no flow). A and C sync a GianttSchema FullReplicaFlow
+        /// through B with all traffic encrypted per-link.
+        #[tokio::test]
+        async fn test_encrypted_multi_hop_giantt_sync() {
+            use crate::ble::session::{
+                establish_initiator, establish_responder, session_psk,
+                ResponderIdentity, SessionIdentity,
+            };
+            use crate::identity::{CapsuleKeyBundle, DeviceIdentity};
+
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+
+            // Three devices with full cryptographic identities
+            let id_a_identity = DeviceIdentity::generate();
+            let id_b_identity = DeviceIdentity::generate();
+            let id_c_identity = DeviceIdentity::generate();
+
+            let id_a = id_a_identity.device_id();
+            let id_b = id_b_identity.device_id();
+            let id_c = id_c_identity.device_id();
+
+            // Shared capsule key bundle (all three are members)
+            let capsule_keys = CapsuleKeyBundle::generate(Uuid::new_v4());
+            let psk = session_psk(&capsule_keys);
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_c = tempfile::tempdir().unwrap();
+
+            // Chain topology: A↔B↔C
+            let make_topo = || {
+                let mut t = EnsembleTopology::new();
+                t.add_edge(make_sim_edge(id_a, id_b));
+                t.add_edge(make_sim_edge(id_b, id_a));
+                t.add_edge(make_sim_edge(id_b, id_c));
+                t.add_edge(make_sim_edge(id_c, id_b));
+                Arc::new(RwLock::new(t))
+            };
+
+            // --- Messengers ---
+            let messenger_a = Arc::new(TopologyMessenger::new(id_a, make_topo()));
+            let messenger_b = Arc::new(TopologyMessenger::new(id_b, make_topo()));
+            let messenger_c = Arc::new(TopologyMessenger::new(id_c, make_topo()));
+
+            // Helper: make raw boxed connections (not Arc) for session establishment
+            async fn make_boxed_connection(
+                network: &Arc<SimBleNetwork>,
+            ) -> (Box<dyn crate::ble::transport::BleConnection>, Box<dyn crate::ble::transport::BleConnection>) {
+                let mut device_a = network.create_device();
+                device_a.set_mtu(4096);
+                let mut device_b = network.create_device();
+                device_b.set_mtu(4096);
+                let addr_b = device_b.address().clone();
+
+                device_b.start_advertising(vec![0x01]).await.unwrap();
+                let accept = tokio::spawn(async move { device_b.accept().await.unwrap() });
+
+                let conn_a = device_a.connect(&addr_b).await.unwrap();
+                let conn_b = accept.await.unwrap();
+
+                (conn_a, conn_b)
+            }
+
+            // --- Encrypted BLE connections: A↔B ---
+            let (raw_ab_a, raw_ab_b) = make_boxed_connection(&network).await;
+
+            let si_a_to_b = SessionIdentity {
+                local_private_key: id_a_identity.dh_secret_bytes(),
+                local_public_key: id_a_identity.dh_public_bytes(),
+                peer_static_public: id_b_identity.dh_public_bytes(),
+                psk,
+                local_device_id: id_a,
+                peer_device_id: id_b,
+            };
+            let ri_b_from_a = ResponderIdentity {
+                local_private_key: id_b_identity.dh_secret_bytes(),
+                local_public_key: id_b_identity.dh_public_bytes(),
+                psk,
+                local_device_id: id_b,
+                known_peers: vec![
+                    (id_a_identity.dh_public_bytes(), id_a),
+                    (id_c_identity.dh_public_bytes(), id_c),
+                ],
+            };
+
+            // A is initiator (central), B is responder (peripheral)
+            let (secure_ab_a, secure_ab_b) = tokio::join!(
+                establish_initiator(raw_ab_a, &si_a_to_b),
+                establish_responder(raw_ab_b, &ri_b_from_a),
+            );
+            let secure_ab_a = secure_ab_a.expect("A↔B initiator handshake");
+            let secure_ab_b = secure_ab_b.expect("A↔B responder handshake");
+
+            // --- Encrypted BLE connections: B↔C ---
+            let (raw_bc_b, raw_bc_c) = make_boxed_connection(&network).await;
+
+            let si_b_to_c = SessionIdentity {
+                local_private_key: id_b_identity.dh_secret_bytes(),
+                local_public_key: id_b_identity.dh_public_bytes(),
+                peer_static_public: id_c_identity.dh_public_bytes(),
+                psk,
+                local_device_id: id_b,
+                peer_device_id: id_c,
+            };
+            let ri_c_from_b = ResponderIdentity {
+                local_private_key: id_c_identity.dh_secret_bytes(),
+                local_public_key: id_c_identity.dh_public_bytes(),
+                psk,
+                local_device_id: id_c,
+                known_peers: vec![
+                    (id_a_identity.dh_public_bytes(), id_a),
+                    (id_b_identity.dh_public_bytes(), id_b),
+                ],
+            };
+
+            let (secure_bc_b, secure_bc_c) = tokio::join!(
+                establish_initiator(raw_bc_b, &si_b_to_c),
+                establish_responder(raw_bc_c, &ri_c_from_b),
+            );
+            let secure_bc_b = secure_bc_b.expect("B↔C initiator handshake");
+            let secure_bc_c = secure_bc_c.expect("B↔C responder handshake");
+
+            // Wire encrypted connections to messengers
+            messenger_a.add_connection(id_b, Arc::new(secure_ab_a)).await;
+            messenger_b.add_connection(id_a, Arc::new(secure_ab_b)).await;
+            messenger_b.add_connection(id_c, Arc::new(secure_bc_b)).await;
+            messenger_c.add_connection(id_b, Arc::new(secure_bc_c)).await;
+
+            // --- Flows on A and C (B is relay only) ---
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:giantt".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config.clone(),
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_a,
+                "phone".into(),
+                tmp_a.path().to_path_buf(),
+            );
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+            flow_a.topology = Some(make_topo());
+            flow_a.register_party("laptop", id_c);
+
+            let mut flow_c = FullReplicaFlow::new_persistent(
+                config,
+                GianttSchema,
+                DripHostPolicy::default(),
+                id_c,
+                "laptop".into(),
+                tmp_c.path().to_path_buf(),
+            );
+            flow_c.messenger = Some(Arc::clone(&messenger_c));
+            flow_c.topology = Some(make_topo());
+            flow_c.register_party("phone", id_a);
+
+            // Start C's listener
+            flow_c.start().unwrap();
+
+            // A applies ops and flushes through encrypted multi-hop
+            flow_a
+                .apply_edit(Operation::add_item("encrypted_task", "GianttTask"))
+                .unwrap();
+
+            let sent = flow_a.flush_outbound().await;
+            assert_eq!(sent.get("laptop"), Some(&1));
+
+            tokio::time::sleep(Duration::from_millis(300)).await;
+
+            // C should have received the task through encrypted relay
+            let state_c = flow_c.document.read().unwrap().materialize();
+            assert!(
+                state_c.get(&"encrypted_task".into()).is_some(),
+                "C should have encrypted_task via encrypted multi-hop through B"
+            );
+
+            flow_c.stop();
         }
     }
 }

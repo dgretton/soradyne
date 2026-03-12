@@ -7,6 +7,6 @@ pub mod drip_hosted;
 
 pub use drip_hosted::{
     AccessoryMemorizer, ConvergentDocumentStream, DripHostPolicy, DripHostedFlow,
-    FlowSyncMessage, HostAssignment, HostFailoverPolicy, HostScoreWeights,
-    HostSelectionStrategy, register_drip_hosted_flows,
+    FlowSyncMessage, FullReplicaFlow, HostAssignment, HostFailoverPolicy,
+    HostScoreWeights, HostSelectionStrategy, register_drip_hosted_flows,
 };

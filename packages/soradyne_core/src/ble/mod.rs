@@ -6,6 +6,7 @@
 pub mod encrypted_adv;
 pub mod framing;
 pub mod gatt;
+pub mod session;
 pub mod simulated;
 pub mod transport;
 

@@ -46,9 +46,9 @@ pub use traits::{StorageBackend, FlowAuthenticator, FlowType, Diffable};
 pub use stream::{Stream, StreamSpec, StreamCardinality, TypedStream};
 pub use flow_core::{Flow, FlowConfig, FlowSchema, FlowRegistry, FlowConfigStorage, InMemoryConfigStorage, BasicFlow};
 pub use types::{
-    DripHostedFlow, DripHostPolicy, HostSelectionStrategy, HostScoreWeights,
-    HostFailoverPolicy, FlowSyncMessage, HostAssignment, ConvergentDocumentStream,
-    AccessoryMemorizer, register_drip_hosted_flows,
+    DripHostedFlow, DripHostPolicy, FullReplicaFlow, HostSelectionStrategy,
+    HostScoreWeights, HostFailoverPolicy, FlowSyncMessage, HostAssignment,
+    ConvergentDocumentStream, AccessoryMemorizer, register_drip_hosted_flows,
 };
 
 use std::collections::HashMap;
