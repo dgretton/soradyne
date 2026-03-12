@@ -7,6 +7,7 @@ pub mod encrypted_adv;
 pub mod framing;
 pub mod gatt;
 pub mod lan_transport;
+pub mod mdns_transport;
 pub mod session;
 pub mod simulated;
 pub mod transport;
