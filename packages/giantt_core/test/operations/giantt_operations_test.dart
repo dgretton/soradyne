@@ -32,7 +32,7 @@ void main() {
           'SetField': {
             'item_id': 'task_1',
             'field': 'title',
-            'value': {'String': 'My Task'},
+            'value': 'My Task',
           },
         });
       });
@@ -41,14 +41,14 @@ void main() {
         final op = GianttOp.setField('task_1', 'count', 42);
         final operations = op.toOperations();
 
-        expect(operations[0]['SetField']['value'], {'Int': 42});
+        expect(operations[0]['SetField']['value'], 42);
       });
 
       test('creates SetField operation with bool value', () {
         final op = GianttOp.setField('task_1', 'active', true);
         final operations = op.toOperations();
 
-        expect(operations[0]['SetField']['value'], {'Bool': true});
+        expect(operations[0]['SetField']['value'], true);
       });
     });
 
@@ -62,7 +62,7 @@ void main() {
           'AddToSet': {
             'item_id': 'task_1',
             'set_name': 'tags',
-            'element': {'String': 'important'},
+            'element': 'important',
           },
         });
       });
@@ -83,7 +83,7 @@ void main() {
           'RemoveFromSet': {
             'item_id': 'task_1',
             'set_name': 'tags',
-            'element': {'String': 'old-tag'},
+            'element': 'old-tag',
             'observed_add_ids': ['uuid-1', 'uuid-2'],
           },
         });
@@ -110,7 +110,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['SetField']['field'], 'title');
-        expect(operations[0]['SetField']['value'], {'String': 'New Title'});
+        expect(operations[0]['SetField']['value'], 'New Title');
       });
 
       test('setStatus creates SetField for status', () {
@@ -118,7 +118,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['SetField']['field'], 'status');
-        expect(operations[0]['SetField']['value'], {'String': 'COMPLETED'});
+        expect(operations[0]['SetField']['value'], 'COMPLETED');
       });
 
       test('setPriority creates SetField for priority', () {
@@ -126,7 +126,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['SetField']['field'], 'priority');
-        expect(operations[0]['SetField']['value'], {'String': 'HIGH'});
+        expect(operations[0]['SetField']['value'], 'HIGH');
       });
 
       test('setDuration creates SetField for duration', () {
@@ -134,7 +134,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['SetField']['field'], 'duration');
-        expect(operations[0]['SetField']['value'], {'String': '2d'});
+        expect(operations[0]['SetField']['value'], '2d');
       });
 
       test('addTag creates AddToSet for tags', () {
@@ -142,7 +142,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['AddToSet']['set_name'], 'tags');
-        expect(operations[0]['AddToSet']['element'], {'String': 'urgent'});
+        expect(operations[0]['AddToSet']['element'], 'urgent');
       });
 
       test('addChart creates AddToSet for charts', () {
@@ -150,7 +150,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['AddToSet']['set_name'], 'charts');
-        expect(operations[0]['AddToSet']['element'], {'String': 'Sprint1'});
+        expect(operations[0]['AddToSet']['element'], 'Sprint1');
       });
 
       test('addRequires creates AddToSet for requires', () {
@@ -158,7 +158,7 @@ void main() {
         final operations = op.toOperations();
 
         expect(operations[0]['AddToSet']['set_name'], 'requires');
-        expect(operations[0]['AddToSet']['element'], {'String': 'task_2'});
+        expect(operations[0]['AddToSet']['element'], 'task_2');
       });
     });
 

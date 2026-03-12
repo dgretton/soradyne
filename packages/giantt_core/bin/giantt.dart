@@ -16,6 +16,7 @@ bool _flowAvailable = false;
 /// Silently falls back to file-based storage if the native library is not
 /// found, so the CLI still works without a Rust build.
 void _tryInitFlow() {
+  if (Platform.environment['GIANTT_NO_FLOW'] == '1') return;
   final deviceId = Platform.localHostname;
   _flowAvailable = FlowRepository.initializeIfAvailable(deviceId);
   if (!_flowAvailable) {
@@ -209,7 +210,8 @@ ArgParser _createAddCommand() {
     ..addOption('tags', help: 'Comma-separated list of tags')
     ..addOption('status', defaultsTo: 'NOT_STARTED', help: 'Initial status')
     ..addOption('requires', help: 'Comma-separated list of item IDs that this item requires')
-    ..addOption('any-of', help: 'Comma-separated list of item IDs that are individually sufficient');
+    ..addOption('any-of', help: 'Comma-separated list of item IDs that are individually sufficient')
+    ..addOption('constraints', help: 'Space-separated time constraints (e.g., "due(2024-12-31,warn) window(5d,severe)")');
 }
 
 ArgParser _createShowCommand() {
@@ -230,8 +232,9 @@ ArgParser _createModifyCommand() {
     ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
-    ..addFlag('add', help: 'Add a relation', negatable: false)
-    ..addFlag('remove', help: 'Remove a relation', negatable: false);
+    ..addFlag('add', help: 'Add a value (for collection properties)', negatable: false)
+    ..addFlag('remove', help: 'Remove a value (for collection properties)', negatable: false)
+    ..addFlag('clear', help: 'Clear all values (for collection properties)', negatable: false);
 }
 
 ArgParser _createRemoveCommand() {
@@ -275,7 +278,8 @@ ArgParser _createInsertCommand() {
     ..addOption('charts', help: 'Comma-separated list of charts')
     ..addOption('tags', help: 'Comma-separated list of tags')
     ..addOption('duration', defaultsTo: '1d', help: 'Duration (e.g., 1d, 2w, 3mo2w5d3s)')
-    ..addOption('priority', defaultsTo: 'NEUTRAL', help: 'Priority level');
+    ..addOption('priority', defaultsTo: 'NEUTRAL', help: 'Priority level')
+    ..addOption('constraints', help: 'Space-separated time constraints (e.g., "due(2024-12-31,warn) window(5d,severe)")');
 }
 
 ArgParser _createIncludesCommand() {
@@ -524,6 +528,7 @@ Future<void> _executeAdd(ArgResults args) async {
   final status = args['status'] as String;
   final requires = args['requires'] as String?;
   final anyOf = args['any-of'] as String?;
+  final constraints = args['constraints'] as String?;
   final jsonOutput = args['json'] as bool;
   
   try {
@@ -606,7 +611,18 @@ Future<void> _executeAdd(ArgResults args) async {
         }
       }
     }
-    
+
+    // Parse constraints
+    final timeConstraints = <TimeConstraint>[];
+    if (constraints != null) {
+      for (final cs in constraints.split(' ')) {
+        if (cs.trim().isNotEmpty) {
+          final tc = TimeConstraint.parse(cs.trim());
+          if (tc != null) timeConstraints.add(tc);
+        }
+      }
+    }
+
     // Create new item
     final newItem = GianttItem(
       id: id,
@@ -617,6 +633,7 @@ Future<void> _executeAdd(ArgResults args) async {
       charts: chartList,
       tags: tagList,
       relations: relations,
+      timeConstraints: timeConstraints,
     );
 
     // Add to graph (for cycle check)
@@ -801,15 +818,17 @@ Future<void> _showLogs(LogCollection logs, String substring) async {
 }
 
 Future<void> _executeModify(ArgResults args) async {
-  if (args.rest.length < 3) {
+  final clearMode = args['clear'] as bool;
+
+  if (args.rest.length < 2 || (!clearMode && args.rest.length < 3)) {
     stderr.writeln('Error: Please provide item ID, property, and value');
-    stderr.writeln('Usage: giantt modify <id> <property> <value> [--add|--remove]');
+    stderr.writeln('Usage: giantt modify <id> <property> <value> [--add|--remove|--clear]');
     exit(1);
   }
 
   final itemId = args.rest[0];
   final property = args.rest[1];
-  final value = args.rest[2];
+  final value = args.rest.length >= 3 ? args.rest[2] : '';
   final file = args['file'] as String?;
   final occludeFile = args['occlude-file'] as String?;
   final addMode = args['add'] as bool;
@@ -921,9 +940,40 @@ Future<void> _executeModify(ArgResults args) async {
       case 'comment':
         modifiedItem = item.copyWith(userComment: value);
         break;
+      case 'constraints':
+        final constraintList = value.split(' ').where((s) => s.trim().isNotEmpty).toList();
+        final clearMode = args['clear'] as bool;
+        if (clearMode) {
+          modifiedItem = item.copyWith(timeConstraints: []);
+        } else if (addMode) {
+          final newConstraints = <TimeConstraint>[...item.timeConstraints];
+          for (final cs in constraintList) {
+            final tc = TimeConstraint.parse(cs.trim());
+            if (tc != null) newConstraints.add(tc);
+          }
+          modifiedItem = item.copyWith(timeConstraints: newConstraints);
+        } else if (removeMode) {
+          final toRemove = <TimeConstraint>[];
+          for (final cs in constraintList) {
+            final tc = TimeConstraint.parse(cs.trim());
+            if (tc != null) toRemove.add(tc);
+          }
+          modifiedItem = item.copyWith(
+            timeConstraints: item.timeConstraints.where((tc) => !toRemove.contains(tc)).toList(),
+          );
+        } else {
+          // Replace all constraints
+          final newConstraints = <TimeConstraint>[];
+          for (final cs in constraintList) {
+            final tc = TimeConstraint.parse(cs.trim());
+            if (tc != null) newConstraints.add(tc);
+          }
+          modifiedItem = item.copyWith(timeConstraints: newConstraints);
+        }
+        break;
       default:
         stderr.writeln('Error: Unknown property "$property"');
-        stderr.writeln('Valid properties: title, status, priority, duration, charts, tags, requires, anyof, blocks, comment');
+        stderr.writeln('Valid properties: title, status, priority, duration, charts, tags, requires, anyof, blocks, comment, constraints');
         exit(1);
     }
 
@@ -1265,6 +1315,7 @@ Future<void> _executeInsert(ArgResults args) async {
   final priority = args['priority'] as String;
   final charts = args['charts'] as String?;
   final tags = args['tags'] as String?;
+  final constraints = args['constraints'] as String?;
 
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
@@ -1297,6 +1348,17 @@ Future<void> _executeInsert(ArgResults args) async {
     final chartList = charts?.split(',').map((c) => c.trim()).toList() ?? <String>[];
     final tagList = tags?.split(',').map((t) => t.trim()).toList() ?? <String>[];
 
+    // Parse constraints
+    final timeConstraints = <TimeConstraint>[];
+    if (constraints != null) {
+      for (final cs in constraints.split(' ')) {
+        if (cs.trim().isNotEmpty) {
+          final tc = TimeConstraint.parse(cs.trim());
+          if (tc != null) timeConstraints.add(tc);
+        }
+      }
+    }
+
     // Create the new item with relations to insert it between the two existing items
     // The new item REQUIRES the afterId (it depends on after)
     // The beforeId should REQUIRE the new item (before depends on new)
@@ -1309,6 +1371,7 @@ Future<void> _executeInsert(ArgResults args) async {
       charts: chartList,
       tags: tagList,
       relations: {'REQUIRES': [afterId]},
+      timeConstraints: timeConstraints,
     );
 
     // Add the new item

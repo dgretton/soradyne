@@ -38,6 +38,7 @@ void main() {
         'dart',
         ['run', 'bin/giantt.dart', ...args],
         workingDirectory: '.',
+        environment: {'GIANTT_NO_FLOW': '1'},
       );
     }
 
