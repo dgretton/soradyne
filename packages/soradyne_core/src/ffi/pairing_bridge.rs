@@ -131,20 +131,28 @@ pub(crate) fn bridge_get_ensemble(
             return Ok((messenger, topo));
         }
 
-        // Collect piece device_ids for the capsule
+        // Collect piece device_ids and static keys for the capsule
         let piece_ids: Vec<Uuid> = capsule
             .pieces
             .iter()
             .map(|p| p.device_id)
             .collect();
 
+        let peer_static_keys: std::collections::HashMap<Uuid, [u8; 32]> = capsule
+            .pieces
+            .iter()
+            .filter(|p| p.device_id != bridge.identity.device_id())
+            .map(|p| (p.device_id, p.dh_public_key))
+            .collect();
+
         // Get the capsule's key bundle
         let keys = capsule.keys.clone();
 
         let manager = EnsembleManager::new(
-            bridge.identity.device_id(),
+            Arc::clone(&bridge.identity),
             keys,
             piece_ids,
+            peer_static_keys,
             EnsembleConfig::default(),
         );
 

@@ -18,8 +18,11 @@ use crate::ble::encrypted_adv::{
     AdvertisementPayload,
 };
 use crate::ble::gatt::{MessageType, RoutedEnvelope};
+use crate::ble::session::{
+    establish_initiator, establish_responder, session_psk, ResponderIdentity, SessionIdentity,
+};
 use crate::ble::transport::{BleAddress, BleAdvertisement, BleCentral, BleConnection, BlePeripheral};
-use crate::identity::CapsuleKeyBundle;
+use crate::identity::{CapsuleKeyBundle, DeviceIdentity};
 use crate::topology::capsule::PieceCapabilities;
 use crate::topology::ensemble::{
     ConnectionQuality, EnsembleTopology, PiecePresence, PieceReachability, TopologyEdge,
@@ -50,10 +53,14 @@ impl Default for EnsembleConfig {
 /// and peer introduction propagation.
 pub struct EnsembleManager {
     device_id: Uuid,
+    device_identity: Arc<DeviceIdentity>,
     capsule_keys: CapsuleKeyBundle,
     known_capsules: Vec<CapsuleKeyBundle>,
     /// piece_hint -> device_id (computed from capsule piece list).
     piece_hints: RwLock<HashMap<[u8; 4], Uuid>>,
+    /// Peer static X25519 public keys, keyed by device UUID.
+    /// Used for Noise IKpsk2 session establishment.
+    peer_static_keys: HashMap<Uuid, [u8; 32]>,
     topology: Arc<RwLock<EnsembleTopology>>,
     messenger: Arc<TopologyMessenger>,
     /// BLE addresses learned from advertisements/introductions.
@@ -66,15 +73,19 @@ pub struct EnsembleManager {
 impl EnsembleManager {
     /// Create a new EnsembleManager.
     ///
-    /// `known_piece_ids` should contain the device_ids of all pieces in
-    /// the capsule (including our own), used to resolve piece_hints from
-    /// encrypted advertisements.
+    /// `device_identity` — this device's cryptographic identity (X25519 + Ed25519).
+    /// `peer_static_keys` — map from peer device UUID to their X25519 public key
+    ///                       (from `PieceRecord.dh_public_key`, learned during pairing).
+    /// `known_piece_ids` — device_ids of all pieces in the capsule (including our own),
+    ///                      used to resolve piece_hints from encrypted advertisements.
     pub fn new(
-        device_id: Uuid,
+        device_identity: Arc<DeviceIdentity>,
         capsule_keys: CapsuleKeyBundle,
         known_piece_ids: Vec<Uuid>,
+        peer_static_keys: HashMap<Uuid, [u8; 32]>,
         config: EnsembleConfig,
     ) -> Arc<Self> {
+        let device_id = device_identity.device_id();
         let topology = Arc::new(RwLock::new(EnsembleTopology::new()));
         let messenger = TopologyMessenger::new(device_id, Arc::clone(&topology));
 
@@ -87,9 +98,11 @@ impl EnsembleManager {
 
         Arc::new(Self {
             device_id,
+            device_identity,
             capsule_keys: capsule_keys.clone(),
             known_capsules: vec![capsule_keys],
             piece_hints: RwLock::new(hints),
+            peer_static_keys,
             topology,
             messenger,
             peer_addresses: Arc::new(RwLock::new(HashMap::new())),
@@ -181,7 +194,7 @@ impl EnsembleManager {
             });
         }
 
-        // Task: initiate connections from scan results
+        // Task: initiate connections from scan results (central = initiator)
         {
             let manager = Arc::clone(self);
             let central = Arc::clone(&central);
@@ -193,8 +206,16 @@ impl EnsembleManager {
                             if let Some((peer_id, address)) = request {
                                 match central.connect(&address).await {
                                     Ok(conn) => {
-                                        let conn: Arc<dyn BleConnection> = Arc::from(conn);
-                                        manager.add_peer_connection(peer_id, conn, Some(address)).await;
+                                        // Wrap with Noise IKpsk2 session (central = initiator)
+                                        match manager.establish_initiator_session(conn, peer_id).await {
+                                            Ok(secure_conn) => {
+                                                let conn: Arc<dyn BleConnection> = Arc::new(secure_conn);
+                                                manager.add_peer_connection(peer_id, conn, Some(address)).await;
+                                            }
+                                            Err(e) => {
+                                                log::warn!("Session handshake failed with {}: {}", peer_id, e);
+                                            }
+                                        }
                                     }
                                     Err(e) => {
                                         log::warn!("Failed to connect to {}: {}", peer_id, e);
@@ -210,7 +231,7 @@ impl EnsembleManager {
             });
         }
 
-        // Task: accept incoming connections
+        // Task: accept incoming connections (peripheral = responder)
         {
             let manager = Arc::clone(self);
             let peripheral = Arc::clone(&peripheral);
@@ -221,17 +242,19 @@ impl EnsembleManager {
                         result = peripheral.accept() => {
                             match result {
                                 Ok(conn) => {
-                                    let conn: Arc<dyn BleConnection> = Arc::from(conn);
                                     let peer_addr = conn.peer_address().clone();
-                                    // Reverse-lookup: BleAddress -> device_id
-                                    let peer_id = {
-                                        let addrs = manager.peer_addresses.read().await;
-                                        addrs.iter()
-                                            .find(|(_, addr)| **addr == peer_addr)
-                                            .map(|(id, _)| *id)
-                                    };
-                                    if let Some(peer_id) = peer_id {
-                                        manager.add_peer_connection(peer_id, conn, Some(peer_addr)).await;
+                                    // Noise IKpsk2 handshake as responder — peer identity
+                                    // is extracted from the handshake message, not from
+                                    // address lookup.
+                                    match manager.establish_responder_session(conn).await {
+                                        Ok(secure_conn) => {
+                                            let peer_id = secure_conn.peer_device_id();
+                                            let conn: Arc<dyn BleConnection> = Arc::new(secure_conn);
+                                            manager.add_peer_connection(peer_id, conn, Some(peer_addr)).await;
+                                        }
+                                        Err(e) => {
+                                            log::warn!("Responder handshake failed: {}", e);
+                                        }
                                     }
                                 }
                                 Err(_) => break,
@@ -263,6 +286,62 @@ impl EnsembleManager {
                 }
             });
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Session establishment
+    // ------------------------------------------------------------------
+
+    /// Build a `SessionIdentity` for initiating a Noise session with a known peer.
+    fn session_identity_for(&self, peer_id: Uuid) -> Option<SessionIdentity> {
+        let peer_key = self.peer_static_keys.get(&peer_id)?;
+        let psk = session_psk(&self.capsule_keys);
+        Some(SessionIdentity {
+            local_private_key: self.device_identity.dh_secret_bytes(),
+            local_public_key: self.device_identity.dh_public_bytes(),
+            peer_static_public: *peer_key,
+            psk,
+            local_device_id: self.device_id,
+            peer_device_id: peer_id,
+        })
+    }
+
+    /// Build a `ResponderIdentity` for accepting a Noise session from any capsule peer.
+    fn responder_identity(&self) -> ResponderIdentity {
+        let psk = session_psk(&self.capsule_keys);
+        let known_peers: Vec<([u8; 32], Uuid)> = self
+            .peer_static_keys
+            .iter()
+            .map(|(id, key)| (*key, *id))
+            .collect();
+        ResponderIdentity {
+            local_private_key: self.device_identity.dh_secret_bytes(),
+            local_public_key: self.device_identity.dh_public_bytes(),
+            psk,
+            local_device_id: self.device_id,
+            known_peers,
+        }
+    }
+
+    /// Establish a Noise IKpsk2 session as initiator with a known peer.
+    async fn establish_initiator_session(
+        &self,
+        conn: Box<dyn BleConnection>,
+        peer_id: Uuid,
+    ) -> Result<crate::ble::session::SecureBleConnection, crate::ble::session::SessionError> {
+        let identity = self.session_identity_for(peer_id).ok_or(
+            crate::ble::session::SessionError::UnknownPeer,
+        )?;
+        establish_initiator(conn, &identity).await
+    }
+
+    /// Establish a Noise IKpsk2 session as responder (peer is identified from handshake).
+    async fn establish_responder_session(
+        &self,
+        conn: Box<dyn BleConnection>,
+    ) -> Result<crate::ble::session::SecureBleConnection, crate::ble::session::SessionError> {
+        let identity = self.responder_identity();
+        establish_responder(conn, &identity).await
     }
 
     // ------------------------------------------------------------------
@@ -719,8 +798,43 @@ mod tests {
     use super::*;
     use crate::ble::simulated::SimBleNetwork;
     use crate::ble::transport::{BleCentral, BlePeripheral};
+    use crate::identity::DeviceIdentity;
     use std::sync::Arc;
     use std::time::Duration;
+
+    /// Create a DeviceIdentity with a specific UUID (for test determinism).
+    /// The identity's actual device_id is random; we override it by generating
+    /// fresh and using the identity's own UUID. Tests that need a specific UUID
+    /// pass connections via `add_peer_connection` (no handshake), so the identity
+    /// UUID just needs to match what we pass to the manager constructor.
+    fn make_test_identity() -> Arc<DeviceIdentity> {
+        Arc::new(DeviceIdentity::generate())
+    }
+
+    /// Build an EnsembleManager for tests using real DeviceIdentity keys.
+    /// The device_id comes from the identity; peer_static_keys are populated
+    /// from the peer identities passed in.
+    fn make_manager(
+        identity: &Arc<DeviceIdentity>,
+        peer_identities: &[&Arc<DeviceIdentity>],
+        capsule_keys: CapsuleKeyBundle,
+        config: EnsembleConfig,
+    ) -> Arc<EnsembleManager> {
+        let all_ids: Vec<Uuid> = std::iter::once(identity.device_id())
+            .chain(peer_identities.iter().map(|p| p.device_id()))
+            .collect();
+        let peer_keys: HashMap<Uuid, [u8; 32]> = peer_identities
+            .iter()
+            .map(|p| (p.device_id(), p.dh_public_bytes()))
+            .collect();
+        EnsembleManager::new(
+            Arc::clone(identity),
+            capsule_keys,
+            all_ids,
+            peer_keys,
+            config,
+        )
+    }
 
     /// Establish a BLE connection pair via the simulated network.
     /// MTU set to 512: topology sync messages (CBOR-encoded RoutedEnvelope
@@ -749,17 +863,14 @@ mod tests {
         let (conn_a, conn_b) = make_connection(&network).await;
 
         let capsule_keys = CapsuleKeyBundle::generate(Uuid::new_v4());
-        let id_a = Uuid::new_v4();
-        let id_b = Uuid::new_v4();
+        let identity_a = make_test_identity();
+        let identity_b = make_test_identity();
+        let id_a = identity_a.device_id();
+        let id_b = identity_b.device_id();
         let config = EnsembleConfig::default();
 
-        let mgr_a = EnsembleManager::new(
-            id_a,
-            capsule_keys.clone(),
-            vec![id_a, id_b],
-            config.clone(),
-        );
-        let mgr_b = EnsembleManager::new(id_b, capsule_keys, vec![id_a, id_b], config);
+        let mgr_a = make_manager(&identity_a, &[&identity_b], capsule_keys.clone(), config.clone());
+        let mgr_b = make_manager(&identity_b, &[&identity_a], capsule_keys, config);
 
         mgr_a.start_processing();
         mgr_b.start_processing();
@@ -793,15 +904,17 @@ mod tests {
         let (conn_ac_a, conn_ac_c) = make_connection(&network).await;
 
         let capsule_keys = CapsuleKeyBundle::generate(Uuid::new_v4());
-        let id_a = Uuid::new_v4();
-        let id_b = Uuid::new_v4();
-        let id_c = Uuid::new_v4();
+        let identity_a = make_test_identity();
+        let identity_b = make_test_identity();
+        let identity_c = make_test_identity();
+        let id_a = identity_a.device_id();
+        let id_b = identity_b.device_id();
+        let id_c = identity_c.device_id();
         let config = EnsembleConfig::default();
-        let ids = vec![id_a, id_b, id_c];
 
-        let mgr_a = EnsembleManager::new(id_a, capsule_keys.clone(), ids.clone(), config.clone());
-        let mgr_b = EnsembleManager::new(id_b, capsule_keys.clone(), ids.clone(), config.clone());
-        let mgr_c = EnsembleManager::new(id_c, capsule_keys, ids, config);
+        let mgr_a = make_manager(&identity_a, &[&identity_b, &identity_c], capsule_keys.clone(), config.clone());
+        let mgr_b = make_manager(&identity_b, &[&identity_a, &identity_c], capsule_keys.clone(), config.clone());
+        let mgr_c = make_manager(&identity_c, &[&identity_a, &identity_b], capsule_keys, config);
 
         mgr_a.start_processing();
         mgr_b.start_processing();
@@ -843,15 +956,11 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn test_advertisement_updates_presence() {
         let capsule_keys = CapsuleKeyBundle::generate(Uuid::new_v4());
-        let id_a = Uuid::new_v4();
-        let id_b = Uuid::new_v4();
+        let identity_a = make_test_identity();
+        let identity_b = make_test_identity();
+        let id_b = identity_b.device_id();
 
-        let mgr = EnsembleManager::new(
-            id_a,
-            capsule_keys.clone(),
-            vec![id_a, id_b],
-            EnsembleConfig::default(),
-        );
+        let mgr = make_manager(&identity_a, &[&identity_b], capsule_keys.clone(), EnsembleConfig::default());
 
         // Simulate an encrypted advertisement from B
         let payload = AdvertisementPayload {
@@ -883,14 +992,15 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn test_stale_piece_removal() {
         let capsule_keys = CapsuleKeyBundle::generate(Uuid::new_v4());
-        let id_a = Uuid::new_v4();
-        let id_b = Uuid::new_v4();
+        let identity_a = make_test_identity();
+        let identity_b = make_test_identity();
+        let id_b = identity_b.device_id();
 
         let config = EnsembleConfig {
             stale_timeout: Duration::from_secs(5),
             ..Default::default()
         };
-        let mgr = EnsembleManager::new(id_a, capsule_keys, vec![id_a, id_b], config);
+        let mgr = make_manager(&identity_a, &[&identity_b], capsule_keys, config);
 
         // Add a piece with a timestamp far in the past
         {
@@ -914,14 +1024,10 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn test_own_advertisement_ignored() {
         let capsule_keys = CapsuleKeyBundle::generate(Uuid::new_v4());
-        let id_a = Uuid::new_v4();
+        let identity_a = make_test_identity();
+        let id_a = identity_a.device_id();
 
-        let mgr = EnsembleManager::new(
-            id_a,
-            capsule_keys.clone(),
-            vec![id_a],
-            EnsembleConfig::default(),
-        );
+        let mgr = make_manager(&identity_a, &[], capsule_keys.clone(), EnsembleConfig::default());
 
         // Simulate our own advertisement
         let payload = AdvertisementPayload {
