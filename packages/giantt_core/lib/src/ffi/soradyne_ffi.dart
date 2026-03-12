@@ -111,6 +111,8 @@ class SoradyneFFI {
         path.join(Directory.current.path, '..', 'soradyne_core', 'target', 'debug', libraryName),
         '/usr/local/lib/$libraryName',
         '/usr/lib/$libraryName',
+        // Home directory
+        path.join(Platform.environment['HOME'] ?? '', '.soradyne', 'lib', libraryName),
       ]);
     } else if (Platform.isWindows) {
       libraryName = 'soradyne.dll';
