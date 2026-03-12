@@ -39,7 +39,7 @@ use crate::flow::error::FlowError;
 use crate::flow::flow_core::{Flow, FlowConfig, FlowRegistry, FlowSchema};
 use crate::flow::stream::{Stream, StreamSpec};
 use crate::topology::capsule::PieceCapabilities;
-use crate::topology::ensemble::EnsembleTopology;
+use crate::topology::ensemble::{EnsembleTopology, PieceReachability};
 use crate::topology::messenger::TopologyMessenger;
 
 // ---------------------------------------------------------------------------
@@ -926,6 +926,61 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                 }
             }
         });
+
+        // Topology watcher: when a new peer becomes directly reachable,
+        // send our horizon so they respond with the ops we're missing.
+        // Both sides do this, so the exchange is symmetric — each side
+        // learns what the other has that it doesn't.
+        if let Some(ref topology) = self.topology {
+            let topology = Arc::clone(topology);
+            let document = Arc::clone(&self.document);
+            let messenger_watch = Arc::clone(messenger);
+            let flow_id = self.id;
+            let device_uuid = self.device_uuid;
+            let mut shutdown_rx2 = self.shutdown_tx.subscribe();
+
+            tokio::spawn(async move {
+                let mut synced_peers: HashSet<Uuid> = HashSet::new();
+                loop {
+                    tokio::select! {
+                        _ = tokio::time::sleep(Duration::from_secs(2)) => {
+                            let new_peers: Vec<Uuid> = {
+                                let topo = topology.read().await;
+                                topo.online_pieces.iter()
+                                    .filter(|(id, p)| {
+                                        **id != device_uuid
+                                            && matches!(p.reachability, PieceReachability::Direct)
+                                            && !synced_peers.contains(id)
+                                    })
+                                    .map(|(id, _)| *id)
+                                    .collect()
+                            };
+                            for peer_id in new_peers {
+                                let horizon = match document.read() {
+                                    Ok(doc) => doc.horizon().clone(),
+                                    Err(_) => continue,
+                                };
+                                let msg = FlowSyncMessage::HorizonExchange {
+                                    flow_id,
+                                    horizon,
+                                };
+                                if let Ok(payload) = msg.to_cbor() {
+                                    match messenger_watch.send_to(peer_id, MessageType::FlowSync, &payload).await {
+                                        Ok(()) => {
+                                            synced_peers.insert(peer_id);
+                                        }
+                                        Err(e) => {
+                                            eprintln!("[full_replica] horizon exchange with {} failed: {}", peer_id, e);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        _ = shutdown_rx2.recv() => break,
+                    }
+                }
+            });
+        }
 
         Ok(())
     }
