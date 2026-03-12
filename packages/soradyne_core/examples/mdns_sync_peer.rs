@@ -7,10 +7,30 @@
 //!   # On machine B (paste the invite code from machine A):
 //!   cargo run --example mdns_sync_peer --no-default-features -- join <INVITE_CODE>
 //!
-//!   # On either machine (after init/join — starts syncing):
-//!   cargo run --example mdns_sync_peer --no-default-features
+//!   # On machine A (paste the response code from machine B):
+//!   cargo run --example mdns_sync_peer --no-default-features -- accept <RESPONSE_CODE>
 //!
-//! The REPL supports: add <desc>, list, quit
+//!   # Repeat join/accept for machine C, D, etc.
+//!
+//!   # On any machine (after init/join — starts syncing):
+//!   cargo run --example mdns_sync_peer --no-default-features -- --port 7117
+//!
+//! The REPL supports: add <desc>, list, peers, quit
+//!
+//! ## Discovery
+//!
+//! Two discovery methods run in parallel:
+//!
+//! 1. **mDNS** — zero-config LAN discovery (works on same subnet)
+//! 2. **Direct TCP** — for cross-network sync (e.g. Tailscale), configured via
+//!    `~/.rim/mdns_sync_test/peers_addresses.json`:
+//!    ```json
+//!    {
+//!      "<peer-uuid>": "100.105.222.128:7117",
+//!      "<peer-uuid>": "100.98.48.124:7117"
+//!    }
+//!    ```
+//!    Use `--port <PORT>` to set the listen port (default 7117).
 //!
 //! ## On key sharing
 //!
@@ -29,6 +49,7 @@
 
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write as _};
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -51,13 +72,18 @@ fn from_hex(s: &str) -> Result<Vec<u8>, String> {
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use soradyne::ble::lan_transport::LanConnection;
 use soradyne::ble::mdns_transport::MdnsTransport;
-use soradyne::ble::transport::{BleCentral, BlePeripheral};
+use soradyne::ble::transport::{BleAddress, BleCentral, BleConnection, BlePeripheral};
 use soradyne::convergent::{Operation, Value};
 use soradyne::flow::flow_core::FlowConfig;
 use soradyne::flow::types::drip_hosted::{DripHostPolicy, FullReplicaFlow};
 use soradyne::identity::{CapsuleKeyBundle, DeviceIdentity};
+use soradyne::topology::ensemble::TransportType;
 use soradyne::topology::manager::{EnsembleConfig, EnsembleManager};
+
+/// Default port for direct TCP connections.
+const DEFAULT_PORT: u16 = 7117;
 
 // ---------------------------------------------------------------------------
 // Test-only key sharing (NOT part of rim protocol — see module doc)
@@ -101,6 +127,58 @@ fn state_path() -> PathBuf {
 
 fn flow_storage_path() -> PathBuf {
     data_dir().join("flow_data")
+}
+
+fn addresses_path() -> PathBuf {
+    data_dir().join("peers_addresses.json")
+}
+
+/// Load peer addresses from config file.
+/// Format: `{"<uuid>": "ip:port", ...}`
+fn load_peer_addresses() -> HashMap<Uuid, SocketAddr> {
+    let path = addresses_path();
+    if !path.exists() {
+        return HashMap::new();
+    }
+    let json = match std::fs::read_to_string(&path) {
+        Ok(j) => j,
+        Err(e) => {
+            eprintln!("Warning: could not read {}: {}", path.display(), e);
+            return HashMap::new();
+        }
+    };
+    let raw: HashMap<String, String> = match serde_json::from_str(&json) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("Warning: invalid JSON in {}: {}", path.display(), e);
+            return HashMap::new();
+        }
+    };
+    let mut out = HashMap::new();
+    for (uuid_str, addr_str) in raw {
+        let uuid = match uuid_str.parse::<Uuid>() {
+            Ok(u) => u,
+            Err(_) => {
+                eprintln!("Warning: invalid UUID in peers_addresses.json: {}", uuid_str);
+                continue;
+            }
+        };
+        let addr = match addr_str.parse::<SocketAddr>() {
+            Ok(a) => a,
+            Err(_) => {
+                // Try parsing as IP without port, append default port
+                match addr_str.parse::<IpAddr>() {
+                    Ok(ip) => SocketAddr::new(ip, DEFAULT_PORT),
+                    Err(_) => {
+                        eprintln!("Warning: invalid address in peers_addresses.json: {}", addr_str);
+                        continue;
+                    }
+                }
+            }
+        };
+        out.insert(uuid, addr);
+    }
+    out
 }
 
 fn load_or_create_identity() -> DeviceIdentity {
@@ -169,9 +247,13 @@ fn cmd_init(identity: &DeviceIdentity) {
     println!("Capsule:     {}", invite.capsule_keys.capsule_id);
     println!("Flow:        {}", invite.flow_id);
     println!();
-    println!("After the other machine runs `join`, re-run this command with");
-    println!("their response code to complete the handshake:");
+    println!("After the other machine runs `join`, run `accept` with their response code:");
     println!("  cargo run --example mdns_sync_peer --no-default-features -- accept <RESPONSE_CODE>");
+    println!();
+    println!("For cross-network sync (e.g. Tailscale), create:");
+    println!("  {}", addresses_path().display());
+    println!("with content like:");
+    println!("  {{\"<peer-uuid>\": \"<ip>:7117\", ...}}");
 }
 
 fn cmd_join(identity: &DeviceIdentity, invite_b64: &str) {
@@ -247,6 +329,61 @@ fn cmd_accept(identity: &DeviceIdentity, response_b64: &str) {
 }
 
 // ---------------------------------------------------------------------------
+// Direct TCP connection helpers
+// ---------------------------------------------------------------------------
+
+/// After a raw TCP connection is established, both sides exchange their 16-byte
+/// device UUIDs. This identifies the peer without mDNS, so we can register the
+/// connection with the correct peer_id.
+async fn do_uuid_handshake(
+    mut stream: tokio::net::TcpStream,
+    peer_addr: SocketAddr,
+    our_id: Uuid,
+) -> Result<(LanConnection, Uuid), String> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    // Send our UUID
+    stream
+        .write_all(our_id.as_bytes())
+        .await
+        .map_err(|e| format!("write UUID: {e}"))?;
+
+    // Read their UUID
+    let mut peer_bytes = [0u8; 16];
+    stream
+        .read_exact(&mut peer_bytes)
+        .await
+        .map_err(|e| format!("read UUID: {e}"))?;
+    let peer_id = Uuid::from_bytes(peer_bytes);
+
+    let conn = LanConnection::from_stream(stream, BleAddress::Tcp(peer_addr));
+    Ok((conn, peer_id))
+}
+
+/// Handle an incoming direct TCP connection: do UUID handshake, verify it's
+/// a known peer, and register with the ensemble manager.
+async fn handle_direct_tcp(
+    stream: tokio::net::TcpStream,
+    peer_addr: SocketAddr,
+    manager: &Arc<EnsembleManager>,
+    known_peers: &std::collections::HashSet<Uuid>,
+    our_id: Uuid,
+) -> Result<(), String> {
+    let (conn, peer_id) = do_uuid_handshake(stream, peer_addr, our_id).await?;
+
+    if !known_peers.contains(&peer_id) {
+        return Err(format!("unknown peer {}", peer_id));
+    }
+
+    let conn: Arc<dyn BleConnection> = Arc::new(conn);
+    manager
+        .add_direct_connection(peer_id, conn, TransportType::TcpDirect)
+        .await;
+    println!("  Accepted direct TCP from {} ({})", &peer_id.to_string()[..8], peer_addr);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Main sync loop
 // ---------------------------------------------------------------------------
 
@@ -255,24 +392,47 @@ async fn main() {
     let identity = load_or_create_identity();
     let args: Vec<String> = std::env::args().collect();
 
-    match args.get(1).map(|s| s.as_str()) {
+    // Parse --port flag from anywhere in args
+    let mut listen_port: u16 = DEFAULT_PORT;
+    let mut positional_args: Vec<String> = Vec::new();
+    let mut skip_next = false;
+    for (i, arg) in args.iter().enumerate().skip(1) {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if arg == "--port" {
+            listen_port = args
+                .get(i + 1)
+                .expect("--port requires a value")
+                .parse()
+                .expect("--port must be a number");
+            skip_next = true;
+        } else if arg.starts_with("--port=") {
+            listen_port = arg[7..].parse().expect("--port must be a number");
+        } else {
+            positional_args.push(arg.clone());
+        }
+    }
+
+    match positional_args.first().map(|s| s.as_str()) {
         Some("init") => {
             cmd_init(&identity);
             return;
         }
         Some("join") => {
-            let code = args.get(2).expect("Usage: ... join <INVITE_CODE>");
+            let code = positional_args.get(1).expect("Usage: ... join <INVITE_CODE>");
             cmd_join(&identity, code);
             return;
         }
         Some("accept") => {
-            let code = args.get(2).expect("Usage: ... accept <RESPONSE_CODE>");
+            let code = positional_args.get(1).expect("Usage: ... accept <RESPONSE_CODE>");
             cmd_accept(&identity, code);
             return;
         }
         Some(other) => {
             eprintln!("Unknown command: {}", other);
-            eprintln!("Usage: mdns_sync_peer [init | join <CODE> | accept <CODE>]");
+            eprintln!("Usage: mdns_sync_peer [init | join <CODE> | accept <CODE>] [--port PORT]");
             return;
         }
         None => {} // Fall through to sync mode
@@ -296,13 +456,23 @@ async fn main() {
     let identity = Arc::new(identity);
     let device_id = identity.device_id();
 
+    let peer_addresses = load_peer_addresses();
+
     println!("rim mDNS sync peer");
     println!("  Device:  {}", device_id);
     println!("  Capsule: {}", state.capsule_keys.capsule_id);
     println!("  Flow:    {}", state.flow_id);
+    println!("  Listen:  0.0.0.0:{}", listen_port);
     println!("  Peers:   {}", state.peers.len());
     for (peer_id, _) in &state.peers {
-        println!("    - {}", peer_id);
+        let addr_info = peer_addresses
+            .get(peer_id)
+            .map(|a| format!(" @ {}", a))
+            .unwrap_or_default();
+        println!("    - {}{}", peer_id, addr_info);
+    }
+    if peer_addresses.is_empty() {
+        println!("  Direct addresses: (none — mDNS only)");
     }
     println!();
 
@@ -362,11 +532,109 @@ async fn main() {
 
     println!("Starting mDNS discovery...");
     manager.start(central, peripheral).await;
-    println!("Discovery running. Type commands below.");
+
+    // -----------------------------------------------------------------------
+    // Direct TCP connections (for cross-network sync, e.g. Tailscale)
+    // -----------------------------------------------------------------------
+
+    // Accept incoming direct TCP connections on the listen port.
+    // After TCP connect, both sides exchange 16-byte UUIDs to identify each other.
+    let tcp_listener = tokio::net::TcpListener::bind(
+        SocketAddr::new("0.0.0.0".parse().unwrap(), listen_port),
+    )
+    .await
+    .expect("Failed to bind TCP listener");
+    let actual_port = tcp_listener.local_addr().unwrap().port();
+    println!("Direct TCP listening on port {}", actual_port);
+
+    // Accept loop: incoming direct TCP connections
+    {
+        let manager = Arc::clone(&manager);
+        let known_peers: std::collections::HashSet<Uuid> =
+            state.peers.keys().cloned().collect();
+        tokio::spawn(async move {
+            loop {
+                let (stream, peer_addr) = match tcp_listener.accept().await {
+                    Ok(s) => s,
+                    Err(_) => break,
+                };
+                let manager = Arc::clone(&manager);
+                let known_peers = known_peers.clone();
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        handle_direct_tcp(stream, peer_addr, &manager, &known_peers, device_id)
+                            .await
+                    {
+                        eprintln!("Direct TCP accept from {} failed: {}", peer_addr, e);
+                    }
+                });
+            }
+        });
+    }
+
+    // Outbound connections: connect to each peer in the addresses file.
+    // Use UUID tiebreaker: only the lower UUID initiates to avoid duplicates.
+    for (&peer_id, &peer_addr) in &peer_addresses {
+        if device_id >= peer_id {
+            println!("  Peer {} — waiting for them to connect to us", &peer_id.to_string()[..8]);
+            continue;
+        }
+        let manager = Arc::clone(&manager);
+        tokio::spawn(async move {
+            println!("  Connecting to {} at {} ...", &peer_id.to_string()[..8], peer_addr);
+            // Retry with backoff — the other side might not be up yet
+            let mut delay = std::time::Duration::from_secs(1);
+            for attempt in 1..=10 {
+                match tokio::net::TcpStream::connect(peer_addr).await {
+                    Ok(stream) => {
+                        // Send our UUID, read theirs
+                        match do_uuid_handshake(stream, peer_addr, device_id).await {
+                            Ok((conn, confirmed_peer_id)) => {
+                                if confirmed_peer_id != peer_id {
+                                    eprintln!(
+                                        "  Warning: expected peer {} but got {} at {}",
+                                        peer_id, confirmed_peer_id, peer_addr
+                                    );
+                                }
+                                let conn: Arc<dyn BleConnection> = Arc::new(conn);
+                                manager
+                                    .add_direct_connection(
+                                        confirmed_peer_id,
+                                        conn,
+                                        TransportType::TcpDirect,
+                                    )
+                                    .await;
+                                println!("  Connected to {} via direct TCP", &confirmed_peer_id.to_string()[..8]);
+                                return;
+                            }
+                            Err(e) => {
+                                eprintln!("  Handshake with {} failed: {}", peer_addr, e);
+                                return;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        if attempt < 10 {
+                            eprintln!(
+                                "  Attempt {}/10 to {} failed ({}), retrying in {:?}...",
+                                attempt, peer_addr, e, delay
+                            );
+                            tokio::time::sleep(delay).await;
+                            delay = std::cmp::min(delay * 2, std::time::Duration::from_secs(30));
+                        } else {
+                            eprintln!("  Failed to connect to {} after 10 attempts: {}", peer_addr, e);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     println!();
     println!("Commands:");
     println!("  add <description>   — add an inventory item");
     println!("  list                — show all items");
+    println!("  peers               — show connected peers");
     println!("  quit                — exit");
     println!();
 
@@ -404,6 +672,21 @@ async fn main() {
                         .unwrap_or("(no description)");
                     println!("  [{}] {}", &id[..8.min(id.len())], desc);
                 }
+            }
+        } else if line == "peers" {
+            match manager.topology().try_read() {
+                Ok(topo) => {
+                    let pieces: Vec<_> = topo.online_pieces.keys().collect();
+                    if pieces.is_empty() {
+                        println!("  (no peers connected)");
+                    } else {
+                        for id in pieces {
+                            let label = if *id == device_id { " (self)" } else { "" };
+                            println!("  {}{}", id, label);
+                        }
+                    }
+                }
+                Err(_) => println!("  (topology busy, try again)"),
             }
         } else if let Some(desc) = line.strip_prefix("add ") {
             let desc = desc.trim();
