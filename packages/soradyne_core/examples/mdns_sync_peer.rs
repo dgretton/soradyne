@@ -737,9 +737,16 @@ async fn main() {
             .expect("set_field failed");
             println!("  Added: [{}] {}", &item_id[..12], desc);
         } else if line == "clear" {
-            // ANSI escape: clear screen and move cursor to top-left
-            print!("\x1B[2J\x1B[H");
-            io::stdout().flush().ok();
+            let doc = flow.document().read().unwrap();
+            let ids: Vec<String> = doc.materialize().iter_existing()
+                .map(|(id, _)| id.to_string())
+                .collect();
+            drop(doc);
+            for id in &ids {
+                flow.apply_edit(Operation::remove_item(id))
+                    .expect("remove failed");
+            }
+            println!("  Removed {} items", ids.len());
         } else {
             println!("  Unknown command. Try: add <desc>, list, peers, clear, quit");
         }
