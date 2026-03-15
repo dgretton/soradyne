@@ -1012,6 +1012,7 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                 if ops.is_empty() {
                                     continue;
                                 }
+                                let ops_count = ops.len();
                                 let msg = FlowSyncMessage::OperationBatch {
                                     flow_id,
                                     ops,
@@ -1022,8 +1023,9 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                             // Confirmed delivery — clear the queue.
                                             let _ = std::fs::write(&queue_path, "");
                                         }
-                                        Err(_) => {
-                                            // Send failed — leave queue intact.
+                                        Err(e) => {
+                                            // Send failed — leave queue intact for retry.
+                                            eprintln!("[full_replica] flush to {} failed: {} — {} ops remain queued", device_id, e, ops_count);
                                         }
                                     }
                                 }
@@ -1146,9 +1148,25 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                     }
                 }
 
-                // Signal the flush task to deliver queued ops.
-                // This handles both the immediate case (peer online) and
-                // the deferred case (peer was offline when ops were queued).
+                // Best-effort immediate broadcast to all connected peers.
+                // This is the fast path — ops arrive instantly when peers are online.
+                if let Some(messenger) = &self.messenger {
+                    let msg = FlowSyncMessage::OperationBatch {
+                        flow_id: self.id,
+                        ops: vec![envelope.clone()],
+                    };
+                    if let Ok(payload) = msg.to_cbor() {
+                        let messenger = Arc::clone(messenger);
+                        tokio::spawn(async move {
+                            let _ = messenger.broadcast(MessageType::FlowSync, &payload).await;
+                        });
+                    }
+                }
+
+                // Also signal the flush task to attempt confirmed delivery
+                // from the outbound queue. This is the reliable path — ops
+                // stay in the queue until delivery is confirmed, catching
+                // anything the broadcast missed (peer offline, routing issues).
                 self.flush_notify.notify_one();
 
                 Ok(envelope)
