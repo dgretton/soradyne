@@ -383,6 +383,37 @@ async fn handle_direct_tcp(
     Ok(())
 }
 
+/// Initiate a TCP connection to a peer: connect, handshake, register.
+async fn connect_to_peer(
+    manager: &Arc<EnsembleManager>,
+    device_id: Uuid,
+    peer_id: Uuid,
+    peer_addr: SocketAddr,
+) -> Result<(), String> {
+    let stream = tokio::net::TcpStream::connect(peer_addr)
+        .await
+        .map_err(|e| format!("TCP connect to {}: {}", peer_addr, e))?;
+
+    let (conn, confirmed_peer_id) = do_uuid_handshake(stream, peer_addr, device_id).await?;
+
+    if confirmed_peer_id != peer_id {
+        eprintln!(
+            "  Warning: expected peer {} but got {} at {}",
+            peer_id, confirmed_peer_id, peer_addr
+        );
+    }
+
+    let conn: Arc<dyn BleConnection> = Arc::new(conn);
+    manager
+        .add_direct_connection(confirmed_peer_id, conn, TransportType::TcpDirect)
+        .await;
+    println!(
+        "  Connected to {} via direct TCP",
+        &confirmed_peer_id.to_string()[..8]
+    );
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Main sync loop
 // ---------------------------------------------------------------------------
@@ -585,34 +616,8 @@ async fn main() {
             // Retry with backoff — the other side might not be up yet
             let mut delay = std::time::Duration::from_secs(1);
             for attempt in 1..=10 {
-                match tokio::net::TcpStream::connect(peer_addr).await {
-                    Ok(stream) => {
-                        // Send our UUID, read theirs
-                        match do_uuid_handshake(stream, peer_addr, device_id).await {
-                            Ok((conn, confirmed_peer_id)) => {
-                                if confirmed_peer_id != peer_id {
-                                    eprintln!(
-                                        "  Warning: expected peer {} but got {} at {}",
-                                        peer_id, confirmed_peer_id, peer_addr
-                                    );
-                                }
-                                let conn: Arc<dyn BleConnection> = Arc::new(conn);
-                                manager
-                                    .add_direct_connection(
-                                        confirmed_peer_id,
-                                        conn,
-                                        TransportType::TcpDirect,
-                                    )
-                                    .await;
-                                println!("  Connected to {} via direct TCP", &confirmed_peer_id.to_string()[..8]);
-                                return;
-                            }
-                            Err(e) => {
-                                eprintln!("  Handshake with {} failed: {}", peer_addr, e);
-                                return;
-                            }
-                        }
-                    }
+                match connect_to_peer(&manager, device_id, peer_id, peer_addr).await {
+                    Ok(()) => return,
                     Err(e) => {
                         if attempt < 10 {
                             eprintln!(
@@ -626,6 +631,88 @@ async fn main() {
                         }
                     }
                 }
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // UDP arrival announcement
+    // -----------------------------------------------------------------------
+    // When a listener starts up, it sends a single UDP packet (its 16-byte
+    // UUID) to each peer that should initiate a TCP connection to it.
+    // On the receiving end, if we're the initiator for that peer and not
+    // already connected, we start a TCP connection.
+    //
+    // This is event-driven: the announcement is sent once on startup, not
+    // polled. The only peer that never sends is the lexicographic minimum
+    // UUID (it initiates all connections, never listens).
+
+    let udp_socket = tokio::net::UdpSocket::bind(
+        SocketAddr::new("0.0.0.0".parse().unwrap(), 0), // ephemeral port for sending
+    )
+    .await
+    .expect("Failed to bind UDP socket");
+
+    // Send "I'm here" to all peers we're a listener for (our UUID > theirs).
+    // They are the initiators — this tells them to connect to us.
+    for (&peer_id, &peer_addr) in &peer_addresses {
+        if device_id > peer_id {
+            // We're a listener for this peer — announce ourselves
+            let announce_addr = SocketAddr::new(peer_addr.ip(), listen_port);
+            match udp_socket.send_to(device_id.as_bytes(), announce_addr).await {
+                Ok(_) => println!("  Sent UDP arrival to {} ({})", &peer_id.to_string()[..8], announce_addr),
+                Err(e) => eprintln!("  UDP announce to {} failed: {}", announce_addr, e),
+            }
+        }
+    }
+
+    // Listen for UDP arrival announcements from peers.
+    // Bind on the listen port so peers can reach us at their configured address.
+    let udp_listener = tokio::net::UdpSocket::bind(
+        SocketAddr::new("0.0.0.0".parse().unwrap(), listen_port),
+    )
+    .await
+    .expect("Failed to bind UDP listener");
+
+    {
+        let manager = Arc::clone(&manager);
+        let peer_addresses = peer_addresses.clone();
+        tokio::spawn(async move {
+            let mut buf = [0u8; 16];
+            loop {
+                let (len, _src_addr) = match udp_listener.recv_from(&mut buf).await {
+                    Ok(r) => r,
+                    Err(_) => break,
+                };
+                if len != 16 {
+                    continue;
+                }
+                let peer_id = Uuid::from_bytes(buf);
+
+                // Only act if we're the initiator for this peer (our UUID < theirs)
+                // and they have a configured address.
+                if device_id >= peer_id {
+                    continue;
+                }
+                let Some(&peer_addr) = peer_addresses.get(&peer_id) else {
+                    continue;
+                };
+
+                // Check if already connected
+                let already_connected = manager.topology().try_read()
+                    .map(|topo| topo.get_piece(&peer_id).is_some())
+                    .unwrap_or(false);
+                if already_connected {
+                    continue;
+                }
+
+                println!("  UDP arrival from {} — initiating TCP connection", &peer_id.to_string()[..8]);
+                let manager = Arc::clone(&manager);
+                tokio::spawn(async move {
+                    if let Err(e) = connect_to_peer(&manager, device_id, peer_id, peer_addr).await {
+                        eprintln!("  TCP connect to {} after UDP arrival failed: {}", &peer_id.to_string()[..8], e);
+                    }
+                });
             }
         });
     }
