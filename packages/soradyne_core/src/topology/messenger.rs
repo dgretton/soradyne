@@ -59,6 +59,8 @@ pub struct TopologyMessenger {
     connections: Arc<RwLock<HashMap<Uuid, Arc<dyn BleConnection>>>>,
     /// Channel for delivering messages addressed to us.
     incoming_tx: broadcast::Sender<RoutedEnvelope>,
+    /// Channel for notifying subscribers when a peer disconnects.
+    disconnect_tx: broadcast::Sender<Uuid>,
 }
 
 impl TopologyMessenger {
@@ -68,11 +70,13 @@ impl TopologyMessenger {
     /// hold a reference.
     pub fn new(device_id: Uuid, topology: Arc<RwLock<EnsembleTopology>>) -> Arc<Self> {
         let (incoming_tx, _) = broadcast::channel(256);
+        let (disconnect_tx, _) = broadcast::channel(64);
         Arc::new(Self {
             device_id,
             topology,
             connections: Arc::new(RwLock::new(HashMap::new())),
             incoming_tx,
+            disconnect_tx,
         })
     }
 
@@ -138,6 +142,11 @@ impl TopologyMessenger {
         self.incoming_tx.subscribe()
     }
 
+    /// Subscribe to peer disconnect events.
+    pub fn disconnections(&self) -> broadcast::Receiver<Uuid> {
+        self.disconnect_tx.subscribe()
+    }
+
     /// Check whether a destination is reachable.
     pub fn is_reachable(&self, destination: &Uuid) -> bool {
         match self.topology.try_read() {
@@ -171,12 +180,12 @@ impl TopologyMessenger {
                         }
                     },
                     Err(BleError::Disconnected) => {
-                        messenger.remove_connection(&peer).await;
+                        messenger.remove_connection_if_current(&peer, &conn).await;
                         break;
                     }
                     Err(e) => {
                         log::warn!("Recv error from {}: {}", peer, e);
-                        messenger.remove_connection(&peer).await;
+                        messenger.remove_connection_if_current(&peer, &conn).await;
                         break;
                     }
                 }
@@ -184,7 +193,36 @@ impl TopologyMessenger {
         });
     }
 
-    /// Remove a connection and its topology edges.
+    /// Remove a connection only if it's still the current one for this peer.
+    ///
+    /// When a connection is replaced (e.g. reconnect), the old recv loop
+    /// eventually errors and calls this. The ptr_eq check prevents the old
+    /// loop from removing the new connection.
+    async fn remove_connection_if_current(&self, peer_id: &Uuid, conn: &Arc<dyn BleConnection>) {
+        let removed = {
+            let mut conns = self.connections.write().await;
+            if let Some(existing) = conns.get(peer_id) {
+                if Arc::ptr_eq(existing, conn) {
+                    conns.remove(peer_id);
+                    true
+                } else {
+                    false // Connection was replaced — don't remove the new one
+                }
+            } else {
+                false
+            }
+        };
+        if removed {
+            {
+                let mut topo = self.topology.write().await;
+                topo.remove_edges_between(&self.device_id, peer_id);
+                topo.remove_edges_between(peer_id, &self.device_id);
+            }
+            let _ = self.disconnect_tx.send(*peer_id);
+        }
+    }
+
+    /// Remove a connection and its topology edges unconditionally.
     pub async fn remove_connection(&self, peer_id: &Uuid) {
         {
             let mut conns = self.connections.write().await;
@@ -195,6 +233,7 @@ impl TopologyMessenger {
             topo.remove_edges_between(&self.device_id, peer_id);
             topo.remove_edges_between(peer_id, &self.device_id);
         }
+        let _ = self.disconnect_tx.send(*peer_id);
     }
 
     /// Number of active connections.
