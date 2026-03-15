@@ -736,8 +736,12 @@ async fn main() {
             ))
             .expect("set_field failed");
             println!("  Added: [{}] {}", &item_id[..12], desc);
+        } else if line == "clear" {
+            // ANSI escape: clear screen and move cursor to top-left
+            print!("\x1B[2J\x1B[H");
+            io::stdout().flush().ok();
         } else {
-            println!("  Unknown command. Try: add <desc>, list, quit");
+            println!("  Unknown command. Try: add <desc>, list, peers, clear, quit");
         }
 
         print!("> ");
