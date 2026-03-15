@@ -506,4 +506,77 @@ mod tests {
         let topo = topo_a.read().await;
         assert_eq!(topo.edge_count(), 0);
     }
+
+    /// When a connection is replaced, the old recv loop's disconnect must NOT
+    /// remove the new connection. The ptr_eq check in remove_connection_if_current
+    /// prevents this.
+    #[tokio::test(start_paused = true)]
+    async fn test_connection_replacement_ptr_eq_safety() {
+        let network = SimBleNetwork::new();
+        let id_a = Uuid::new_v4();
+        let id_b = Uuid::new_v4();
+
+        let topo = {
+            let mut t = EnsembleTopology::new();
+            t.add_edge(make_sim_edge(id_a, id_b));
+            t.add_edge(make_sim_edge(id_b, id_a));
+            Arc::new(RwLock::new(t))
+        };
+
+        let messenger_a = TopologyMessenger::new(id_a, topo.clone());
+
+        // First connection.
+        let (conn_a1, conn_b1) = make_connection(&network).await;
+        messenger_a.add_connection(id_b, conn_a1).await;
+        assert_eq!(messenger_a.connection_count(), 1);
+
+        // Second connection replaces the first in the map.
+        let (conn_a2, _conn_b2) = make_connection(&network).await;
+        messenger_a.add_connection(id_b, conn_a2).await;
+        assert_eq!(messenger_a.connection_count(), 1);
+
+        // Drop the first connection's peer endpoint — old recv loop will error.
+        drop(conn_b1);
+
+        // Let the old recv loop detect disconnect and call remove_connection_if_current.
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // The NEW connection should still be in the map (ptr_eq prevented removal).
+        assert_eq!(messenger_a.connection_count(), 1,
+            "new connection should survive old recv loop's disconnect");
+
+        // Edges should still be intact (not removed by the old connection's cleanup).
+        let t = topo.read().await;
+        assert!(t.edge_count() > 0, "edges should survive connection replacement");
+    }
+
+    /// The disconnections() channel notifies when a peer drops.
+    #[tokio::test(start_paused = true)]
+    async fn test_disconnect_notification() {
+        let network = SimBleNetwork::new();
+        let id_a = Uuid::new_v4();
+        let id_b = Uuid::new_v4();
+
+        let topo = {
+            let mut t = EnsembleTopology::new();
+            t.add_edge(make_sim_edge(id_a, id_b));
+            t.add_edge(make_sim_edge(id_b, id_a));
+            Arc::new(RwLock::new(t))
+        };
+
+        let messenger_a = TopologyMessenger::new(id_a, topo);
+        let mut disconnect_rx = messenger_a.disconnections();
+
+        let (conn_a, conn_b) = make_connection(&network).await;
+        messenger_a.add_connection(id_b, conn_a).await;
+
+        // Drop peer endpoint to trigger disconnect.
+        drop(conn_b);
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Should receive the disconnected peer's UUID.
+        let result = tokio::time::timeout(Duration::from_millis(100), disconnect_rx.recv()).await;
+        assert!(result.is_ok(), "should receive disconnect notification");
+        assert_eq!(result.unwrap().unwrap(), id_b);
+    }
 }

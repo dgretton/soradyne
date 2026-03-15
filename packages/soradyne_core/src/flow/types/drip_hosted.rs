@@ -4056,5 +4056,398 @@ mod tests {
             flow_b_giantt.stop();
             flow_b_inv.stop();
         }
+
+        // =================================================================
+        // Reconnection and queue flush test suite
+        // =================================================================
+
+        use crate::topology::ensemble::PiecePresence;
+
+        /// Helper: add a peer as Direct in a shared topology with bidirectional edges.
+        async fn add_direct_peer(
+            topology: &Arc<RwLock<EnsembleTopology>>,
+            self_id: Uuid,
+            peer_id: Uuid,
+        ) {
+            let mut topo = topology.write().await;
+            topo.upsert_piece(PiecePresence {
+                device_id: self_id,
+                last_advertisement: chrono::Utc::now(),
+                last_data_exchange: Some(chrono::Utc::now()),
+                rssi: None,
+                reachability: PieceReachability::Direct,
+            });
+            topo.upsert_piece(PiecePresence {
+                device_id: peer_id,
+                last_advertisement: chrono::Utc::now(),
+                last_data_exchange: Some(chrono::Utc::now()),
+                rssi: None,
+                reachability: PieceReachability::Direct,
+            });
+            topo.add_edge(make_sim_edge(self_id, peer_id));
+            topo.add_edge(make_sim_edge(peer_id, self_id));
+        }
+
+        /// Helper: remove a peer from the topology (simulates disconnect detection).
+        async fn remove_direct_peer(
+            topology: &Arc<RwLock<EnsembleTopology>>,
+            peer_id: &Uuid,
+        ) {
+            let mut topo = topology.write().await;
+            topo.remove_piece(peer_id);
+        }
+
+        /// When a peer appears as Direct in the topology, the flow sends a
+        /// HorizonExchange. The peer responds with missing ops.
+        #[tokio::test(start_paused = true)]
+        async fn test_horizon_exchange_on_peer_connect() {
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_b = tempfile::tempdir().unwrap();
+
+            // Shared topology — messenger and flow see the same state.
+            let shared_topo = Arc::new(RwLock::new(EnsembleTopology::new()));
+
+            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
+            let messenger_b = TopologyMessenger::new(id_b, Arc::clone(&shared_topo));
+
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:test".into(),
+                params: serde_json::json!({}),
+            };
+
+            // Flow A: has some local ops.
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config.clone(), TestSchema, DripHostPolicy::default(),
+                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
+            );
+            flow_a.register_party("dev_B", id_b);
+            flow_a.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
+            flow_a.apply_edit(Operation::set_field("task_1", "title", Value::string("Alpha"))).unwrap();
+
+            // Flow B: empty, will receive ops via horizon exchange.
+            let mut flow_b = FullReplicaFlow::new_persistent(
+                config, TestSchema, DripHostPolicy::default(),
+                id_b, "dev_B".into(), tmp_b.path().to_path_buf(),
+            );
+            flow_b.register_party("dev_A", id_a);
+
+            // Wire messengers.
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+
+            // Attach messengers and shared topology.
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+            flow_a.topology = Some(Arc::clone(&shared_topo));
+            flow_b.messenger = Some(Arc::clone(&messenger_b));
+            flow_b.topology = Some(Arc::clone(&shared_topo));
+
+            // Start both flows (listener + topology watcher + flush task).
+            flow_a.start().unwrap();
+            flow_b.start().unwrap();
+
+            // Peer isn't in topology yet — no exchange yet.
+            // Now add peer B as Direct.
+            add_direct_peer(&shared_topo, id_a, id_b).await;
+
+            // Advance past topology watcher interval (2s) + processing time.
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            // B should have A's ops via the horizon exchange round-trip.
+            {
+                let doc_b = flow_b.document().read().unwrap();
+                let state = doc_b.materialize();
+                let item = state.get(&"task_1".into());
+                assert!(item.is_some(), "B should have task_1 after horizon exchange");
+            }
+
+            flow_a.stop();
+            flow_b.stop();
+        }
+
+        /// When a peer disconnects (removed from topology) and reconnects,
+        /// the HorizonExchange re-triggers — synced_peers is pruned when
+        /// peers are no longer Direct.
+        #[tokio::test(start_paused = true)]
+        async fn test_horizon_exchange_retriggers_on_reconnect() {
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_b = tempfile::tempdir().unwrap();
+
+            let shared_topo = Arc::new(RwLock::new(EnsembleTopology::new()));
+            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
+            let messenger_b = TopologyMessenger::new(id_b, Arc::clone(&shared_topo));
+
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:test".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config.clone(), TestSchema, DripHostPolicy::default(),
+                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
+            );
+            flow_a.register_party("dev_B", id_b);
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+            flow_a.topology = Some(Arc::clone(&shared_topo));
+
+            let mut flow_b = FullReplicaFlow::new_persistent(
+                config, TestSchema, DripHostPolicy::default(),
+                id_b, "dev_B".into(), tmp_b.path().to_path_buf(),
+            );
+            flow_b.register_party("dev_A", id_a);
+            flow_b.messenger = Some(Arc::clone(&messenger_b));
+            flow_b.topology = Some(Arc::clone(&shared_topo));
+
+            // --- Phase 1: Initial connection + sync ---
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+            add_direct_peer(&shared_topo, id_a, id_b).await;
+
+            flow_a.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
+
+            flow_a.start().unwrap();
+            flow_b.start().unwrap();
+
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            // Verify initial sync worked.
+            {
+                let doc_b = flow_b.document().read().unwrap();
+                assert!(doc_b.materialize().get(&"task_1".into()).is_some(),
+                    "B should have task_1 after initial sync");
+            }
+
+            // --- Phase 2: Disconnect ---
+            remove_direct_peer(&shared_topo, &id_b).await;
+
+            // Let the topology watcher prune synced_peers.
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            // A adds a new op while B is "disconnected".
+            flow_a.apply_edit(Operation::add_item("task_2", "Test")).unwrap();
+
+            // --- Phase 3: Reconnect ---
+            let (conn_a2, conn_b2) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a2).await;
+            messenger_b.add_connection(id_a, conn_b2).await;
+            add_direct_peer(&shared_topo, id_a, id_b).await;
+
+            // Let the topology watcher detect the peer and re-send HorizonExchange.
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            // B should have the new op from phase 2.
+            {
+                let doc_b = flow_b.document().read().unwrap();
+                assert!(doc_b.materialize().get(&"task_2".into()).is_some(),
+                    "B should have task_2 after reconnect horizon exchange");
+            }
+
+            flow_a.stop();
+            flow_b.stop();
+        }
+
+        /// Ops queued before start() is called are flushed on startup.
+        #[tokio::test(start_paused = true)]
+        async fn test_queue_flush_on_startup() {
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_b = tempfile::tempdir().unwrap();
+
+            let shared_topo = Arc::new(RwLock::new(EnsembleTopology::new()));
+            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
+            let messenger_b = TopologyMessenger::new(id_b, Arc::clone(&shared_topo));
+
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:test".into(),
+                params: serde_json::json!({}),
+            };
+
+            // A: apply edits BEFORE wiring messenger (ops queue on disk).
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config.clone(), TestSchema, DripHostPolicy::default(),
+                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
+            );
+            flow_a.register_party("dev_B", id_b);
+            flow_a.apply_edit(Operation::add_item("pre_start", "Test")).unwrap();
+
+            // Verify ops are queued.
+            assert!(!flow_a.peek_outbound("dev_B").is_empty(), "ops should be queued");
+
+            // B: wired and started.
+            let mut flow_b = FullReplicaFlow::new_persistent(
+                config, TestSchema, DripHostPolicy::default(),
+                id_b, "dev_B".into(), tmp_b.path().to_path_buf(),
+            );
+            flow_b.register_party("dev_A", id_a);
+
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+            add_direct_peer(&shared_topo, id_a, id_b).await;
+
+            flow_b.messenger = Some(Arc::clone(&messenger_b));
+            flow_b.topology = Some(Arc::clone(&shared_topo));
+            flow_b.start().unwrap();
+
+            // NOW wire and start A — the startup flush should deliver queued ops.
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+            flow_a.topology = Some(Arc::clone(&shared_topo));
+            flow_a.start().unwrap();
+
+            // Flush coalescing delay (50ms) + processing.
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
+            // B should have the pre-start op.
+            {
+                let doc_b = flow_b.document().read().unwrap();
+                assert!(doc_b.materialize().get(&"pre_start".into()).is_some(),
+                    "B should have pre_start op from startup flush");
+            }
+
+            // A's queue should be cleared.
+            assert!(flow_a.peek_outbound("dev_B").is_empty(),
+                "queue should be cleared after confirmed delivery");
+
+            flow_a.stop();
+            flow_b.stop();
+        }
+
+        /// Ops are only removed from the outbound queue after confirmed delivery.
+        /// Failed sends leave the queue intact.
+        #[tokio::test(start_paused = true)]
+        async fn test_confirmed_delivery_retains_on_failure() {
+            let flow_id = Uuid::new_v4();
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+            let tmp_a = tempfile::tempdir().unwrap();
+
+            // Topology with edges but NO actual BLE connection — send_to will fail.
+            let shared_topo = {
+                let mut t = EnsembleTopology::new();
+                t.add_edge(make_sim_edge(id_a, id_b));
+                t.add_edge(make_sim_edge(id_b, id_a));
+                Arc::new(RwLock::new(t))
+            };
+            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
+
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:test".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config, TestSchema, DripHostPolicy::default(),
+                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
+            );
+            flow_a.register_party("dev_B", id_b);
+            flow_a.apply_edit(Operation::add_item("queued_item", "Test")).unwrap();
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+
+            // Flush with no connection — should fail, queue stays intact.
+            let result = flow_a.flush_outbound().await;
+            assert!(result.is_empty(), "no deliveries should succeed without connection");
+            assert!(!flow_a.peek_outbound("dev_B").is_empty(),
+                "queue should remain intact after failed send");
+
+            // Now add a real connection.
+            let network = SimBleNetwork::new();
+            let (conn_a, _conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+
+            // Flush again — should succeed, queue clears.
+            let result = flow_a.flush_outbound().await;
+            assert_eq!(result.get("dev_B"), Some(&1), "should deliver 1 op (AddItem)");
+            assert!(flow_a.peek_outbound("dev_B").is_empty(),
+                "queue should be empty after successful delivery");
+        }
+
+        /// After apply_edit, the flush task delivers queued ops and clears the queue.
+        #[tokio::test(start_paused = true)]
+        async fn test_queue_flush_on_local_edit() {
+            let network = SimBleNetwork::new();
+            let flow_id = Uuid::new_v4();
+            let id_a = Uuid::new_v4();
+            let id_b = Uuid::new_v4();
+
+            let tmp_a = tempfile::tempdir().unwrap();
+            let tmp_b = tempfile::tempdir().unwrap();
+
+            let shared_topo = Arc::new(RwLock::new(EnsembleTopology::new()));
+            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
+            let messenger_b = TopologyMessenger::new(id_b, Arc::clone(&shared_topo));
+
+            let config = FlowConfig {
+                id: flow_id,
+                type_name: "drip_hosted:test".into(),
+                params: serde_json::json!({}),
+            };
+
+            let mut flow_a = FullReplicaFlow::new_persistent(
+                config.clone(), TestSchema, DripHostPolicy::default(),
+                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
+            );
+            flow_a.register_party("dev_B", id_b);
+
+            let mut flow_b = FullReplicaFlow::new_persistent(
+                config, TestSchema, DripHostPolicy::default(),
+                id_b, "dev_B".into(), tmp_b.path().to_path_buf(),
+            );
+            flow_b.register_party("dev_A", id_a);
+
+            let (conn_a, conn_b) = make_connection(&network).await;
+            messenger_a.add_connection(id_b, conn_a).await;
+            messenger_b.add_connection(id_a, conn_b).await;
+            add_direct_peer(&shared_topo, id_a, id_b).await;
+
+            flow_a.messenger = Some(Arc::clone(&messenger_a));
+            flow_a.topology = Some(Arc::clone(&shared_topo));
+            flow_b.messenger = Some(Arc::clone(&messenger_b));
+            flow_b.topology = Some(Arc::clone(&shared_topo));
+
+            flow_a.start().unwrap();
+            flow_b.start().unwrap();
+
+            // Wait for startup flush to clear any initial queue state.
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
+            // Apply edit — this enqueues + signals flush + broadcasts.
+            flow_a.apply_edit(Operation::add_item("live_item", "Test")).unwrap();
+
+            // Wait for flush coalescing + delivery.
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
+            // B should have the item.
+            {
+                let doc_b = flow_b.document().read().unwrap();
+                assert!(doc_b.materialize().get(&"live_item".into()).is_some(),
+                    "B should receive live_item");
+            }
+
+            // A's queue should be cleared (confirmed delivery).
+            assert!(flow_a.peek_outbound("dev_B").is_empty(),
+                "outbound queue should be cleared after confirmed delivery");
+
+            flow_a.stop();
+            flow_b.stop();
+        }
     }
 }
