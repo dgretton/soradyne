@@ -1056,17 +1056,24 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                 loop {
                     tokio::select! {
                         _ = tokio::time::sleep(Duration::from_secs(2)) => {
-                            let new_peers: Vec<Uuid> = {
+                            let (new_peers, current_direct): (Vec<Uuid>, HashSet<Uuid>) = {
                                 let topo = topology.read().await;
-                                topo.online_pieces.iter()
+                                let direct: HashSet<Uuid> = topo.online_pieces.iter()
                                     .filter(|(id, p)| {
                                         **id != device_uuid
                                             && matches!(p.reachability, PieceReachability::Direct)
-                                            && !synced_peers.contains(id)
                                     })
                                     .map(|(id, _)| *id)
-                                    .collect()
+                                    .collect();
+                                let new: Vec<Uuid> = direct.iter()
+                                    .filter(|id| !synced_peers.contains(id))
+                                    .cloned()
+                                    .collect();
+                                (new, direct)
                             };
+                            // Clear synced state for peers that disconnected,
+                            // so they re-trigger horizon exchange on reconnect.
+                            synced_peers.retain(|id| current_direct.contains(id));
                             for peer_id in new_peers {
                                 let horizon = match document.read() {
                                     Ok(doc) => doc.horizon().clone(),
