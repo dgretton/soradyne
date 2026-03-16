@@ -1,0 +1,48 @@
+{
+  "project_name": "Giantt Project",
+  "output_file": "giantt_complete.txt",
+  "file_types": {
+    "dart_source": {
+      "extensions": [".dart"],
+      "description": "Dart source code files"
+    },
+    "flutter_config": {
+      "extensions": [".yaml", ".yml"],
+      "description": "Flutter and Dart configuration files"
+    },
+    "android_config": {
+      "extensions": [".kt", ".properties", ".gradle"],
+      "description": "Android configuration files"
+    },
+    "python_reference": {
+      "extensions": [".py"],
+      "description": "Python reference implementation"
+    },
+    "documentation": {
+      "extensions": [".md", ".rst", ".txt"],
+      "description": "Documentation files"
+    }
+  },
+  "excluded_dirs": [
+    ".git",
+    ".dart_tool",
+    "build",
+    ".gradle",
+    "android/app/build",
+    "android/.gradle",
+    "ios",
+    ".idea",
+    ".vscode",
+    "coverage",
+    ".packages"
+  ],
+  "auto_include_patterns": [
+    "../../packages/giantt_core/**/*.dart",
+    "../../docs/port_reference/giantt_core.py"
+  ],
+  "banner_config": {
+    "padding_h": 5,
+    "padding_v": 1,
+    "char": "="
+  }
+}
