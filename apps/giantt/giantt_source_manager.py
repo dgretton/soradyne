@@ -23,16 +23,29 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 
+# The script lives at apps/giantt/giantt_source_manager.py
+# So the monorepo root is two levels up from the script file itself.
+SCRIPT_DIR = Path(__file__).resolve().parent          # apps/giantt/
+MONOREPO_ROOT = SCRIPT_DIR.parent.parent              # <repo root>/
+GIANTT_CORE_DIR = MONOREPO_ROOT / "packages" / "giantt_core"
+PYTHON_REF_FILE = MONOREPO_ROOT / "docs" / "port_reference" / "giantt_core.py"
+
+
 class GianttSourceManager:
-    def __init__(self, source_dir='.', output_file=None, config_file=None):
-        self.source_dir = Path(source_dir).resolve()
+    def __init__(self, source_dir=None, output_file=None, config_file=None):
+        # source_dir is the apps/giantt directory
+        self.source_dir = Path(source_dir).resolve() if source_dir else SCRIPT_DIR
         self.config_file = config_file or self.source_dir / '.source_manager' / 'config.json'
         self.config = self._load_config()
         self.output_file = output_file or self.config.get('output_file', 'giantt_complete.txt')
-        
+        # Make output_file absolute so we can write it regardless of cwd
+        if not Path(self.output_file).is_absolute():
+            self.output_file = str(self.source_dir / self.output_file)
+
         # File collections by category
+        # Each entry is a dict: {'display': <relative label>, 'full': <absolute Path>}
         self.file_collections = {category: [] for category in self.config['file_types'].keys()}
-        
+
         # Exclusion and priority file management
         self.exclusions_dir = self.source_dir / '.source_manager'
         self.exclusions_file = self.exclusions_dir / 'exclusions.txt'
@@ -41,7 +54,11 @@ class GianttSourceManager:
         self._ensure_priority_setup()
         self.individual_exclusions = self._load_exclusions()
         self.priority_files = self._load_priority_files()
-    
+
+    # ------------------------------------------------------------------
+    # Config helpers
+    # ------------------------------------------------------------------
+
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from JSON file or create default."""
         if self.config_file.exists():
@@ -50,9 +67,8 @@ class GianttSourceManager:
                     return json.load(f)
             except (json.JSONDecodeError, FileNotFoundError):
                 print(f"Warning: Could not load config from {self.config_file}, using defaults")
-        
         return self._default_config()
-    
+
     def _default_config(self) -> Dict[str, Any]:
         """Return default configuration for Giantt project."""
         return {
@@ -81,12 +97,9 @@ class GianttSourceManager:
                 }
             },
             "excluded_dirs": [
-                ".git", ".dart_tool", "build", ".gradle", "android/app/build",
-                "android/.gradle", "ios", ".idea", ".vscode", "coverage", ".packages"
-            ],
-            "auto_include_patterns": [
-                "../../packages/giantt_core/**/*.dart",
-                "../../docs/port_reference/giantt_core.py"
+                ".git", ".dart_tool", "build", ".gradle",
+                "ios", ".idea", ".vscode", "coverage", ".packages",
+                ".source_manager"
             ],
             "banner_config": {
                 "padding_h": 5,
@@ -94,21 +107,24 @@ class GianttSourceManager:
                 "char": "="
             }
         }
-    
+
     def _save_config(self):
         """Save current configuration to file."""
         self.exclusions_dir.mkdir(parents=True, exist_ok=True)
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f, indent=2)
-    
+
+    # ------------------------------------------------------------------
+    # Exclusions / priority setup
+    # ------------------------------------------------------------------
+
     def _ensure_exclusions_setup(self):
-        """Ensure the .source_manager directory and exclusions file exist"""
+        """Ensure the .source_manager directory and exclusions file exist."""
         self.exclusions_dir.mkdir(parents=True, exist_ok=True)
-        
         if not self.exclusions_file.exists():
             with open(self.exclusions_file, 'w') as f:
                 f.write("# Individual file exclusions for giantt_source_manager\n")
-                f.write("# One file path per line, relative to project root\n")
+                f.write("# One file path per line, relative to the directory being scanned\n")
                 f.write("# Lines starting with # are comments and will be ignored\n\n")
                 f.write("# Common output files\n")
                 f.write("giantt_complete.txt\n")
@@ -121,239 +137,255 @@ class GianttSourceManager:
                 f.write(".flutter-plugins-dependencies\n")
                 f.write(".packages\n")
                 f.write("pubspec.lock\n")
-    
+
     def _ensure_priority_setup(self):
-        """Ensure the priority files file exists"""
+        """Ensure the priority files file exists."""
+        self.exclusions_dir.mkdir(parents=True, exist_ok=True)
         if not self.priority_file.exists():
             with open(self.priority_file, 'w') as f:
                 f.write("# Priority files for giantt_source_manager\n")
                 f.write("# These files will always be included in the output\n")
-                f.write("# One file path per line, relative to project root\n")
+                f.write("# Paths are relative to the apps/giantt directory OR absolute\n")
                 f.write("# Lines starting with # are comments and will be ignored\n\n")
-                f.write("# Core Giantt package files\n")
-                f.write("../../packages/giantt_core/lib/giantt_core.dart\n")
-                f.write("../../packages/giantt_core/lib/src/models/giantt_item.dart\n")
-                f.write("../../packages/giantt_core/lib/src/models/duration.dart\n")
-                f.write("../../packages/giantt_core/lib/src/models/priority.dart\n")
-                f.write("../../packages/giantt_core/lib/src/models/status.dart\n")
-                f.write("\n# Python reference implementation\n")
-                f.write("../../docs/port_reference/giantt_core.py\n")
-                f.write("\n# Main app files\n")
-                f.write("lib/main.dart\n")
-                f.write("pubspec.yaml\n")
-    
+
     def _load_exclusions(self):
-        """Load the list of excluded files"""
+        """Load the list of excluded files."""
         if not self.exclusions_file.exists():
             return []
-        
         with open(self.exclusions_file, 'r') as f:
-            exclusions = []
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    exclusions.append(line)
-            return exclusions
-    
+            return [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
     def _load_priority_files(self):
-        """Load the list of priority files"""
+        """Load the list of priority files."""
         if not self.priority_file.exists():
             return []
-        
         with open(self.priority_file, 'r') as f:
-            priority_files = []
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    priority_files.append(line)
-            return priority_files
-    
-    def _is_excluded(self, file_path: str) -> bool:
-        """Check if a file path matches any exclusion pattern"""
+            return [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
+    # ------------------------------------------------------------------
+    # Exclusion checking
+    # ------------------------------------------------------------------
+
+    def _is_excluded(self, file_name: str) -> bool:
+        """Check if a filename (or relative path fragment) matches any exclusion pattern."""
         import fnmatch
-        
-        # Always exclude the configured output file
-        output_filename = Path(self.output_file).name
-        if Path(file_path).name == output_filename:
+        # Always exclude the output file itself
+        if Path(file_name).name == Path(self.output_file).name:
             return True
-        
         for exclusion in self.individual_exclusions:
-            if file_path == exclusion or fnmatch.fnmatch(file_path, exclusion):
+            if file_name == exclusion:
                 return True
-            if Path(file_path).name == exclusion:
-                return True
-        
+            if '*' in exclusion or '?' in exclusion:
+                if fnmatch.fnmatch(file_name, exclusion) or fnmatch.fnmatch(Path(file_name).name, exclusion):
+                    return True
+            else:
+                if Path(file_name).name == exclusion:
+                    return True
         return False
-    
+
+    # ------------------------------------------------------------------
+    # File categorisation
+    # ------------------------------------------------------------------
+
+    def _categorize_and_add_file(self, display_path: str, full_path: Path, force: bool = False):
+        """Categorize a file by extension and add to the appropriate collection."""
+        file_ext = full_path.suffix.lower()
+        entry = {'display': display_path, 'full': full_path}
+
+        for category, cfg in self.config['file_types'].items():
+            if file_ext in cfg['extensions']:
+                # Avoid duplicates (compare by resolved full path)
+                if not any(e['full'] == full_path for e in self.file_collections[category]):
+                    self.file_collections[category].append(entry)
+                return
+
+        if force:
+            if 'other' not in self.file_collections:
+                self.file_collections['other'] = []
+                self.config['file_types']['other'] = {'extensions': [], 'description': 'Other files'}
+            if not any(e['full'] == full_path for e in self.file_collections['other']):
+                self.file_collections['other'].append(entry)
+
+    # ------------------------------------------------------------------
+    # Collection
+    # ------------------------------------------------------------------
+
     def collect_files(self, debug=False):
         """Collect files from Giantt app, core package, and reference docs."""
         # Clear existing collections
         for category in self.file_collections:
             self.file_collections[category] = []
-        
-        # Add priority files first
-        for priority_file in self.priority_files:
-            self._add_priority_file(priority_file)
-        
-        # Collect from current directory (apps/giantt)
-        self._collect_from_directory(self.source_dir, debug=debug)
-        
-        # Collect from giantt_core package
-        giantt_core_path = self.source_dir / "../../packages/giantt_core"
-        if giantt_core_path.exists():
-            self._collect_from_directory(giantt_core_path.resolve(), debug=debug, prefix="../../packages/giantt_core/")
-        
-        # Collect Python reference
-        python_ref_path = self.source_dir / "../../docs/port_reference/giantt_core.py"
-        if python_ref_path.exists():
-            rel_path = "../../docs/port_reference/giantt_core.py"
-            if not self._is_excluded(rel_path):
-                self._categorize_and_add_file(rel_path, "giantt_core.py")
-        
-        # Print summary
-        total_files = sum(len(collection) for collection in self.file_collections.values())
-        category_counts = {cat: len(files) for cat, files in self.file_collections.items() if files}
-        
-        print(f"Found {total_files} Giantt-related files:")
-        for category, count in category_counts.items():
-            description = self.config['file_types'][category]['description']
-            print(f"  {count} {description.lower()}")
-        print(f"Excluded {len(self.individual_exclusions)} individual files.")
-        
-        return self.file_collections
-    
-    def _collect_from_directory(self, directory: Path, debug=False, prefix=""):
-        """Collect files from a specific directory."""
-        for root, dirs, files in os.walk(directory):
-            # Skip excluded directories
-            dirs[:] = [d for d in dirs if d not in self.config['excluded_dirs']]
-            
-            for file in files:
-                full_path = Path(root) / file
-                if prefix:
-                    rel_path = prefix + str(full_path.relative_to(directory))
-                else:
-                    rel_path = str(full_path.relative_to(self.source_dir))
-                
-                # Skip excluded files
-                if self._is_excluded(rel_path):
+
+        # 1. Collect from apps/giantt (the script's own directory)
+        print(f"Scanning app directory: {self.source_dir}")
+        self._collect_from_directory(self.source_dir, label_root=self.source_dir, debug=debug)
+
+        # 2. Collect from packages/giantt_core
+        if GIANTT_CORE_DIR.exists():
+            print(f"Scanning core package: {GIANTT_CORE_DIR}")
+            self._collect_from_directory(GIANTT_CORE_DIR, label_root=MONOREPO_ROOT, debug=debug)
+        else:
+            print(f"WARNING: giantt_core directory not found at {GIANTT_CORE_DIR}")
+
+        # 3. Add the Python reference file
+        if PYTHON_REF_FILE.exists():
+            display = str(PYTHON_REF_FILE.relative_to(MONOREPO_ROOT))
+            if not self._is_excluded(PYTHON_REF_FILE.name):
+                self._categorize_and_add_file(display, PYTHON_REF_FILE)
+                if debug:
+                    print(f"DEBUG: Added Python reference: {display}")
+        else:
+            print(f"WARNING: Python reference not found at {PYTHON_REF_FILE}")
+
+        # 4. Add any extra priority files listed in priority.txt
+        for pf in self.priority_files:
+            p = Path(pf)
+            if not p.is_absolute():
+                p = (self.source_dir / pf).resolve()
+            if p.exists():
+                try:
+                    display = str(p.relative_to(MONOREPO_ROOT))
+                except ValueError:
+                    display = str(p)
+                if not self._is_excluded(p.name):
+                    self._categorize_and_add_file(display, p, force=True)
                     if debug:
-                        print(f"DEBUG: Excluded file: {rel_path}")
+                        print(f"DEBUG: Added priority file: {display}")
+            else:
+                print(f"WARNING: Priority file not found: {p}")
+
+        # Summary
+        total_files = sum(len(col) for col in self.file_collections.values())
+        print(f"\nFound {total_files} Giantt-related files:")
+        for category, files in self.file_collections.items():
+            if files:
+                description = self.config['file_types'][category]['description']
+                print(f"  {len(files)} {description.lower()}")
+        print(f"Exclusion patterns active: {len(self.individual_exclusions)}")
+
+        return self.file_collections
+
+    def _collect_from_directory(self, directory: Path, label_root: Path, debug=False):
+        """Walk *directory* and add matching files. Display paths are relative to *label_root*."""
+        excluded_dirs = set(self.config['excluded_dirs'])
+
+        for root, dirs, files in os.walk(directory):
+            root_path = Path(root)
+
+            # Prune excluded directories in-place
+            dirs[:] = [d for d in dirs if d not in excluded_dirs]
+
+            for file_name in files:
+                full_path = root_path / file_name
+
+                # Skip hidden files and lock files
+                if file_name.startswith('.') or file_name.endswith('.lock'):
+                    if debug:
+                        print(f"DEBUG: Skipping hidden/lock file: {full_path}")
                     continue
-                
-                # Skip hidden files and common build artifacts
-                if file.startswith('.') or file.endswith('.lock'):
+
+                # Skip the script itself
+                if full_path.resolve() == Path(__file__).resolve():
                     continue
-                
-                self._categorize_and_add_file(rel_path, file)
-    
-    def _add_priority_file(self, file_path: str):
-        """Add a priority file to the appropriate collection."""
-        full_path = self.source_dir / file_path
-        if full_path.exists() and not self._is_excluded(file_path):
-            file_name = Path(file_path).name
-            self._categorize_and_add_file(file_path, file_name, force=True)
-    
-    def _categorize_and_add_file(self, rel_path: str, file_name: str, force: bool = False):
-        """Categorize a file by extension and add to appropriate collection."""
-        file_ext = Path(file_name).suffix.lower()
-        
-        for category, config in self.config['file_types'].items():
-            if file_ext in config['extensions']:
-                if rel_path not in self.file_collections[category]:
-                    self.file_collections[category].append(rel_path)
-                return
-        
-        # If no category matches and force is True, add to 'other' category
-        if force:
-            if 'other' not in self.file_collections:
-                self.file_collections['other'] = []
-            if rel_path not in self.file_collections['other']:
-                self.file_collections['other'].append(rel_path)
-    
+
+                if self._is_excluded(file_name):
+                    if debug:
+                        print(f"DEBUG: Excluded: {full_path}")
+                    continue
+
+                try:
+                    display = str(full_path.relative_to(label_root))
+                except ValueError:
+                    display = str(full_path)
+
+                self._categorize_and_add_file(display, full_path, force=False)
+                if debug:
+                    print(f"DEBUG: Added: {display}")
+
+    # ------------------------------------------------------------------
+    # Output generation
+    # ------------------------------------------------------------------
+
     def generate_concatenated_file(self, debug=False):
-        """Generate a new concatenated file from all Giantt-related source files"""
+        """Generate a new concatenated file from all Giantt-related source files."""
         self.collect_files(debug=debug)
-        
-        with open(self.output_file, 'w') as output:
-            total_files = sum(len(collection) for collection in self.file_collections.values())
-            
-            # Generate header
+
+        output_path = Path(self.output_file)
+        print(f"\nWriting output to: {output_path}")
+
+        with open(output_path, 'w', encoding='utf-8') as output:
+            total_files = sum(len(col) for col in self.file_collections.values())
+
+            # Header banner
             project_name = self.config['project_name'].upper()
             header_text = f"{project_name} - COMPLETE SOURCE CODE"
             border_char = self.config['banner_config']['char']
             border_len = max(70, len(header_text) + 10)
             border = border_char * border_len
-            
+
             output.write(f"{border}\n")
             output.write(f"{border_char} {header_text:<{border_len-4}} {border_char}\n")
             output.write(f"{border_char} Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S'):<{border_len-16}} {border_char}\n")
             output.write(f"{border_char} Total files: {total_files:<{border_len-15}} {border_char}\n")
             output.write(f"{border}\n\n")
-            
-            # Write files by category
+
+            # Files by category
             for category, files in self.file_collections.items():
                 if not files:
                     continue
-                
-                category_config = self.config['file_types'][category]
-                section_title = category_config['description'].upper()
-                
-                border = "=" * 70
-                output.write(f"\n\n{border}\n")
-                output.write(f"= {section_title:<66} =\n")
-                output.write(f"{border}\n\n")
-                
-                for file_path in sorted(files):
-                    # Determine the actual file path to read
-                    if file_path.startswith('../../'):
-                        full_path = self.source_dir / file_path
-                    else:
-                        full_path = self.source_dir / file_path
-                    
-                    # Choose comment style based on file extension
-                    ext = Path(file_path).suffix.lower()
-                    if ext in ['.html', '.xml', '.md']:
-                        comment_start = "<!-- "
-                        comment_end = " -->"
-                    elif ext in ['.py', '.sh', '.yaml', '.yml', '.toml']:
-                        comment_start = "# "
-                        comment_end = ""
-                    else:
-                        comment_start = "// "
-                        comment_end = ""
-                    
-                    output.write(f"\n\n{comment_start}{'=' * 69}{comment_end}\n")
-                    output.write(f"{comment_start}FILE: {file_path}{comment_end}\n")
-                    output.write(f"{comment_start}{'=' * 69}{comment_end}\n\n")
-                    
-                    try:
-                        with open(full_path, 'r', encoding='utf-8') as input_file:
-                            output.write(input_file.read())
-                    except UnicodeDecodeError:
-                        output.write(f"{comment_start}[Error reading file: {file_path} - possible binary content]{comment_end}\n")
-                    except FileNotFoundError:
-                        output.write(f"{comment_start}[Error: File not found: {file_path}]{comment_end}\n")
-            
-            # Footer
-            border = "=" * 70
-            output.write(f"\n\n{border}\n")
-            output.write(f"= {'END OF FILES':<66} =\n")
-            output.write(f"{border}\n\n")
 
-        print(f"Giantt source concatenation complete! Output file: {self.output_file}")
-    
+                section_title = self.config['file_types'][category]['description'].upper()
+                section_border = "=" * 70
+                output.write(f"\n\n{section_border}\n")
+                output.write(f"= {section_title:<66} =\n")
+                output.write(f"{section_border}\n\n")
+
+                for entry in sorted(files, key=lambda e: e['display']):
+                    display_path = entry['display']
+                    full_path = entry['full']
+
+                    ext = full_path.suffix.lower()
+                    if ext in ['.html', '.xml', '.md']:
+                        cs, ce = "<!-- ", " -->"
+                    elif ext in ['.py', '.sh', '.yaml', '.yml', '.toml', '.properties']:
+                        cs, ce = "# ", ""
+                    else:
+                        cs, ce = "// ", ""
+
+                    output.write(f"\n\n{cs}{'=' * 69}{ce}\n")
+                    output.write(f"{cs}FILE: {display_path}{ce}\n")
+                    output.write(f"{cs}{'=' * 69}{ce}\n\n")
+
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            output.write(f.read())
+                    except UnicodeDecodeError:
+                        output.write(f"{cs}[Binary file – skipped]{ce}\n")
+                    except FileNotFoundError:
+                        output.write(f"{cs}[File not found: {full_path}]{ce}\n")
+
+            # Footer
+            footer_border = "=" * 70
+            output.write(f"\n\n{footer_border}\n")
+            output.write(f"= {'END OF FILES':<66} =\n")
+            output.write(f"{footer_border}\n\n")
+
+        print(f"Done! Output file: {output_path}")
+
+    # ------------------------------------------------------------------
+    # Init
+    # ------------------------------------------------------------------
+
     def init_config(self):
         """Initialize configuration file with Giantt-specific defaults."""
         if self.config_file.exists():
             print(f"Configuration already exists at {self.config_file}")
             return False
-        
         self.config = self._default_config()
         self._save_config()
         print(f"Created Giantt-specific configuration at {self.config_file}")
-        print("Edit this file to customize file types, exclusions, and other settings.")
         return True
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -365,36 +397,33 @@ Examples:
   %(prog)s generate                 # Generate concatenated source file
   %(prog)s generate --debug         # Generate with debug output
 
-This tool is specifically configured to collect:
-- Flutter app code from apps/giantt/
-- Core Dart package from packages/giantt_core/
-- Python reference from docs/port_reference/giantt_core.py
+This tool collects:
+  - Flutter app code from apps/giantt/
+  - Core Dart package from packages/giantt_core/
+  - Python reference from docs/port_reference/giantt_core.py
         """
     )
-    parser.add_argument('--debug', action='store_true', help='Enable debug output')
-    
+
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
-    # Init command
-    init_parser = subparsers.add_parser('init', help='Initialize Giantt-specific configuration')
-    
-    # Generate command
+
+    subparsers.add_parser('init', help='Initialize Giantt-specific configuration')
+
     generate_parser = subparsers.add_parser('generate', help='Generate concatenated source file')
     generate_parser.add_argument('--debug', action='store_true', help='Enable debug output')
-    
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return
-    
+
     manager = GianttSourceManager()
-    
+
     if args.command == 'init':
         manager.init_config()
     elif args.command == 'generate':
-        debug = getattr(args, 'debug', False)
-        manager.generate_concatenated_file(debug=debug)
+        manager.generate_concatenated_file(debug=getattr(args, 'debug', False))
+
 
 if __name__ == '__main__':
     main()
