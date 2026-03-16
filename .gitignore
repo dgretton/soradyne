@@ -29,6 +29,8 @@ packages/soradyne_core/target
 .aider*
 *.DS_Store
 Cargo.lock
-soradyne_complete.txt
+*_complete.txt
 .giantt
 giantt-original
+build/
+*.log
