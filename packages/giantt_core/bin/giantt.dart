@@ -1775,7 +1775,7 @@ Future<void> _executeDoctorCheck(GraphDoctor doctor) async {
   final issues = doctor.fullDiagnosis();
   
   if (issues.isEmpty) {
-    // Don't print anything for healthy graph to match Python
+    print('✓ Graph is healthy — no issues found.');
     return;
   }
   
