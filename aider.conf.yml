@@ -1,0 +1,12 @@
+# Aider configuration file
+# See https://aider.chat/docs/config.html for all options
+
+# Default model to use
+model: gpt-4o
+
+# Other common settings you might want to configure:
+# edit-format: diff
+# pretty: true
+# stream: true
+# auto-commits: true
+# dirty-commits: true
