@@ -2,7 +2,7 @@
 # See https://aider.chat/docs/config.html for all options
 
 # Default model to use
-model: gpt-4o
+model: openrouter/anthropic/claude-sonnet-4-6
 
 # Other common settings you might want to configure:
 # edit-format: diff
