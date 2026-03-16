@@ -1,5 +1,5 @@
-# Individual file exclusions for source_manager
-# One file path per line, relative to project root
+# Individual file exclusions for giantt_source_manager
+# One file path per line, relative to the directory being scanned
 # Lines starting with # are comments and will be ignored
 
 # Common output files
@@ -8,15 +8,21 @@ giantt_complete.txt
 *.tmp
 
 # Generated files
-android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
-android/local.properties
+GeneratedPluginRegistrant.java
+local.properties
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 pubspec.lock
 
 # Build artifacts
-android/app/build.gradle
-android/build.gradle
-android/gradle/wrapper/gradle-wrapper.properties
-android/settings.gradle
+gradlew
+gradlew.bat
+gradle-wrapper.jar
+*.iml
+
+# Data / backup files
+*.backup
+*.jsonl
+items.txt
+metadata.json

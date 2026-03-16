@@ -99,7 +99,7 @@ class GianttSourceManager:
             "excluded_dirs": [
                 ".git", ".dart_tool", "build", ".gradle",
                 "ios", ".idea", ".vscode", "coverage", ".packages",
-                ".source_manager"
+                ".source_manager", ".giantt"
             ],
             "banner_config": {
                 "padding_h": 5,
@@ -131,12 +131,22 @@ class GianttSourceManager:
                 f.write("*.log\n")
                 f.write("*.tmp\n")
                 f.write("\n# Generated files\n")
-                f.write("android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java\n")
-                f.write("android/local.properties\n")
+                f.write("GeneratedPluginRegistrant.java\n")
+                f.write("local.properties\n")
                 f.write(".flutter-plugins\n")
                 f.write(".flutter-plugins-dependencies\n")
                 f.write(".packages\n")
                 f.write("pubspec.lock\n")
+                f.write("\n# Build artifacts\n")
+                f.write("gradlew\n")
+                f.write("gradlew.bat\n")
+                f.write("gradle-wrapper.jar\n")
+                f.write("*.iml\n")
+                f.write("\n# Data / backup files\n")
+                f.write("*.backup\n")
+                f.write("*.jsonl\n")
+                f.write("items.txt\n")
+                f.write("metadata.json\n")
 
     def _ensure_priority_setup(self):
         """Ensure the priority files file exists."""
@@ -272,8 +282,11 @@ class GianttSourceManager:
         for root, dirs, files in os.walk(directory):
             root_path = Path(root)
 
-            # Prune excluded directories in-place
-            dirs[:] = [d for d in dirs if d not in excluded_dirs]
+            # Prune excluded directories in-place (including hidden dirs starting with '.')
+            dirs[:] = [
+                d for d in dirs
+                if d not in excluded_dirs and not d.startswith('.')
+            ]
 
             for file_name in files:
                 full_path = root_path / file_name
