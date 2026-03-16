@@ -1,18 +1,9 @@
-# Priority files for source_manager
+# Priority files for giantt_source_manager
 # These files will always be included in the output
-# One file path per line, relative to project root
+# Paths are relative to the apps/giantt directory OR absolute
 # Lines starting with # are comments and will be ignored
 
-# Core Giantt package files
-../../packages/giantt_core/lib/giantt_core.dart
-../../packages/giantt_core/lib/src/models/giantt_item.dart
-../../packages/giantt_core/lib/src/models/duration.dart
-../../packages/giantt_core/lib/src/models/priority.dart
-../../packages/giantt_core/lib/src/models/status.dart
-
-# Python reference implementation
-../../docs/port_reference/giantt_core.py
-
-# Main app files
-lib/main.dart
-pubspec.yaml
+# No entries needed here - the directory scan already picks up all
+# source files from apps/giantt/ and packages/giantt_core/ automatically.
+# Add entries here only for files outside those directories that you
+# want to force-include.

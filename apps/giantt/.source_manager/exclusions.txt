@@ -26,3 +26,7 @@ gradle-wrapper.jar
 *.jsonl
 items.txt
 metadata.json
+
+# Binary and Android resource files
+*.png
+*.xml
