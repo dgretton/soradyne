@@ -30,11 +30,11 @@ Shamir secret sharing of the encryption key → n key shares
 Any k-of-n devices (e.g. 3-of-5) → full reconstruction
 ```
 
-This is implemented and working today. Initialize your devices, dissolve data across them, and crystallize it back from any threshold subset — even if some devices are lost or damaged.
+You can nitialize your devices via CLI, dissolve data across them, and crystallize it back from any threshold subset, even if some devices are lost or damaged.
 
 ### Self-Data Flows and CRDT Sync
 
-Soradyne's flow engine lets multiple devices collaborate on shared data structures that converge automatically. The **convergent document** system is a full CRDT implementation with five primitive operations (add, remove, set field, add to set, remove from set) and causal tracking that guarantees all devices reach the same state — no matter what order edits arrive.
+Soradyne's flow code lets multiple devices collaborate on shared data structures that converge automatically. We call channels data moves over **streams**, and a stream that constitutes an eventually-consistent synthesis of multiple other streams is called a **drip**. The **convergent document** system is a drip that uses a CRDT to materialize lines of text edited by multiple secure devices. The CRDT has five primitive operations (add, remove, set field, add to set, remove from set) and causal tracking that guarantees all devices reach the same state, regarless of edit order.
 
 When two people edit the same data on different devices:
 
@@ -50,7 +50,7 @@ Device A writes op₁    Device B writes op₂ (concurrently)
    same result             same result
 ```
 
-Conflict resolution is deterministic: informed-remove semantics for deletions (a delete only affects state the deleter had seen), latest-wins for scalar fields, and add-wins for sets. Three-device sync has been tested end-to-end with topology routing across a mesh.
+**Current state:** Three-device sync has been integration tested end-to-end with topology routing across a mesh.
 
 ### Bluetooth Transport
 
@@ -60,7 +60,7 @@ Soradyne owns the radio. The BLE layer handles device discovery, pairing, and en
 - **Sessions**: Noise IKpsk2 protocol (the same framework used by Signal and WireGuard) with pre-shared keys bound to capsule membership
 - **Topology**: Devices form mesh networks and route messages with TTL-based forwarding — no hub required
 
-Real BLE pairing works today between Android (peripheral) and macOS (central). Mesh sync over BLE is the active development frontier.
+BLE pairing works between Android (peripheral) and macOS (central) at the moment. Also, any device with an internet connection can still participate using TCP-backed bluetooth clone. Multi-hop mesh sync over BLE is the under development.
 
 ## Security
 
@@ -73,11 +73,12 @@ Soradyne uses industry-standard cryptography throughout:
 | Signing | Ed25519 | `ed25519-dalek` |
 | Key derivation | HKDF-SHA256 | `hkdf` |
 | Session encryption | Noise IKpsk2_25519_AESGCM_SHA256 | `snow` |
-| Secret sharing | Shamir over GF(256) | custom implementation |
 | Erasure coding | Reed-Solomon | `reed-solomon-erasure` |
 | Memory safety | Zeroize on drop | `zeroize` |
 
-Every encryption operation uses a fresh random nonce. Per-block master keys are never reused. Capsule key bundles support epoch-based rotation. The entire protocol runs without any server or cloud dependency.
+We have rolled our own crypto for Shamir secret sharing over GF(256) but intend to either incorporate an existing crate or contribute one to be vetted by others.
+
+Every encryption operation uses a fresh random nonce. Per-block master keys are never reused. Capsule key bundles support epoch-based rotation. The protocol runs without any server, hub-spoke concept or cloud dependency.
 
 ## Architecture
 
