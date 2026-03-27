@@ -1,94 +1,190 @@
 <div align="center">
   <img src="docs/img/soradynelogo.png" alt="Soradyne Logo" width="400">
+
+  *the sync engine behind [rim](https://instagram.com/reclaim.intimate.mutuality)*
 </div>
 
 # Soradyne
 
-⚠️ **PROOF OF CONCEPT - NOT FOR PRODUCTION USE** ⚠️
+A protocol and toolkit for secure, peer-to-peer self-data flows. Soradyne gives you real ownership of your data — split across physical devices you hold, synced over Bluetooth, encrypted end-to-end, with no cloud in between.
 
-A protocol and app demonstrator for secure, peer-to-peer shared self-data objects with a focus on privacy and user control.
+Soradyne is the technical core of **[rim](https://www.rim.gs/)** — a project reclaiming data sovereignty in the age of wearables. rim builds person-to-person systems for storing and sharing intimate live data streams, using SD-core wearables and edge-based storage instead of the cloud. Soradyne is the protocol that makes those devices work together.
 
-**Important Notice**: This is experimental proof-of-concept code designed to demonstrate what's possible with decentralized self-data objects. The codebase is not well organized for others to easily view and understand - it's really meant to get the ball rolling and show concrete possibilities. Much improvement is needed before this would be ready for prime time or production use.
+## How It Works
 
-Made with Aider Chat Bot backed by Claude Sonnet 4 hosted on OpenRouter.
+### Data Dissolution and Crystallization
 
-## What is Soradyne?
+Your data doesn't live on one device. Soradyne **dissolves** it — splitting files across multiple physical storage devices using Shamir secret sharing and Reed-Solomon erasure coding. Each device holds a shard. No single shard reveals anything. Any sufficient subset of your devices can **crystallize** the data back.
 
-Soradyne is a protocol that enables secure, peer-to-peer sharing of self-data objects (SDOs). It's designed to give users full control over their personal data, allowing them to share it with others on their terms.
+```
+Your file
+  ↓
+AES-256-GCM encryption (unique key per block)
+  ↓
+Reed-Solomon erasure coding → n shards (e.g. 5)
+  ↓
+Shamir secret sharing of the encryption key → n key shares
+  ↓
+(shard + key share) distributed to each rimsd device
+  ↓
+Any k-of-n devices (e.g. 3-of-5) → full reconstruction
+```
 
-Key features:
+This is implemented and working today. Initialize your devices, dissolve data across them, and crystallize it back from any threshold subset — even if some devices are lost or damaged.
 
-- **Data Sovereignty**: You own and control your data, not a third-party service or company.
-- **Peer-to-Peer**: Direct sharing between devices without requiring centralized servers.
-- **Data Dissolution**: Split your data across multiple devices for enhanced security and resilience.
-- **Data Crystallization**: Recombine dissolved data when needed.
-- **Real-Time & Eventually Consistent SDOs**: Support for different synchronization models based on use case.
-- **Encrypted & Private**: All data is encrypted by default, and privacy is built into the core design.
+### Self-Data Flows and CRDT Sync
 
-## Use Cases
+Soradyne's flow engine lets multiple devices collaborate on shared data structures that converge automatically. The **convergent document** system is a full CRDT implementation with five primitive operations (add, remove, set field, add to set, remove from set) and causal tracking that guarantees all devices reach the same state — no matter what order edits arrive.
 
-Soradyne is designed to support various use cases, including:
+When two people edit the same data on different devices:
 
-- **Heart Rate Monitoring**: Share real-time heart rate data with healthcare providers or family members.
-- **Chat Conversations**: Private, end-to-end encrypted messaging between individuals or groups.
-- **Photo Albums**: Share photos with friends and family without uploading them to a cloud service.
-- **File Sharing**: Securely share files with others directly, with no size limits or usage tracking.
-- **Collaborative Robotics**: Share real-time robot joint positions and forces for remote collaboration.
+```
+Device A writes op₁    Device B writes op₂ (concurrently)
+        ↓                       ↓
+   local journal           local journal
+        ↓                       ↓
+        ←── sync over BLE ──→
+        ↓                       ↓
+   materialize()           materialize()
+        ↓                       ↓
+   same result             same result
+```
+
+Conflict resolution is deterministic: informed-remove semantics for deletions (a delete only affects state the deleter had seen), latest-wins for scalar fields, and add-wins for sets. Three-device sync has been tested end-to-end with topology routing across a mesh.
+
+### Bluetooth Transport
+
+Soradyne owns the radio. The BLE layer handles device discovery, pairing, and encrypted communication:
+
+- **Pairing**: X25519 key exchange over BLE, confirmed with a 6-digit PIN derived from the shared secret, followed by encrypted transfer of capsule credentials (AES-256-GCM)
+- **Sessions**: Noise IKpsk2 protocol (the same framework used by Signal and WireGuard) with pre-shared keys bound to capsule membership
+- **Topology**: Devices form mesh networks and route messages with TTL-based forwarding — no hub required
+
+Real BLE pairing works today between Android (peripheral) and macOS (central). Mesh sync over BLE is the active development frontier.
+
+## Security
+
+Soradyne uses industry-standard cryptography throughout:
+
+| Layer | Primitive | Implementation |
+|-------|-----------|----------------|
+| Key exchange | X25519 ECDH | `x25519-dalek` |
+| Encryption | AES-256-GCM | `aes-gcm` (AEAD) |
+| Signing | Ed25519 | `ed25519-dalek` |
+| Key derivation | HKDF-SHA256 | `hkdf` |
+| Session encryption | Noise IKpsk2_25519_AESGCM_SHA256 | `snow` |
+| Secret sharing | Shamir over GF(256) | custom implementation |
+| Erasure coding | Reed-Solomon | `reed-solomon-erasure` |
+| Memory safety | Zeroize on drop | `zeroize` |
+
+Every encryption operation uses a fresh random nonce. Per-block master keys are never reused. Capsule key bundles support epoch-based rotation. The entire protocol runs without any server or cloud dependency.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│  Flutter / CLI                                   │
+│  (UI and interaction layer)                      │
+├─────────────────────────────────────────────────┤
+│  FFI bridge (C ABI)                              │
+├─────────────────────────────────────────────────┤
+│  soradyne_core (Rust)                            │
+│                                                  │
+│  storage/     dissolution, erasure coding,       │
+│               block management, rimsd devices    │
+│                                                  │
+│  convergent/  CRDT engine, schemas,              │
+│               causal horizon tracking            │
+│                                                  │
+│  flow/        DripHostedFlow, host election,     │
+│               journal persistence, sync          │
+│                                                  │
+│  ble/         transport traits, BLE central      │
+│               (btleplug), BLE peripheral (JNI),  │
+│               simulated network, Noise sessions  │
+│                                                  │
+│  topology/    pairing engine, ensemble manager,  │
+│               mesh routing                       │
+│                                                  │
+│  identity/    device keys, capsule key bundles,  │
+│               X25519/Ed25519, HKDF               │
+└─────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
 ### Prerequisites
 
 - Rust (latest stable)
-- Node.js (v14 or higher)
-- npm or yarn
+- Flutter (for demo apps)
+- Android NDK (for Android builds)
 
-### Building
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/soradyne.git
-cd soradyne
-
-# Build the library
-./build.sh
-```
-
-### Running Examples
+### Build and Run
 
 ```bash
-# Heart rate example
-cd ts && npm run example:heartrate
+# Build the core library
+cd packages/soradyne_core
+cargo build --release
 
-# Chat example
-cd ts && npm run example:chat
+# Run the dissolution storage demo
+cargo run --example block_storage_demo
+
+# Run tests
+cargo test --no-default-features
+
+# Build with BLE central support (macOS)
+cargo build --release --features ble-central --no-default-features
+
+# Bootstrap Flutter packages
+melos bootstrap
+
+# Run the demo app
+cd apps/soradyne_demo/flutter_app && flutter run -d macos
 ```
 
-## Architecture
+### Initialize rimsd Devices
 
-Soradyne is built with a layered architecture:
+```bash
+# Run the block storage demo CLI
+cargo run --example block_storage_demo
 
-1. **Core Layer**: Identity management, cryptography, and transport protocols.
-2. **SDO Layer**: Self-Data Object definitions and implementations.
-3. **Storage Layer**: Data dissolution and crystallization mechanisms.
-4. **Application Layer**: Examples and applications built on top of Soradyne.
+# Commands:
+#   init          — initialize connected SD cards as rimsd devices
+#   w <text>      — dissolve text across devices
+#   r <id>        — crystallize a block back from shards
+#   t <id>        — test fault tolerance (simulate lost devices)
+#   s             — storage stats across all devices
+```
 
-## Project Status
+## Monorepo Layout
 
-⚠️ **This is proof-of-concept code only** ⚠️
+```
+packages/
+  soradyne_core/       Rust: protocol, crypto, storage, BLE, CRDT
+  soradyne_flutter/    Flutter plugin (FFI bridge to soradyne_core)
+  giantt_core/         Dart: task dependency graph engine
+  ai_chat_flutter/     Flutter: AI chat with action calling
+apps/
+  soradyne_demo/       Flutter demo (pairing, flow sync, albums)
+  giantt/              Flutter task management app
+  inventory/           Flutter personal inventory app
+```
 
-Soradyne is currently in the very early experimental phase. This codebase serves as a demonstration of concepts and possibilities rather than a production-ready system. Key limitations include:
+## Key Concepts
 
-- **Not production ready**: This code should never be used in production environments
-- **Poor organization**: The codebase structure is not well organized for external contributors or users
-- **Experimental nature**: Many components are rough prototypes to explore feasibility
-- **Security concerns**: Cryptographic and security implementations need thorough review
-- **Documentation gaps**: Much of the code lacks proper documentation and examples
-
-The goal is to show what's possible concretely and get the conversation started about decentralized self-data protocols. Significant work is needed to make this suitable for real-world use.
-
-We welcome feedback and discussions about the concepts, but please do not use this code for anything beyond experimentation and learning!
+- **Capsule** — a trust group of devices. Established via BLE pairing with cryptographic verification. Holds shared encryption keys.
+- **Piece** — one device in a capsule, with a role (Full or Accessory) and unique identity.
+- **Self-Data Flow** — a user-owned data stream that syncs peer-to-peer across capsule members.
+- **Dissolution** — splitting encrypted data across physical devices using erasure coding and secret sharing. No single device holds enough to reconstruct.
+- **Crystallization** — recombining shards from a threshold of devices to recover the original data.
+- **rimsd** — an SD card or flash storage device initialized for use with Soradyne's dissolution protocol.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License — see the LICENSE file for details.
+
+---
+
+<div align="center">
+  <sub>a <b>rim</b> project — <a href="https://instagram.com/reclaim.intimate.mutuality">@reclaim.intimate.mutuality</a></sub>
+</div>
