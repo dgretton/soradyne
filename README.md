@@ -1,20 +1,20 @@
 <div align="center">
-  <img src="docs/img/soradynelogo.png" alt="Soradyne Logo" width="400">
+  <img src="docs/img/soradynelogo.png" alt="soradyne Logo" width="400">
 
   *the sync engine behind [rim](https://instagram.com/reclaim.intimate.mutuality)*
 </div>
 
-# Soradyne
+# soradyne
 
-A protocol and toolkit for secure, peer-to-peer self-data flows. Soradyne gives you real ownership of your data — split across physical devices you hold, synced over Bluetooth, encrypted end-to-end, with no cloud in between.
+A protocol (under development) for secure, peer-to-peer self-data flows. soradyne embodies real ownership of your data — split across physical devices you hold, synced over Bluetooth, encrypted end-to-end, with no cloud in between.
 
-Soradyne is the technical core of **[rim](https://www.rim.gs/)** — a project reclaiming data sovereignty in the age of wearables. rim builds person-to-person systems for storing and sharing intimate live data streams, using SD-core wearables and edge-based storage instead of the cloud. Soradyne is the protocol that makes those devices work together.
+soradyne is the technical core of **[rim](https://www.rim.gs/)** — a project reclaiming data sovereignty in the age of wearables. rim envisions person-to-person systems for storing and sharing intimate live data streams, using SD-core wearables and edge-based storage instead of the cloud. soradyne is the protocol that is going to make those devices work together.
 
 ## How It Works
 
 ### Data Dissolution and Crystallization
 
-Your data doesn't live on one device. Soradyne **dissolves** it — splitting files across multiple physical storage devices using Shamir secret sharing and Reed-Solomon erasure coding. Each device holds a shard. No single shard reveals anything. Any sufficient subset of your devices can **crystallize** the data back.
+Your data doesn't live on one device because it could be lost. soradyne **dissolves** it — splitting files across multiple physical storage devices using Shamir secret sharing and Reed-Solomon erasure coding. Each device holds an encrypted shard. No single shard reveals anything. Any sufficient subset of your devices can **crystallize** the data back.
 
 ```
 Your file
@@ -30,11 +30,11 @@ Shamir secret sharing of the encryption key → n key shares
 Any k-of-n devices (e.g. 3-of-5) → full reconstruction
 ```
 
-You can nitialize your devices via CLI, dissolve data across them, and crystallize it back from any threshold subset, even if some devices are lost or damaged.
+You can initialize your devices via CLI, dissolve data across them, and crystallize it back from any threshold subset, even if some devices are lost or damaged. Right now, crystallization and dissolution work across any combination of local bulk storage media like flash drives and SD cards, and file system directories.
 
 ### Self-Data Flows and CRDT Sync
 
-Soradyne's flow code lets multiple devices collaborate on shared data structures that converge automatically. We call channels data moves over **streams**, and a stream that constitutes an eventually-consistent synthesis of multiple other streams is called a **drip**. The **convergent document** system is a drip that uses a CRDT to materialize lines of text edited by multiple secure devices. The CRDT has five primitive operations (add, remove, set field, add to set, remove from set) and causal tracking that guarantees all devices reach the same state, regarless of edit order.
+soradyne's flow code lets multiple devices collaborate on shared data structures that converge automatically. Abstractly, we call the channels we move data over **streams**, and a stream that constitutes an eventually-consistent synthesis of multiple other streams is called a **drip**. The **convergent document** system is a drip that uses a CRDT to materialize lines of text edited by multiple secure devices. (We don't want to get stuck in the world of text forever like the rest of the internet, but it's a place to start!) The CRDT has five primitive operations (add, remove, set field, add to set, remove from set) and causal tracking that guarantees all devices reach the same state, regardless of edit order.
 
 When two people edit the same data on different devices:
 
@@ -50,21 +50,21 @@ Device A writes op₁    Device B writes op₂ (concurrently)
    same result             same result
 ```
 
-**Current state:** Three-device sync has been integration tested end-to-end with topology routing across a mesh.
+**Current state:** Three-device sync has been integration-tested end-to-end with topology routing across a "mesh" (a 3-node line).
 
 ### Bluetooth Transport
 
-Soradyne owns the radio. The BLE layer handles device discovery, pairing, and encrypted communication:
+soradyne manages BLE; only read/write/status etc. are exposed at the application level. The BLE layer handles device discovery, pairing, and encrypted communication:
 
 - **Pairing**: X25519 key exchange over BLE, confirmed with a 6-digit PIN derived from the shared secret, followed by encrypted transfer of capsule credentials (AES-256-GCM)
 - **Sessions**: Noise IKpsk2 protocol (the same framework used by Signal and WireGuard) with pre-shared keys bound to capsule membership
 - **Topology**: Devices form mesh networks and route messages with TTL-based forwarding — no hub required
 
-BLE pairing works between Android (peripheral) and macOS (central) at the moment. Also, any device with an internet connection can still participate using TCP-backed bluetooth clone. Multi-hop mesh sync over BLE is the under development.
+BLE pairing works between Android (peripheral) and macOS (central) at the moment. Also, any device with an internet connection can still participate using a TCP-backed bluetooth mimic. Multi-hop mesh sync over BLE is under development.
 
 ## Security
 
-Soradyne uses industry-standard cryptography throughout:
+soradyne uses industry-standard cryptography throughout:
 
 | Layer | Primitive | Implementation |
 |-------|-----------|----------------|
@@ -76,9 +76,9 @@ Soradyne uses industry-standard cryptography throughout:
 | Erasure coding | Reed-Solomon | `reed-solomon-erasure` |
 | Memory safety | Zeroize on drop | `zeroize` |
 
-We have rolled our own crypto for Shamir secret sharing over GF(256) but intend to either incorporate an existing crate or contribute one to be vetted by others.
+We have rolled our own crypto (bad!) for Shamir secret sharing over GF(256) but intend to either incorporate an existing crate or contribute one to be vetted by others.
 
-Every encryption operation uses a fresh random nonce. Per-block master keys are never reused. Capsule key bundles support epoch-based rotation. The protocol runs without any server, hub-spoke concept or cloud dependency.
+Every encryption operation uses a fresh random nonce. Per-block master keys are never reused. Capsule key bundles support epoch-based rotation. The protocol runs without any hub-spoke concept or cloud dependency.
 
 ## Architecture
 
@@ -175,10 +175,10 @@ apps/
 
 - **Capsule** — a trust group of devices. Established via BLE pairing with cryptographic verification. Holds shared encryption keys.
 - **Piece** — one device in a capsule, with a role (Full or Accessory) and unique identity.
-- **Self-Data Flow** — a user-owned data stream that syncs peer-to-peer across capsule members.
+- **Self-Data Flow** — a fluid user-owned data item (imagine a photo album or a live heartbeat from a smart ring) that syncs peer-to-peer across capsule members.
 - **Dissolution** — splitting encrypted data across physical devices using erasure coding and secret sharing. No single device holds enough to reconstruct.
 - **Crystallization** — recombining shards from a threshold of devices to recover the original data.
-- **rimsd** — an SD card or flash storage device initialized for use with Soradyne's dissolution protocol.
+- **.rimsd** — a directory on an SD card or flash storage device initialized for use with soradyne's dissolution protocol.
 
 ## License
 
