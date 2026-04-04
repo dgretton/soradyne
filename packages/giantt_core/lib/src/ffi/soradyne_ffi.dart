@@ -13,8 +13,10 @@ import 'package:path/path.dart' as path;
 typedef SoradyneFlowInitNative = Int32 Function(Pointer<Utf8> deviceId);
 typedef SoradyneFlowInit = int Function(Pointer<Utf8> deviceId);
 
-typedef SoradyneFlowOpenNative = Pointer<Void> Function(Pointer<Utf8> uuid);
-typedef SoradyneFlowOpen = Pointer<Void> Function(Pointer<Utf8> uuid);
+typedef SoradyneFlowOpenNative = Pointer<Void> Function(
+    Pointer<Utf8> uuid, Pointer<Utf8> schema);
+typedef SoradyneFlowOpen = Pointer<Void> Function(
+    Pointer<Utf8> uuid, Pointer<Utf8> schema);
 
 typedef SoradyneFlowCloseNative = Void Function(Pointer<Void> handle);
 typedef SoradyneFlowClose = void Function(Pointer<Void> handle);

@@ -25,41 +25,33 @@ class FlowException implements Exception {
   }
 }
 
-/// Client for interacting with a Giantt Flow.
+/// Client for interacting with a Soradyne convergent flow.
 ///
 /// The FlowClient manages a connection to a Soradyne flow identified by UUID.
-/// Operations are written to the flow and the current state can be read as
-/// .giantt text format.
+/// Operations are written to the flow and the current state can be read in
+/// the schema's native format (.giantt text for giantt, JSON for inventory).
 ///
 /// Usage:
 /// ```dart
 /// // Initialize the flow system (once per application)
 /// FlowClient.initialize('device-uuid');
 ///
-/// // Open a flow
+/// // Open a giantt flow (default schema)
 /// final client = FlowClient.open('flow-uuid');
-/// try {
-///   // Write operations
-///   client.writeOperation({
-///     'AddItem': {'item_id': 'task_1', 'item_type': 'GianttItem'}
-///   });
 ///
-///   // Read current state as .giantt text
-///   final text = client.readDrip();
-///   print(text);
-/// } finally {
-///   client.close();
-/// }
+/// // Open an inventory flow
+/// final invClient = FlowClient.open('flow-uuid', schema: 'inventory');
 /// ```
 class FlowClient {
   static bool _initialized = false;
   static final _ffi = SoradyneFFI.instance;
 
   final String uuid;
+  final String schema;
   Pointer<Void> _handle;
   bool _closed = false;
 
-  FlowClient._(this.uuid, this._handle);
+  FlowClient._(this.uuid, this.schema, this._handle);
 
   /// Initialize the flow system with a device ID.
   ///
@@ -80,13 +72,16 @@ class FlowClient {
     }
   }
 
-  /// Open a flow by UUID.
+  /// Open a flow by UUID and schema.
   ///
-  /// The flow will load its edit history from disk (or create a new one).
+  /// [schema] selects the convergent document schema: `"giantt"` (default)
+  /// or `"inventory"`. The flow will load its edit history from disk (or
+  /// create a new one).
+  ///
   /// Returns a [FlowClient] that must be closed when done.
   ///
   /// Throws [FlowException] if the flow cannot be opened.
-  static FlowClient open(String uuid) {
+  static FlowClient open(String uuid, {String schema = 'giantt'}) {
     if (!_initialized) {
       throw FlowException(
         'Flow system not initialized. Call FlowClient.initialize() first.',
@@ -95,14 +90,16 @@ class FlowClient {
     }
 
     final uuidPtr = uuid.toNativeUtf8();
+    final schemaPtr = schema.toNativeUtf8();
     try {
-      final handle = _ffi.flowOpen(uuidPtr);
+      final handle = _ffi.flowOpen(uuidPtr, schemaPtr);
       if (handle == nullptr) {
-        throw FlowException('Failed to open flow: $uuid', 'open');
+        throw FlowException('Failed to open flow: $uuid (schema: $schema)', 'open');
       }
-      return FlowClient._(uuid, handle);
+      return FlowClient._(uuid, schema, handle);
     } finally {
       malloc.free(uuidPtr);
+      malloc.free(schemaPtr);
     }
   }
 

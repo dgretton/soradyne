@@ -8,12 +8,9 @@ use serde_json;
 
 use crate::album::album::*;
 
-// Giantt Flow FFI module
-pub mod giantt_flow;
+// Unified convergent-document flow FFI module
+pub mod convergent_flow_ffi;
 mod serializer;
-
-// Inventory Flow FFI module
-pub mod inventory_flow;
 
 // Pairing Bridge FFI module
 pub mod pairing_bridge;

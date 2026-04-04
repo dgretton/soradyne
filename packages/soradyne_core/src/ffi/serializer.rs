@@ -1,13 +1,13 @@
-//! Giantt Text Serializer
+//! Serializers for convergent document schemas.
 //!
-//! Serializes GianttState to .giantt text format, matching Dart's toFileString() output.
-//!
-//! Format:
-//! ```text
-//! ○ item_id!! 2d "Title" {chart1,chart2} tag1,tag2 >>> ⊢[dep1,dep2] @@@ due(2024-01-01) # comment
-//! ```
+//! Each schema has its own materialization format:
+//! - Giantt → `.giantt` text notation
+//! - Inventory → JSON matching Dart's InventoryEntry format
+
+use std::collections::HashMap;
 
 use crate::convergent::giantt::{GianttItem, GianttPriority, GianttState, GianttStatus};
+use crate::convergent::inventory::InventoryState;
 
 /// Serialize a GianttState to .giantt text format
 pub fn serialize_giantt_state(state: &GianttState) -> String {
@@ -125,6 +125,31 @@ fn serialize_relations(item: &GianttItem) -> String {
     }
 
     relation_parts.join(" ")
+}
+
+/// Serialize InventoryState to JSON matching Dart's InventoryEntry format
+pub fn serialize_inventory_state(state: &InventoryState) -> String {
+    let items: HashMap<&str, serde_json::Value> = state
+        .items
+        .iter()
+        .map(|(id, item)| {
+            let mut tags: Vec<&str> = item.tags.iter().map(|s| s.as_str()).collect();
+            tags.sort();
+
+            (
+                id.as_str(),
+                serde_json::json!({
+                    "id": item.id,
+                    "category": item.category,
+                    "description": item.description,
+                    "location": item.location,
+                    "tags": tags,
+                }),
+            )
+        })
+        .collect();
+
+    serde_json::json!({ "items": items }).to_string()
 }
 
 #[cfg(test)]
