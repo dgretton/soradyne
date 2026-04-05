@@ -38,6 +38,13 @@ pub struct EnsembleConfig {
     pub scan_interval: Duration,
     /// How long before a piece is considered stale and removed.
     pub stale_timeout: Duration,
+    /// Static peer addresses for when BLE/mDNS discovery isn't available
+    /// (e.g. peers reachable over Tailscale or other VPN).
+    /// Keyed by peer device UUID → TCP socket address.
+    /// The ensemble manager will establish TCP connections to these peers
+    /// automatically, using the UUID tiebreaker for role assignment, and
+    /// reconnect on disconnect.
+    pub static_peers: HashMap<Uuid, std::net::SocketAddr>,
 }
 
 impl Default for EnsembleConfig {
@@ -45,6 +52,7 @@ impl Default for EnsembleConfig {
         Self {
             scan_interval: Duration::from_secs(2),
             stale_timeout: Duration::from_secs(30),
+            static_peers: HashMap::new(),
         }
     }
 }
@@ -286,6 +294,181 @@ impl EnsembleManager {
                 }
             });
         }
+
+        // Task: connect to static peers (e.g. Tailscale/VPN addresses)
+        //
+        // For each configured static peer, uses the UUID tiebreaker to decide
+        // who initiates. On disconnect, waits briefly and reconnects.
+        if !self.config.static_peers.is_empty() {
+            let manager = Arc::clone(self);
+            let static_peers = self.config.static_peers.clone();
+            let mut shutdown = self.shutdown_tx.subscribe();
+
+            tokio::spawn(async move {
+                // Initial connection attempts for all static peers
+                for (&peer_id, &peer_addr) in &static_peers {
+                    if manager.should_initiate_connection(&peer_id).await {
+                        Self::try_static_connect(&manager, peer_id, peer_addr).await;
+                    }
+                }
+
+                // Reconnect loop: watch for disconnects and re-establish
+                let mut disconnect_rx = manager.messenger.disconnections();
+                loop {
+                    tokio::select! {
+                        result = disconnect_rx.recv() => {
+                            if let Ok(peer_id) = result {
+                                if let Some(&peer_addr) = static_peers.get(&peer_id) {
+                                    if manager.should_initiate_connection(&peer_id).await {
+                                        // Brief delay before reconnecting
+                                        tokio::time::sleep(Duration::from_secs(2)).await;
+                                        Self::try_static_connect(&manager, peer_id, peer_addr).await;
+                                    }
+                                }
+                            }
+                        }
+                        _ = shutdown.recv() => break,
+                    }
+                }
+            });
+
+            // For peers where *we* are the responder (higher UUID), we need a
+            // TCP listener. Use a single listener for all static peers.
+            let has_responder_peers = {
+                let device_id = self.device_id;
+                self.config.static_peers.keys().any(|peer_id| device_id >= *peer_id)
+            };
+            if has_responder_peers {
+                // Determine our listen port from any static peer entry that
+                // points to us (they all use the same port convention).
+                // Fall back to the first peer's port.
+                let listen_port = self.config.static_peers.values().next()
+                    .map(|a| a.port())
+                    .unwrap_or(7979);
+
+                let manager = Arc::clone(self);
+                let mut shutdown = self.shutdown_tx.subscribe();
+                tokio::spawn(async move {
+                    let listen_addr: std::net::SocketAddr =
+                        ([0, 0, 0, 0], listen_port).into();
+                    let listener = match tokio::net::TcpListener::bind(listen_addr).await {
+                        Ok(l) => l,
+                        Err(e) => {
+                            log::warn!("Static peer listener failed to bind {}: {}", listen_addr, e);
+                            return;
+                        }
+                    };
+                    log::info!("Static peer listener on {}", listen_addr);
+
+                    loop {
+                        tokio::select! {
+                            result = listener.accept() => {
+                                match result {
+                                    Ok((stream, _addr)) => {
+                                        let mgr = Arc::clone(&manager);
+                                        tokio::spawn(async move {
+                                            Self::handle_static_accept(&mgr, stream).await;
+                                        });
+                                    }
+                                    Err(e) => {
+                                        log::warn!("Static peer accept error: {}", e);
+                                    }
+                                }
+                            }
+                            _ = shutdown.recv() => break,
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    /// Attempt a TCP connection to a static peer, perform UUID handshake,
+    /// and register with the ensemble.
+    async fn try_static_connect(
+        manager: &Arc<Self>,
+        peer_id: Uuid,
+        peer_addr: std::net::SocketAddr,
+    ) {
+        match tokio::net::TcpStream::connect(peer_addr).await {
+            Ok(stream) => {
+                match Self::do_static_handshake(manager, stream, peer_id, peer_addr).await {
+                    Ok(()) => {
+                        log::info!("Static peer connected: {}", peer_id);
+                    }
+                    Err(e) => {
+                        log::warn!("Static peer handshake failed with {}: {}", peer_id, e);
+                    }
+                }
+            }
+            Err(e) => {
+                log::debug!("Static peer {} not reachable at {}: {}", peer_id, peer_addr, e);
+            }
+        }
+    }
+
+    /// Handle an accepted TCP connection from a static peer.
+    async fn handle_static_accept(manager: &Arc<Self>, stream: tokio::net::TcpStream) {
+        // Read peer's UUID first
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let mut stream = stream;
+
+        let mut peer_bytes = [0u8; 16];
+        if let Err(e) = stream.read_exact(&mut peer_bytes).await {
+            log::warn!("Static accept: failed to read peer UUID: {}", e);
+            return;
+        }
+        let peer_id = Uuid::from_bytes(peer_bytes);
+
+        // Send our UUID
+        if let Err(e) = stream.write_all(manager.device_id.as_bytes()).await {
+            log::warn!("Static accept: failed to send UUID: {}", e);
+            return;
+        }
+
+        // Wrap as BleConnection and register
+        let peer_addr = stream.peer_addr().ok()
+            .map(BleAddress::Tcp)
+            .unwrap_or(BleAddress::Simulated(peer_id));
+        let conn: Arc<dyn BleConnection> = Arc::new(
+            crate::ble::lan_transport::LanConnection::from_stream(stream, peer_addr),
+        );
+        manager.add_direct_connection(peer_id, conn, TransportType::TcpDirect).await;
+    }
+
+    /// Perform UUID handshake as initiator and register the connection.
+    async fn do_static_handshake(
+        manager: &Arc<Self>,
+        stream: tokio::net::TcpStream,
+        expected_peer_id: Uuid,
+        peer_addr_sock: std::net::SocketAddr,
+    ) -> Result<(), String> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let mut stream = stream;
+
+        // Send our UUID
+        stream.write_all(manager.device_id.as_bytes()).await
+            .map_err(|e| format!("write UUID: {}", e))?;
+
+        // Read peer's UUID
+        let mut peer_bytes = [0u8; 16];
+        stream.read_exact(&mut peer_bytes).await
+            .map_err(|e| format!("read peer UUID: {}", e))?;
+        let peer_id = Uuid::from_bytes(peer_bytes);
+
+        if peer_id != expected_peer_id {
+            return Err(format!(
+                "UUID mismatch: expected {}, got {}",
+                expected_peer_id, peer_id
+            ));
+        }
+
+        let peer_addr = BleAddress::Tcp(peer_addr_sock);
+        let conn: Arc<dyn BleConnection> = Arc::new(
+            crate::ble::lan_transport::LanConnection::from_stream(stream, peer_addr),
+        );
+        manager.add_direct_connection(peer_id, conn, TransportType::TcpDirect).await;
+        Ok(())
     }
 
     // ------------------------------------------------------------------

@@ -290,6 +290,7 @@ ArgParser _createTouchCommand() {
 ArgParser _createInsertCommand() {
   return ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
     ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
     ..addOption('charts', help: 'Comma-separated list of charts')
@@ -373,17 +374,7 @@ ArgParser _createAddIncludeCommand() {
 
 ArgParser _createSyncCommand() {
   return ArgParser()
-    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
-    ..addOption('peer',
-        abbr: 'p',
-        help: 'Peer address to connect to (ip:port). Required unless --listen is set.')
-    ..addFlag('listen',
-        abbr: 'l',
-        help: 'Listen for an incoming connection on --port instead of connecting out.',
-        negatable: false)
-    ..addOption('port',
-        defaultsTo: '7979',
-        help: 'Port to listen on when --listen is set (default: 7979).');
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false);
 }
 
 Future<void> _executeCommand(ArgResults command) async {
@@ -1251,13 +1242,17 @@ Future<void> _executeInsert(ArgResults args) async {
   final charts = args['charts'] as String?;
   final tags = args['tags'] as String?;
   final constraints = args['constraints'] as String?;
+  final jsonOutput = args['json'] as bool;
 
   try {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
 
-    // Load graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    // Load graph (prefer flow for up-to-date state)
+    final flowId = _getFlowId();
+    final graph = flowId != null
+        ? FlowRepository.loadGraph(flowId)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
 
     // Check if new ID already exists
     if (graph.items.containsKey(newId)) {
@@ -1337,12 +1332,30 @@ Future<void> _executeInsert(ArgResults args) async {
       exit(1);
     }
 
-    // Save graph
-    FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    // Persist: prefer Flow CRDT; fall back to file
+    if (flowId != null) {
+      final ops = <GianttOp>[];
+      // Add the new item
+      ops.addAll(GianttOp.fromItem(newItem));
+      // Update beforeId's relations: remove old REQUIRES afterId, add REQUIRES newId
+      ops.add(GianttOp.removeFromSet(beforeId, 'requires', afterId, []));
+      ops.add(GianttOp.addToSet(beforeId, 'requires', newId));
+      FlowRepository.saveOperations(flowId, ops);
+    } else {
+      FileRepository.saveGraph(itemsPath, occludeItemsPath, graph);
+    }
 
-    print('Successfully inserted "$newId" between "$beforeId" and "$afterId"');
+    if (jsonOutput) {
+      print(jsonEncode({'ok': true, 'command': 'insert', 'data': _itemToJson(newItem)}));
+    } else {
+      print('Successfully inserted "$newId" between "$beforeId" and "$afterId"');
+    }
   } catch (e) {
-    stderr.writeln('Error: $e');
+    if (args['json'] as bool? ?? false) {
+      print(jsonEncode({'ok': false, 'command': 'insert', 'error': e.toString()}));
+    } else {
+      stderr.writeln('Error: $e');
+    }
     exit(1);
   }
 }
@@ -1739,8 +1752,10 @@ Future<void> _executeDoctor(ArgResults args) async {
     final itemsPath = file ?? _getDefaultGianttPath('items.txt');
     final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
     
-    // Load graph
-    final graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+    // Load graph — use flow if available, like all other commands
+    final graph = (_flowAvailable && file == null)
+        ? FlowRepository.loadGraph(_getFlowId()!)
+        : FileRepository.loadGraph(itemsPath, occludeItemsPath);
     final doctor = GraphDoctor(graph);
     
     if (args.command == null) {
@@ -2187,12 +2202,7 @@ List<GianttOp> _setDiffOps(
   return ops;
 }
 
-/// Get the default path for Giantt files
 Future<void> _executeSync(ArgResults args) async {
-  final listen = args['listen'] as bool;
-  final port = args['port'] as String? ?? '7979';
-  final peer = args['peer'] as String?;
-
   if (!_flowAvailable) {
     stderr.writeln('Error: Flow system unavailable — native library not found.');
     exit(1);
@@ -2204,32 +2214,13 @@ Future<void> _executeSync(ArgResults args) async {
     exit(1);
   }
 
-  final String peerAddr;
-  if (listen) {
-    peerAddr = '0.0.0.0:$port';
-    print('Listening on $peerAddr  (flow: $flowId)');
-    print('Share this flow ID with the peer: $flowId');
-  } else {
-    if (peer == null || peer.isEmpty) {
-      stderr.writeln('Error: --peer <ip:port> is required when not using --listen.');
-      exit(1);
-    }
-    peerAddr = peer;
-    print('Connecting to $peerAddr  (flow: $flowId)');
-  }
-
-  try {
-    FlowRepository.connectTcp(flowId, peerAddr, listen: listen);
-  } on FlowException catch (e) {
-    stderr.writeln('Error: $e');
-    exit(1);
-  }
-
-  print('Sync active. Press Ctrl+C to stop.');
-
-  // Block until the process is interrupted.
-  await ProcessSignal.sigint.watch().first;
-  print('\nSync stopped.');
+  // Show sync status for this workspace's flow.
+  // Actual connectivity is managed by soradyne's EnsembleManager,
+  // configured through capsule setup (soradyne-cli).
+  print('Flow ID: $flowId');
+  print('');
+  print('Sync is managed automatically by the soradyne ensemble.');
+  print('Use soradyne-cli to configure capsules and peer addresses.');
 }
 
 ArgParser _createSnapshotCommand() {

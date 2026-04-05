@@ -296,35 +296,6 @@ class FlowRepository {
     }
   }
 
-  /// Connect a flow to a TCP peer for direct CRDT sync (no pairing needed).
-  ///
-  /// [flowUuid]  — the flow to sync (both devices must use the same UUID).
-  /// [peerAddr]  — "ip:port" string (Tailscale IP, LAN IP, etc.).
-  /// [listen]    — if true, bind and wait for the peer (server role);
-  ///               if false, connect out to the peer (client role).
-  ///
-  /// Blocks until the TCP connection is established and the background sync
-  /// loop is started. The caller can then read/write operations normally and
-  /// they will be replicated to the peer automatically.
-  ///
-  /// Example (two terminals):
-  /// ```
-  /// # Device A (server — run first)
-  /// FlowRepository.connectTcp(flowId, '0.0.0.0:7979', listen: true);
-  ///
-  /// # Device B (client)
-  /// FlowRepository.connectTcp(flowId, '100.64.x.y:7979', listen: false);
-  /// ```
-  static void connectTcp(String flowUuid, String peerAddr, {bool listen = false}) {
-    _ensureInitialized();
-    final client = FlowClient.open(flowUuid);
-    try {
-      client.connectTcp(peerAddr, listen: listen);
-    } finally {
-      client.close();
-    }
-  }
-
   /// Clean up the flow system.
   ///
   /// Call this when the application is shutting down.
