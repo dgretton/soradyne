@@ -235,6 +235,58 @@ class FlowClient {
     }
   }
 
+  /// Initialize the pairing bridge (capsule store, ensemble managers).
+  ///
+  /// Must be called before [connectEnsemble]. The [dataDir] is the base
+  /// soradyne data directory (e.g. `~/.soradyne`). Pass null for platform
+  /// defaults.
+  static bool _pairingInitialized = false;
+  static void initPairingBridge(String? dataDir) {
+    if (_pairingInitialized) return;
+
+    final dirPtr = dataDir != null ? dataDir.toNativeUtf8() : nullptr;
+    try {
+      final result = _ffi.pairingInit(dirPtr);
+      if (result != 0) {
+        throw FlowException(
+            'Failed to initialize pairing bridge', 'initPairingBridge');
+      }
+      _pairingInitialized = true;
+    } finally {
+      if (dirPtr != nullptr) malloc.free(dirPtr);
+    }
+  }
+
+  /// Connect this flow to a capsule's ensemble for sync.
+  ///
+  /// The capsule must exist in the local capsule store, and the pairing
+  /// bridge must be initialized via [initPairingBridge].
+  void connectEnsemble(String capsuleId) {
+    _checkNotClosed();
+
+    final capsuleIdPtr = capsuleId.toNativeUtf8();
+    try {
+      final result = _ffi.flowConnectEnsemble(_handle, capsuleIdPtr);
+      if (result != 0) {
+        throw FlowException(
+            'Failed to connect ensemble for capsule $capsuleId',
+            'connectEnsemble');
+      }
+    } finally {
+      malloc.free(capsuleIdPtr);
+    }
+  }
+
+  /// Start background sync for this flow.
+  void startSync() {
+    _checkNotClosed();
+
+    final result = _ffi.flowStartSync(_handle);
+    if (result != 0) {
+      throw FlowException('Failed to start sync', 'startSync');
+    }
+  }
+
   /// Clean up the flow system.
   ///
   /// Call this when the application is shutting down to release all resources.

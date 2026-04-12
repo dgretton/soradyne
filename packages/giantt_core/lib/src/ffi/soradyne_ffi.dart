@@ -48,6 +48,17 @@ typedef SoradyneFlowWriteSnapshotNative = Int32 Function(
 typedef SoradyneFlowWriteSnapshot = int Function(
     Pointer<Void> handle, Pointer<Utf8> path);
 
+typedef SoradynePairingInitNative = Int32 Function(Pointer<Utf8> dataDir);
+typedef SoradynePairingInit = int Function(Pointer<Utf8> dataDir);
+
+typedef SoradyneFlowConnectEnsembleNative = Int32 Function(
+    Pointer<Void> handle, Pointer<Utf8> capsuleId);
+typedef SoradyneFlowConnectEnsemble = int Function(
+    Pointer<Void> handle, Pointer<Utf8> capsuleId);
+
+typedef SoradyneFlowStartSyncNative = Int32 Function(Pointer<Void> handle);
+typedef SoradyneFlowStartSync = int Function(Pointer<Void> handle);
+
 /// Soradyne FFI bindings singleton.
 ///
 /// Provides access to native Soradyne functions through Dart FFI.
@@ -66,6 +77,9 @@ class SoradyneFFI {
   late final SoradyneFreeString freeString;
   late final SoradyneFlowCleanup flowCleanup;
   late final SoradyneFlowWriteSnapshot flowWriteSnapshot;
+  late final SoradynePairingInit pairingInit;
+  late final SoradyneFlowConnectEnsemble flowConnectEnsemble;
+  late final SoradyneFlowStartSync flowStartSync;
 
   SoradyneFFI._internal() {
     _lib = _loadLibrary();
@@ -180,6 +194,21 @@ class SoradyneFFI {
     flowWriteSnapshot = _lib
         .lookup<NativeFunction<SoradyneFlowWriteSnapshotNative>>(
             'soradyne_flow_write_snapshot')
+        .asFunction();
+
+    pairingInit = _lib
+        .lookup<NativeFunction<SoradynePairingInitNative>>(
+            'soradyne_pairing_init')
+        .asFunction();
+
+    flowConnectEnsemble = _lib
+        .lookup<NativeFunction<SoradyneFlowConnectEnsembleNative>>(
+            'soradyne_flow_connect_ensemble')
+        .asFunction();
+
+    flowStartSync = _lib
+        .lookup<NativeFunction<SoradyneFlowStartSyncNative>>(
+            'soradyne_flow_start_sync')
         .asFunction();
 
   }

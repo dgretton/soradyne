@@ -374,7 +374,10 @@ ArgParser _createAddIncludeCommand() {
 
 ArgParser _createSyncCommand() {
   return ArgParser()
-    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false);
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addOption('capsule',
+        abbr: 'c',
+        help: 'Capsule UUID to sync with (saved for future runs)');
 }
 
 Future<void> _executeCommand(ArgResults command) async {
@@ -2214,13 +2217,47 @@ Future<void> _executeSync(ArgResults args) async {
     exit(1);
   }
 
-  // Show sync status for this workspace's flow.
-  // Actual connectivity is managed by soradyne's EnsembleManager,
-  // configured through capsule setup (soradyne-cli).
-  print('Flow ID: $flowId');
-  print('');
-  print('Sync is managed automatically by the soradyne ensemble.');
-  print('Use soradyne-cli to configure capsules and peer addresses.');
+  final ws = FlowRepository.getDefaultWorkspacePath();
+  final capsuleFile = File('$ws/.capsule_id');
+
+  // Get capsule ID: from --capsule flag, or from saved config
+  var capsuleId = args['capsule'] as String?;
+
+  if (capsuleId != null) {
+    // Save for future runs
+    capsuleFile.writeAsStringSync(capsuleId);
+    print('Saved capsule ID for this workspace.');
+  } else if (capsuleFile.existsSync()) {
+    capsuleId = capsuleFile.readAsStringSync().trim();
+  }
+
+  if (capsuleId == null || capsuleId.isEmpty) {
+    print('Flow ID: $flowId');
+    print('');
+    print('No capsule configured for sync.');
+    print('Run: giantt sync --capsule <capsule-uuid>');
+    print('');
+    print('To set up a capsule, use soradyne-cli:');
+    print('  soradyne-cli capsule create --name <name>');
+    print('  soradyne-cli capsule list');
+    return;
+  }
+
+  print('Flow ID:    $flowId');
+  print('Capsule ID: $capsuleId');
+  print('Connecting to ensemble...');
+
+  try {
+    FlowRepository.connectSync(flowId, capsuleId);
+    print('Sync started. Listening for changes...');
+    print('(Press Ctrl+C to stop)');
+
+    // Keep the process alive so the background sync tasks run
+    await Future.delayed(const Duration(days: 365));
+  } catch (e) {
+    stderr.writeln('Error starting sync: $e');
+    exit(1);
+  }
 }
 
 ArgParser _createSnapshotCommand() {

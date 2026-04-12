@@ -296,6 +296,26 @@ class FlowRepository {
     }
   }
 
+  /// Connect a flow to a capsule's ensemble for peer-to-peer sync.
+  ///
+  /// Initializes the pairing bridge if needed, then connects the flow
+  /// to the capsule's EnsembleManager and starts background sync.
+  static void connectSync(String flowUuid, String capsuleId,
+      {String? dataDir}) {
+    _ensureInitialized();
+
+    // Ensure pairing bridge is up (loads capsule store, static peers, etc.)
+    FlowClient.initPairingBridge(dataDir);
+
+    final client = FlowClient.open(flowUuid);
+    try {
+      client.connectEnsemble(capsuleId);
+      client.startSync();
+    } finally {
+      client.close();
+    }
+  }
+
   /// Clean up the flow system.
   ///
   /// Call this when the application is shutting down.
