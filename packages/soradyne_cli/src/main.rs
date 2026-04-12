@@ -33,6 +33,8 @@ enum Commands {
         #[command(subcommand)]
         action: FlowAction,
     },
+    /// Print this device's UUID
+    DeviceId,
 }
 
 #[derive(Subcommand)]
@@ -147,6 +149,10 @@ fn main() {
     match cli.command {
         Commands::Capsule { action } => handle_capsule(action, &base),
         Commands::Flow { action } => handle_flow(action, &base),
+        Commands::DeviceId => {
+            let identity = load_identity(&base);
+            println!("{}", identity.device_id());
+        }
     }
 }
 
