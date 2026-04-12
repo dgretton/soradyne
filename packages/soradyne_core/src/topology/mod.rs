@@ -11,10 +11,12 @@ pub mod ensemble;
 pub mod manager;
 pub mod messenger;
 pub mod pairing;
+pub mod static_peers;
 pub mod sync;
 
 pub use capsule::{Capsule, CapsuleStatus, FlowConfig, PieceCapabilities, PieceRecord, PieceRole};
 pub use capsule_store::CapsuleStore;
+pub use static_peers::StaticPeerConfig;
 pub use ensemble::{
     ConnectionQuality, EnsembleTopology, PiecePresence, PieceReachability, TopologyEdge,
     TransportType,

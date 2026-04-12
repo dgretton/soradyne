@@ -28,6 +28,7 @@ use crate::topology::capsule::{PieceCapabilities, PieceRole};
 use crate::topology::capsule_store::CapsuleStore;
 use crate::topology::ensemble::EnsembleTopology;
 use crate::topology::manager::{EnsembleConfig, EnsembleManager};
+use crate::topology::static_peers::StaticPeerConfig;
 use crate::topology::messenger::TopologyMessenger;
 use crate::topology::pairing::{pair_simulated_accessory, PairingEngine, PairingState};
 
@@ -41,6 +42,8 @@ struct PairingBridge {
     capsule_store: Arc<TokioMutex<CapsuleStore>>,
     engine: Arc<PairingEngine>,
     sim_network: Arc<SimBleNetwork>,
+    /// Base data directory (e.g. ~/.soradyne).
+    data_dir: PathBuf,
     /// EnsembleManagers keyed by capsule ID, shared across all flows in a capsule.
     ensemble_managers: TokioMutex<HashMap<Uuid, Arc<EnsembleManager>>>,
 }
@@ -148,13 +151,33 @@ pub(crate) fn bridge_get_ensemble(
         // Get the capsule's key bundle
         let keys = capsule.keys.clone();
 
+        // Load static peer addresses from config
+        let static_peers = StaticPeerConfig::load(&bridge.data_dir)
+            .map(|cfg| cfg.get(&capsule_id))
+            .unwrap_or_default();
+
+        let config = EnsembleConfig {
+            static_peers,
+            ..EnsembleConfig::default()
+        };
+
         let manager = EnsembleManager::new(
             Arc::clone(&bridge.identity),
             keys,
             piece_ids,
             peer_static_keys,
-            EnsembleConfig::default(),
+            config,
         );
+
+        // Start the ensemble manager with simulated BLE transports.
+        // Static peer TCP connections run independently of BLE scan/advertise,
+        // so sim transports are fine — real BLE will be wired in Phase 7.
+        let central = bridge.sim_network.create_device();
+        let peripheral = bridge.sim_network.create_device();
+        manager.start(
+            Arc::new(central),
+            Arc::new(peripheral),
+        ).await;
 
         let topo = Arc::clone(manager.topology());
         let messenger = Arc::clone(manager.messenger());
@@ -224,6 +247,7 @@ pub extern "C" fn soradyne_pairing_init(data_dir: *const c_char) -> i32 {
         capsule_store: Arc::new(TokioMutex::new(capsule_store)),
         engine,
         sim_network,
+        data_dir: base_dir,
         ensemble_managers: TokioMutex::new(HashMap::new()),
     };
 

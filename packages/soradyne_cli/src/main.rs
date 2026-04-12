@@ -5,7 +5,9 @@ use uuid::Uuid;
 
 use soradyne::ffi::convergent_flow_ffi::ConvergentFlow;
 use soradyne::identity::{CapsuleKeyBundle, DeviceIdentity};
-use soradyne::topology::{Capsule, CapsuleStore, PieceCapabilities, PieceRecord, PieceRole};
+use soradyne::topology::{
+    Capsule, CapsuleStore, PieceCapabilities, PieceRecord, PieceRole, StaticPeerConfig,
+};
 
 /// Soradyne CLI — capsule management and flow inspection.
 #[derive(Parser)]
@@ -52,6 +54,34 @@ enum CapsuleAction {
     Import {
         /// Hex-encoded invite code
         code: String,
+    },
+    /// Accept a response code from a device that imported your invite
+    AcceptResponse {
+        /// Capsule UUID
+        capsule_id: String,
+        /// Hex-encoded response code from the joining device
+        code: String,
+    },
+    /// Add a static peer address (e.g. Tailscale IP) for a capsule
+    AddPeer {
+        /// Capsule UUID
+        capsule_id: String,
+        /// Peer device UUID
+        peer_id: String,
+        /// IP:port address (e.g. 100.64.0.2:7979)
+        address: String,
+    },
+    /// Remove a static peer address
+    RemovePeer {
+        /// Capsule UUID
+        capsule_id: String,
+        /// Peer device UUID
+        peer_id: String,
+    },
+    /// List static peer addresses for a capsule
+    Peers {
+        /// Capsule UUID
+        capsule_id: String,
     },
 }
 
@@ -241,6 +271,88 @@ fn handle_capsule(action: CapsuleAction, base: &PathBuf) {
             println!();
             println!("Send this response back to the inviter:");
             println!("{}", response_hex);
+        }
+
+        CapsuleAction::AcceptResponse { capsule_id, code } => {
+            let id = Uuid::parse_str(&capsule_id).expect("invalid capsule UUID");
+            let bytes = hex::decode(&code).expect("invalid hex");
+            let response: ResponseCode =
+                serde_json::from_slice(&bytes).expect("invalid response code JSON");
+
+            let mut store = load_capsule_store(base);
+
+            let piece = PieceRecord {
+                device_id: response.joiner_device_id,
+                name: "joiner".into(),
+                verifying_key: response.joiner_verifying_key,
+                dh_public_key: response.joiner_dh_public,
+                added_at: chrono::Utc::now(),
+                capabilities: PieceCapabilities::full(),
+                role: PieceRole::Full,
+            };
+
+            match store.add_piece(&id, piece) {
+                Ok(true) => {
+                    println!(
+                        "Added device {} to capsule {}",
+                        response.joiner_device_id, capsule_id
+                    );
+                }
+                Ok(false) => {
+                    println!("Device {} already in capsule", response.joiner_device_id);
+                }
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        CapsuleAction::AddPeer {
+            capsule_id,
+            peer_id,
+            address,
+        } => {
+            let cid = Uuid::parse_str(&capsule_id).expect("invalid capsule UUID");
+            let pid = Uuid::parse_str(&peer_id).expect("invalid peer UUID");
+            let addr: std::net::SocketAddr = address.parse().expect("invalid address (expected ip:port)");
+
+            let mut config = StaticPeerConfig::load(base).expect("failed to load static peer config");
+            config
+                .set_peer(cid, pid, addr)
+                .expect("failed to save static peer config");
+
+            println!("Added static peer {} → {} for capsule {}", pid, addr, cid);
+        }
+
+        CapsuleAction::RemovePeer {
+            capsule_id,
+            peer_id,
+        } => {
+            let cid = Uuid::parse_str(&capsule_id).expect("invalid capsule UUID");
+            let pid = Uuid::parse_str(&peer_id).expect("invalid peer UUID");
+
+            let mut config = StaticPeerConfig::load(base).expect("failed to load static peer config");
+            config
+                .remove_peer(&cid, &pid)
+                .expect("failed to save static peer config");
+
+            println!("Removed static peer {} from capsule {}", pid, cid);
+        }
+
+        CapsuleAction::Peers { capsule_id } => {
+            let cid = Uuid::parse_str(&capsule_id).expect("invalid capsule UUID");
+            let config = StaticPeerConfig::load(base).expect("failed to load static peer config");
+            let peers = config.get(&cid);
+
+            if peers.is_empty() {
+                println!("(no static peers for capsule {})", cid);
+            } else {
+                println!("Static peers for capsule {}:", cid);
+                for (peer_id, addr) in &peers {
+                    println!("  {} → {}", peer_id, addr);
+                }
+            }
         }
     }
 }

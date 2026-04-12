@@ -1,3 +1,6 @@
+# Project
+.giantt/
+
 # Build artifacts
 *.dylib
 *.so
