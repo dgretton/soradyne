@@ -224,13 +224,14 @@ impl ConvergentFlow {
     }
 }
 
-/// Derive a stable device UUID from a string device_id.
+/// Parse a device UUID from a string device_id.
+///
+/// Panics if the string is not a valid UUID. The device_id always comes from
+/// `DeviceIdentity::device_id().to_string()`, so this should never fail in
+/// practice.
 fn device_uuid_from_id(device_id: &str) -> Uuid {
-    use sha2::{Digest, Sha256};
-    let hash = Sha256::digest(device_id.as_bytes());
-    let mut bytes = [0u8; 16];
-    bytes.copy_from_slice(&hash[..16]);
-    Uuid::from_bytes(bytes)
+    Uuid::parse_str(device_id)
+        .unwrap_or_else(|e| panic!("device_id is not a valid UUID: \"{}\": {}", device_id, e))
 }
 
 // ============================================================================
