@@ -1,11 +1,15 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use clap::{Parser, Subcommand};
 use uuid::Uuid;
 
+use soradyne::ble::simulated::SimBleNetwork;
 use soradyne::ffi::convergent_flow_ffi::ConvergentFlow;
 use soradyne::identity::{CapsuleKeyBundle, DeviceIdentity};
 use soradyne::topology::{
+    manager::{EnsembleConfig, EnsembleManager},
     Capsule, CapsuleStore, PieceCapabilities, PieceRecord, PieceRole, StaticPeerConfig,
 };
 
@@ -35,6 +39,8 @@ enum Commands {
     },
     /// Print this device's UUID
     DeviceId,
+    /// Start sync for all local flows (long-running)
+    Sync,
 }
 
 #[derive(Subcommand)]
@@ -100,6 +106,25 @@ enum FlowAction {
 }
 
 /// Data exchanged when inviting a peer.
+///
+/// NOTE: This is a simplified development pairing model. Key material
+/// (CapsuleKeyBundle, DH public keys) is passed directly as hex-encoded
+/// JSON, with no confidentiality or authentication of the exchange itself.
+///
+/// The real pairing flow (implemented in PairingEngine for BLE) uses:
+/// 1. X25519 ECDH key agreement over an unauthenticated channel
+/// 2. 6-digit PIN derived from the shared secret (SHA-256) for
+///    out-of-band confirmation by both users
+/// 3. AES-256-GCM encryption of the CapsuleKeyBundle under the ECDH
+///    shared secret, sent only after PIN confirmation
+///
+/// To bring this CLI flow up to the real protocol, the export/import
+/// exchange would need to be replaced with an interactive session
+/// (e.g., over TCP or a relay) that performs the ECDH handshake and
+/// PIN confirmation before transferring key material. The current
+/// approach is equivalent to trusting the transport (terminal
+/// copy-paste) to be confidential, which is acceptable for local
+/// development but not for production use.
 #[derive(serde::Serialize, serde::Deserialize)]
 struct InviteCode {
     capsule_keys: CapsuleKeyBundle,
@@ -109,6 +134,8 @@ struct InviteCode {
 }
 
 /// Data sent back by the joining peer.
+///
+/// See [InviteCode] for notes on the simplified pairing model.
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ResponseCode {
     joiner_device_id: Uuid,
@@ -153,6 +180,7 @@ fn main() {
             let identity = load_identity(&base);
             println!("{}", identity.device_id());
         }
+        Commands::Sync => handle_sync(&base),
     }
 }
 
@@ -395,5 +423,181 @@ fn handle_flow(action: FlowAction, base: &PathBuf) {
                 }
             }
         }
+    }
+}
+
+/// Detect the schema for a flow by reading the first AddItem in its journal.
+///
+/// Falls back to "giantt" if no journal exists or no AddItem is found.
+fn detect_flow_schema(flow_dir: &std::path::Path) -> &'static str {
+    let journals_dir = flow_dir.join("journals");
+    if let Ok(entries) = std::fs::read_dir(&journals_dir) {
+        for entry in entries.flatten() {
+            if entry.path().extension().map_or(false, |e| e == "jsonl") {
+                if let Ok(contents) = std::fs::read_to_string(entry.path()) {
+                    if let Some(first_line) = contents.lines().next() {
+                        if first_line.contains("\"InventoryItem\"") {
+                            return "inventory";
+                        }
+                    }
+                }
+            }
+        }
+    }
+    "giantt"
+}
+
+fn handle_sync(base: &PathBuf) {
+    let identity = load_identity(base);
+    let store = load_capsule_store(base);
+    let capsules = store.list_capsules();
+
+    if capsules.is_empty() {
+        eprintln!("No capsules found. Create one with `soradyne-cli capsule create`.");
+        std::process::exit(1);
+    }
+
+    // Discover flows
+    let flows_dir = base.join("flows");
+    let flow_dirs: Vec<_> = if flows_dir.is_dir() {
+        std::fs::read_dir(&flows_dir)
+            .expect("failed to read flows directory")
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().map_or(false, |ft| ft.is_dir()))
+            .filter_map(|e| {
+                let name = e.file_name().to_string_lossy().to_string();
+                Uuid::parse_str(&name).ok().map(|uuid| (uuid, e.path()))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    if flow_dirs.is_empty() {
+        eprintln!("No flows found in {}.", flows_dir.display());
+        eprintln!("Flows are created when apps write data (e.g. `giantt add ...`).");
+        std::process::exit(1);
+    }
+
+    let device_id_str: soradyne::convergent::DeviceId =
+        identity.device_id().to_string().into();
+    let identity_arc = Arc::new(identity);
+    let sim_network = SimBleNetwork::new();
+
+    // Build a tokio runtime for ensemble + flow sync tasks
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .thread_name("soradyne-sync")
+        .build()
+        .expect("failed to build Tokio runtime");
+
+    // For each capsule, create an EnsembleManager and start it
+    let mut managers: HashMap<Uuid, Arc<EnsembleManager>> = HashMap::new();
+
+    for capsule in &capsules {
+        let piece_ids: Vec<Uuid> = capsule.pieces.iter().map(|p| p.device_id).collect();
+
+        let peer_static_keys: HashMap<Uuid, [u8; 32]> = capsule
+            .pieces
+            .iter()
+            .filter(|p| p.device_id != identity_arc.device_id())
+            .map(|p| (p.device_id, p.dh_public_key))
+            .collect();
+
+        let static_peers = StaticPeerConfig::load(base)
+            .map(|cfg| cfg.get(&capsule.id))
+            .unwrap_or_default();
+
+        let config = EnsembleConfig {
+            static_peers,
+            ..EnsembleConfig::default()
+        };
+
+        let manager = EnsembleManager::new(
+            Arc::clone(&identity_arc),
+            capsule.keys.clone(),
+            piece_ids,
+            peer_static_keys,
+            config,
+        );
+
+        let central = sim_network.create_device();
+        let peripheral = sim_network.create_device();
+        runtime.block_on(manager.start(Arc::new(central), Arc::new(peripheral)));
+
+        println!(
+            "Ensemble started for capsule \"{}\" ({}, {} pieces)",
+            capsule.name,
+            capsule.id,
+            capsule.pieces.len(),
+        );
+
+        managers.insert(capsule.id, manager);
+    }
+
+    // Enter the runtime context so tokio::spawn works in flow.start()
+    let _runtime_guard = runtime.enter();
+
+    // Open each flow and wire it to the first capsule's ensemble
+    // (for now, all flows go to the first capsule — multi-capsule routing is future work)
+    let first_capsule_id = capsules[0].id;
+    let manager = &managers[&first_capsule_id];
+    let mut flow_count = 0;
+
+    for (flow_uuid, flow_path) in &flow_dirs {
+        let schema = detect_flow_schema(flow_path);
+
+        let mut flow = match ConvergentFlow::new_persistent(
+            schema,
+            device_id_str.clone(),
+            flow_path.clone(),
+            *flow_uuid,
+        ) {
+            Some(f) => f,
+            None => {
+                eprintln!("Warning: failed to open flow {} (schema: {})", flow_uuid, schema);
+                continue;
+            }
+        };
+
+        flow.set_ensemble(
+            Arc::clone(manager.messenger()),
+            Arc::clone(manager.topology()),
+        );
+
+        match flow.start() {
+            Ok(()) => {
+                println!("Sync started for flow {} ({})", flow_uuid, schema);
+                flow_count += 1;
+            }
+            Err(e) => {
+                eprintln!("Warning: failed to start sync for flow {}: {:?}", flow_uuid, e);
+            }
+        }
+
+        // Keep the flow alive by leaking it into an Arc
+        // (flows must remain in memory for background sync tasks to run)
+        let _keep_alive = Arc::new(Mutex::new(flow));
+        std::mem::forget(_keep_alive);
+    }
+
+    println!();
+    println!(
+        "Syncing {} flow(s) across {} capsule(s). Press Ctrl+C to stop.",
+        flow_count,
+        managers.len(),
+    );
+
+    // Block until Ctrl+C
+    runtime.block_on(async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to listen for Ctrl+C");
+    });
+
+    println!("\nShutting down...");
+    for (_, manager) in &managers {
+        manager.stop();
     }
 }

@@ -22,7 +22,7 @@ use uuid::Uuid;
 use crate::convergent::giantt::{GianttSchema, GianttState};
 use crate::convergent::inventory::{InventorySchema, InventoryState};
 use crate::convergent::{DeviceId, OpEnvelope, Operation};
-use crate::flow::flow_core::FlowConfig;
+use crate::flow::flow_core::{Flow, FlowConfig};
 use crate::flow::types::drip_hosted::{DripHostPolicy, DripHostedFlow};
 
 use super::serializer::{serialize_giantt_state, serialize_inventory_state};
@@ -205,6 +205,22 @@ impl ConvergentFlow {
             std::fs::create_dir_all(parent)?;
         }
         std::fs::write(path, text)
+    }
+
+    /// Wire this flow to an ensemble's messenger and topology for sync.
+    pub fn set_ensemble(
+        &mut self,
+        messenger: Arc<crate::topology::messenger::TopologyMessenger>,
+        topology: Arc<tokio::sync::RwLock<crate::topology::ensemble::EnsembleTopology>>,
+    ) {
+        with_drip_flow_mut!(self, f => f.set_ensemble(messenger, topology));
+    }
+
+    /// Start background sync tasks (inbound listener, flush, topology watcher).
+    ///
+    /// The flow must have an ensemble wired via [`set_ensemble`] first.
+    pub fn start(&self) -> Result<(), crate::flow::FlowError> {
+        with_drip_flow!(self, f => f.start())
     }
 }
 
@@ -618,6 +634,60 @@ pub extern "C" fn soradyne_flow_start_sync(handle: *mut std::ffi::c_void) -> i32
             match result {
                 Ok(()) => 0,
                 Err(_) => -1,
+            }
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Enable sync for a flow without requiring a capsule ID.
+///
+/// Looks up the first capsule in the local store, wires the flow to its
+/// ensemble, and starts background sync. The caller never needs to know
+/// which capsule is involved.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_flow_enable_sync(handle: *mut std::ffi::c_void) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+
+    let flow_arc = unsafe { &*(handle as *const Mutex<ConvergentFlow>) };
+
+    let capsule_id = match super::pairing_bridge::bridge_first_capsule_id() {
+        Ok(id) => id,
+        Err(e) => {
+            eprintln!("soradyne_flow_enable_sync: {}", e);
+            return -1;
+        }
+    };
+
+    match super::pairing_bridge::bridge_get_ensemble(capsule_id) {
+        Ok((messenger, topology)) => {
+            if let Ok(mut flow) = flow_arc.lock() {
+                use crate::flow::flow_core::Flow;
+                with_drip_flow_mut!(flow, f => f.set_ensemble(messenger, topology));
+            } else {
+                return -1;
+            }
+        }
+        Err(e) => {
+            eprintln!("soradyne_flow_enable_sync: ensemble error: {}", e);
+            return -1;
+        }
+    }
+
+    // Start sync
+    match flow_arc.lock() {
+        Ok(flow) => {
+            let result = with_drip_flow!(flow, f => f.start());
+            match result {
+                Ok(()) => 0,
+                Err(e) => {
+                    eprintln!("soradyne_flow_enable_sync: start error: {:?}", e);
+                    -1
+                }
             }
         }
         Err(_) => -1,
