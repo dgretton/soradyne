@@ -103,15 +103,15 @@ cd apps/soradyne_demo/flutter_app && flutter run -d <android-device-id>
 # Run Giantt CLI
 dart run giantt_core:giantt
 
-# Install/update the system-wide `giantt` command:
-# On macOS: compile to native binary (required because spaces in the Dropbox
-# path break `dart run` from a shell wrapper).
-cd packages/giantt_core && dart compile exe bin/giantt.dart -o /usr/local/bin/giantt
-# On Linux: a shell wrapper at /usr/local/bin/giantt runs `dart run` directly,
-# so no compile step is needed — code changes take effect immediately.
+# System-wide `giantt` command: /usr/local/bin/giantt is a shell wrapper that
+# calls `dart run` directly — source changes take effect immediately, no compile needed.
+
+# System-wide `soradyne-cli` command: /usr/local/bin/soradyne-cli is a symlink to
+# packages/soradyne_cli/target/release/soradyne-cli — updated automatically by
+# any `cargo build --release` in that package.
 
 # Run Soradyne CLI (capsule management, flow inspection, sync)
-cd packages/soradyne_cli && cargo run --release -- --help
+soradyne-cli --help
 # Start sync for all local flows (long-running process)
 soradyne-cli sync
 ```
