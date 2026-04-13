@@ -170,6 +170,10 @@ fn hostname() -> String {
 }
 
 fn main() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp_secs()
+        .init();
+
     let cli = Cli::parse();
     let base = data_dir(&cli);
 
