@@ -433,6 +433,7 @@ impl EnsembleManager {
         let conn: Arc<dyn BleConnection> = Arc::new(
             crate::ble::lan_transport::LanConnection::from_stream(stream, peer_addr),
         );
+        log::info!("Static peer accepted: {}", peer_id);
         manager.add_direct_connection(peer_id, conn, TransportType::TcpDirect).await;
     }
 
