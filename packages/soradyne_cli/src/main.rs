@@ -546,14 +546,37 @@ fn handle_sync(base: &PathBuf) {
     // Enter the runtime context so tokio::spawn works in flow.start()
     let _runtime_guard = runtime.enter();
 
-    // Open each flow and wire it to the first capsule's ensemble
-    // (for now, all flows go to the first capsule — multi-capsule routing is future work)
-    let first_capsule_id = capsules[0].id;
-    let manager = &managers[&first_capsule_id];
+    // Wire each flow to its capsule's ensemble manager.
+    // The capsule_id file in each flow directory records the association.
+    // If missing, fall back to the first capsule with 2+ pieces.
+    let fallback_capsule_id = capsules
+        .iter()
+        .filter(|c| c.pieces.len() >= 2)
+        .map(|c| c.id)
+        .next()
+        .unwrap_or(capsules[0].id);
+
     let mut flow_count = 0;
 
     for (flow_uuid, flow_path) in &flow_dirs {
         let schema = detect_flow_schema(flow_path);
+
+        // Determine which capsule this flow belongs to
+        let capsule_id = std::fs::read_to_string(flow_path.join("capsule_id"))
+            .ok()
+            .and_then(|s| Uuid::parse_str(s.trim()).ok())
+            .unwrap_or(fallback_capsule_id);
+
+        let manager = match managers.get(&capsule_id) {
+            Some(m) => m,
+            None => {
+                eprintln!(
+                    "Warning: flow {} references capsule {} which has no manager; skipping",
+                    flow_uuid, capsule_id,
+                );
+                continue;
+            }
+        };
 
         let mut flow = match ConvergentFlow::new_persistent(
             schema,
@@ -575,7 +598,7 @@ fn handle_sync(base: &PathBuf) {
 
         match flow.start() {
             Ok(()) => {
-                println!("Sync started for flow {} ({})", flow_uuid, schema);
+                println!("Sync started for flow {} ({}) → capsule {}", flow_uuid, schema, capsule_id);
                 flow_count += 1;
             }
             Err(e) => {
