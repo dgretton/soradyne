@@ -102,6 +102,27 @@ pub(crate) fn error_json(msg: &str) -> *mut c_char {
     to_c_string(serde_json::json!({"error": msg}).to_string())
 }
 
+/// Return the ID of the first capsule in the local store, if any.
+///
+/// Used by `soradyne_flow_enable_sync` so the app never needs a capsule ID.
+pub(crate) fn bridge_first_capsule_id() -> Result<Uuid, String> {
+    let guard = PAIRING_BRIDGE
+        .read()
+        .map_err(|_| "bridge lock poisoned".to_string())?;
+    let bridge = guard
+        .as_ref()
+        .ok_or_else(|| "pairing bridge not initialized".to_string())?;
+
+    bridge.runtime.block_on(async {
+        let store = bridge.capsule_store.lock().await;
+        let capsules = store.list_capsules();
+        capsules
+            .first()
+            .map(|c| c.id)
+            .ok_or_else(|| "no capsules found".to_string())
+    })
+}
+
 /// Get or create an EnsembleManager for a capsule, returning its
 /// (messenger, topology) for calling `set_ensemble` on a flow.
 pub(crate) fn bridge_get_ensemble(

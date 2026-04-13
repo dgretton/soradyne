@@ -1586,6 +1586,11 @@ conflict resolution beyond deduplication by device identity. This simplicity is
 deliberate: it means the same data structure works on a full device and on a
 microcontroller with kilobytes of RAM.
 
+Every piece in a capsule is authorized to read and write every flow that any piece in
+that capsule can access; a capsule represents a single person's equivalent gateways to
+their data, and adding a new piece to a capsule immediately grants it the same access
+as all existing pieces.
+
 \subsection{Ensembles}
 \label{subsec:ensembles}
 
@@ -1931,36 +1936,6 @@ Multi-device & TCP + protobuf, per-connection & Flow bundles all streams, multi-
 The Twig system does its job well for the specific Nestbox use case. Self-data flows
 generalize the pattern so that each new device type or application does not require
 new bespoke plumbing.
-
-
-% ============================================================
-\section{Appendix: Status of Current Implementation}
-\label{sec:appendix-status}
-
-\begin{center}
-\begin{tabularx}{\textwidth}{l l X}
-\toprule
-\textbf{Component} & \textbf{Status} & \textbf{Notes} \\
-\midrule
-\texttt{Flow} trait & Implemented & Bootstrap-from-UUID model. Directionally correct. \\
-\texttt{FlowRegistry} & Implemented & HashMap-based. Placeholder for on-device storage. \\
-\texttt{FlowConfigStorage} & Implemented & In-memory. Needs persistent backend. \\
-\texttt{Stream} trait & Implemented & read/write/subscribe interface. \\
-\texttt{StreamSpec} & Implemented & drip/jet/singleton/per-party. \\
-\texttt{BasicFlow} & Implemented & Schema-validated stream registration. \\
-\texttt{DataChannel<T>} & Implemented & Former \texttt{SelfDataFlow<T>}. In-memory pub/sub. \\
-\texttt{ConvergentDocument} & Implemented & CRDT engine. Giantt and Inventory schemas. \\
-Flow type definitions & Not started & Design documents per this spec. Detailed implementation plan exists (DripHostedFlow, image/composite/album flow types). \\
-Real I/O through flows & Not started & Streams are in-memory only. Plan specifies BLE GATT-based sync. \\
-Dissolution/crystallization & Partial & Reed-Solomon in storage module, not wired to flows. \\
-Nestbox integration & Not started & Twig replacement via spatial measurement flow type. \\
-Cryptographic identity & Not started & Plan specifies Ed25519 + X25519 per-device identity, capsule shared keys. Positioned as Phase 0 (prerequisite for all else). \\
-Device topology (capsules) & Not started & Plan specifies add-only set with gossip merge. Pre-flow infrastructure (not a CRDT, not a flow). \\
-Ensemble tracking & Not started & Plan specifies directed multigraph, encrypted BLE advertisements, topology sync protocol, and a logical messaging layer for multi-hop routing (flows address peers by UUID; routing is invisible). \\
-BLE transport & Not started & Plan specifies btleplug (Rust-native) on all hosted platforms, simulated BLE for testing. BLE-first, transport-agnostic to frontends. \\
-\bottomrule
-\end{tabularx}
-\end{center}
 
 
 \end{document}

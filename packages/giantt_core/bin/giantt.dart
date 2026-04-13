@@ -63,7 +63,6 @@ void main(List<String> arguments) async {
   parser.addCommand('occlude', _createOccludeCommand());
   parser.addCommand('doctor', _createDoctorCommand());
   parser.addCommand('add-include', _createAddIncludeCommand());
-  parser.addCommand('sync', _createSyncCommand());
   parser.addCommand('snapshot', _createSnapshotCommand());
   parser.addCommand('watch', _createWatchCommand());
   parser.addCommand('summary', _createSummaryCommand());
@@ -372,13 +371,6 @@ ArgParser _createAddIncludeCommand() {
     ..addOption('file', abbr: 'f', help: 'Giantt items file to use');
 }
 
-ArgParser _createSyncCommand() {
-  return ArgParser()
-    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
-    ..addOption('capsule',
-        abbr: 'c',
-        help: 'Capsule UUID to sync with (saved for future runs)');
-}
 
 Future<void> _executeCommand(ArgResults command) async {
   switch (command.name) {
@@ -426,9 +418,6 @@ Future<void> _executeCommand(ArgResults command) async {
       break;
     case 'add-include':
       await _executeAddInclude(command);
-      break;
-    case 'sync':
-      await _executeSync(command);
       break;
     case 'snapshot':
       _executeSnapshot(command);
@@ -2205,60 +2194,6 @@ List<GianttOp> _setDiffOps(
   return ops;
 }
 
-Future<void> _executeSync(ArgResults args) async {
-  if (!_flowAvailable) {
-    stderr.writeln('Error: Flow system unavailable — native library not found.');
-    exit(1);
-  }
-
-  final flowId = _getFlowId();
-  if (flowId == null) {
-    stderr.writeln('Error: Could not determine flow ID for this workspace.');
-    exit(1);
-  }
-
-  final ws = FlowRepository.getDefaultWorkspacePath();
-  final capsuleFile = File('$ws/.capsule_id');
-
-  // Get capsule ID: from --capsule flag, or from saved config
-  var capsuleId = args['capsule'] as String?;
-
-  if (capsuleId != null) {
-    // Save for future runs
-    capsuleFile.writeAsStringSync(capsuleId);
-    print('Saved capsule ID for this workspace.');
-  } else if (capsuleFile.existsSync()) {
-    capsuleId = capsuleFile.readAsStringSync().trim();
-  }
-
-  if (capsuleId == null || capsuleId.isEmpty) {
-    print('Flow ID: $flowId');
-    print('');
-    print('No capsule configured for sync.');
-    print('Run: giantt sync --capsule <capsule-uuid>');
-    print('');
-    print('To set up a capsule, use soradyne-cli:');
-    print('  soradyne-cli capsule create --name <name>');
-    print('  soradyne-cli capsule list');
-    return;
-  }
-
-  print('Flow ID:    $flowId');
-  print('Capsule ID: $capsuleId');
-  print('Connecting to ensemble...');
-
-  try {
-    FlowRepository.connectSync(flowId, capsuleId);
-    print('Sync started. Listening for changes...');
-    print('(Press Ctrl+C to stop)');
-
-    // Keep the process alive so the background sync tasks run
-    await Future.delayed(const Duration(days: 365));
-  } catch (e) {
-    stderr.writeln('Error starting sync: $e');
-    exit(1);
-  }
-}
 
 ArgParser _createSnapshotCommand() {
   return ArgParser()

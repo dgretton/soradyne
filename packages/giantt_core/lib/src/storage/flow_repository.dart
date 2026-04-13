@@ -296,12 +296,12 @@ class FlowRepository {
     }
   }
 
-  /// Connect a flow to a capsule's ensemble for peer-to-peer sync.
+  /// Enable peer-to-peer sync for a flow.
   ///
-  /// Initializes the pairing bridge if needed, then connects the flow
-  /// to the capsule's EnsembleManager and starts background sync.
-  static void connectSync(String flowUuid, String capsuleId,
-      {String? dataDir}) {
+  /// Initializes the pairing bridge if needed, then enables sync. The
+  /// runtime automatically finds the appropriate capsule — the caller
+  /// never provides a capsule ID.
+  static void enableSync(String flowUuid, {String? dataDir}) {
     _ensureInitialized();
 
     // Ensure pairing bridge is up (loads capsule store, static peers, etc.)
@@ -309,8 +309,7 @@ class FlowRepository {
 
     final client = FlowClient.open(flowUuid);
     try {
-      client.connectEnsemble(capsuleId);
-      client.startSync();
+      client.enableSync();
     } finally {
       client.close();
     }

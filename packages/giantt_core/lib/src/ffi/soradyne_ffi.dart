@@ -59,6 +59,9 @@ typedef SoradyneFlowConnectEnsemble = int Function(
 typedef SoradyneFlowStartSyncNative = Int32 Function(Pointer<Void> handle);
 typedef SoradyneFlowStartSync = int Function(Pointer<Void> handle);
 
+typedef SoradyneFlowEnableSyncNative = Int32 Function(Pointer<Void> handle);
+typedef SoradyneFlowEnableSync = int Function(Pointer<Void> handle);
+
 /// Soradyne FFI bindings singleton.
 ///
 /// Provides access to native Soradyne functions through Dart FFI.
@@ -80,6 +83,7 @@ class SoradyneFFI {
   late final SoradynePairingInit pairingInit;
   late final SoradyneFlowConnectEnsemble flowConnectEnsemble;
   late final SoradyneFlowStartSync flowStartSync;
+  late final SoradyneFlowEnableSync flowEnableSync;
 
   SoradyneFFI._internal() {
     _lib = _loadLibrary();
@@ -209,6 +213,11 @@ class SoradyneFFI {
     flowStartSync = _lib
         .lookup<NativeFunction<SoradyneFlowStartSyncNative>>(
             'soradyne_flow_start_sync')
+        .asFunction();
+
+    flowEnableSync = _lib
+        .lookup<NativeFunction<SoradyneFlowEnableSyncNative>>(
+            'soradyne_flow_enable_sync')
         .asFunction();
 
   }

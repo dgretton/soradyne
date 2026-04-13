@@ -13,6 +13,8 @@ Soradyne is a proof-of-concept protocol for secure, peer-to-peer Self-Data Flows
 - `docs/port_reference/` - Python source files being ported (`giantt_core.py`, `giantt_cli.py`)
 - `giantt-design-notes/` - Feature specs, notation docs, CLI manual
 
+**Documentation index**: `docs/INDEX.md` lists each doc file with its date, content summary, and obsolescence status. When adding, removing, or substantially changing a file in `docs/`, update the index to match. Also take such opportunities to review the statuses of other docs in the index and update them if they have drifted.
+
 ## Brand & Naming Conventions
 
 **rim** is the project's brand name and must always appear all-lowercase in public-facing contexts. Two rules apply:
@@ -101,9 +103,17 @@ cd apps/soradyne_demo/flutter_app && flutter run -d <android-device-id>
 # Run Giantt CLI
 dart run giantt_core:giantt
 
-# Install/update the system-wide `giantt` command (compiled native binary at /usr/local/bin/giantt)
-# Note: `dart pub global activate` won't work here due to spaces in the Dropbox path — compile directly instead.
+# Install/update the system-wide `giantt` command:
+# On macOS: compile to native binary (required because spaces in the Dropbox
+# path break `dart run` from a shell wrapper).
 cd packages/giantt_core && dart compile exe bin/giantt.dart -o /usr/local/bin/giantt
+# On Linux: a shell wrapper at /usr/local/bin/giantt runs `dart run` directly,
+# so no compile step is needed — code changes take effect immediately.
+
+# Run Soradyne CLI (capsule management, flow inspection, sync)
+cd packages/soradyne_cli && cargo run --release -- --help
+# Start sync for all local flows (long-running process)
+soradyne-cli sync
 ```
 
 ## Architecture: soradyne_core (Rust)
@@ -159,7 +169,7 @@ Java callback bridge (`SoradyneGattCallback.java`): `nativeOnConnected` is calle
    - `EnsembleManager::start(central, peripheral)` runs the full loop: advertise + scan + connect + accept + topology sync
    - `TopologyMessenger` (`messenger.rs`) routes `RoutedEnvelope` messages via connected peers; multi-hop via TTL
    - Capsule topology graph (`ensemble.rs`): `PiecePresence`, `TopologyEdge`, `ConnectionQuality`
-   - **Not yet started with real BLE** (Phase 7): currently `bridge_get_ensemble` creates the manager but `start()` is not called
+   - `EnsembleManager::start()` is called with sim BLE transports; static peer TCP connections run independently. Real BLE transport is Phase 7.
 
 ### `convergent/` — CRDT Engine
 

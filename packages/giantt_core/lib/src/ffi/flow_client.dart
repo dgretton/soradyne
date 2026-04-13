@@ -257,33 +257,17 @@ class FlowClient {
     }
   }
 
-  /// Connect this flow to a capsule's ensemble for sync.
+  /// Enable sync for this flow.
   ///
-  /// The capsule must exist in the local capsule store, and the pairing
-  /// bridge must be initialized via [initPairingBridge].
-  void connectEnsemble(String capsuleId) {
+  /// The runtime automatically finds the appropriate capsule and wires the
+  /// flow to its ensemble. The pairing bridge must be initialized via
+  /// [initPairingBridge] and at least one capsule must exist locally.
+  void enableSync() {
     _checkNotClosed();
 
-    final capsuleIdPtr = capsuleId.toNativeUtf8();
-    try {
-      final result = _ffi.flowConnectEnsemble(_handle, capsuleIdPtr);
-      if (result != 0) {
-        throw FlowException(
-            'Failed to connect ensemble for capsule $capsuleId',
-            'connectEnsemble');
-      }
-    } finally {
-      malloc.free(capsuleIdPtr);
-    }
-  }
-
-  /// Start background sync for this flow.
-  void startSync() {
-    _checkNotClosed();
-
-    final result = _ffi.flowStartSync(_handle);
+    final result = _ffi.flowEnableSync(_handle);
     if (result != 0) {
-      throw FlowException('Failed to start sync', 'startSync');
+      throw FlowException('Failed to enable sync', 'enableSync');
     }
   }
 
