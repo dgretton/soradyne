@@ -100,6 +100,10 @@ cd apps/soradyne_demo/flutter_app && flutter run -d <android-device-id>
 
 # Run Giantt CLI
 dart run giantt_core:giantt
+
+# Install/update the system-wide `giantt` command (compiled native binary at /usr/local/bin/giantt)
+# Note: `dart pub global activate` won't work here due to spaces in the Dropbox path — compile directly instead.
+cd packages/giantt_core && dart compile exe bin/giantt.dart -o /usr/local/bin/giantt
 ```
 
 ## Architecture: soradyne_core (Rust)
