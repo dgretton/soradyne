@@ -486,7 +486,6 @@ fn handle_sync(base: &PathBuf) {
     let device_id_str: soradyne::convergent::DeviceId =
         identity.device_id().to_string().into();
     let identity_arc = Arc::new(identity);
-    let sim_network = SimBleNetwork::new();
 
     // Build a tokio runtime for ensemble + flow sync tasks
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -526,8 +525,12 @@ fn handle_sync(base: &PathBuf) {
             config,
         );
 
-        let central = sim_network.create_device();
-        let peripheral = sim_network.create_device();
+        // Each manager gets its own isolated SimBleNetwork so managers
+        // can't accidentally connect via SimBLE (which has a 247-byte MTU
+        // too small for horizon exchange). All real sync goes through TCP.
+        let sim = SimBleNetwork::new();
+        let central = sim.create_device();
+        let peripheral = sim.create_device();
         runtime.block_on(manager.start(Arc::new(central), Arc::new(peripheral)));
 
         println!(

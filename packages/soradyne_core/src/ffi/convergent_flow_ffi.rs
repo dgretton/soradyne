@@ -213,7 +213,6 @@ impl ConvergentFlow {
         messenger: Arc<crate::topology::messenger::TopologyMessenger>,
         topology: Arc<tokio::sync::RwLock<crate::topology::ensemble::EnsembleTopology>>,
     ) {
-        eprintln!("[ConvergentFlow] set_ensemble called");
         with_drip_flow_mut!(self, f => f.set_ensemble(messenger, topology));
     }
 
@@ -221,7 +220,6 @@ impl ConvergentFlow {
     ///
     /// The flow must have an ensemble wired via [`set_ensemble`] first.
     pub fn start(&self) -> Result<(), crate::flow::FlowError> {
-        eprintln!("[ConvergentFlow] start called");
         with_drip_flow!(self, f => f.start())
     }
 }

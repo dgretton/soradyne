@@ -1069,11 +1069,9 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                     .filter(|id| !synced_peers.contains(id))
                                     .cloned()
                                     .collect();
-                                eprintln!(
-                                    "[flow {}] topo watcher: device={}, online={:?}, direct={:?}, new={:?}, synced={:?}",
-                                    flow_id, device_uuid,
-                                    topo.online_pieces.keys().collect::<Vec<_>>(),
-                                    direct, new, synced_peers,
+                                log::debug!(
+                                    "[flow {}] topo watcher: device={}, direct={:?}, new={:?}, synced={:?}",
+                                    flow_id, device_uuid, direct, new, synced_peers,
                                 );
                                 (new, direct)
                             };
