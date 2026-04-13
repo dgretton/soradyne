@@ -249,6 +249,11 @@ impl TopologyMessenger {
         let is_broadcast = envelope.destination == Uuid::nil();
         let is_for_us = envelope.destination == self.device_id;
 
+        eprintln!(
+            "[messenger] incoming: src={}, dst={}, type={:?}, for_us={}, broadcast={}",
+            envelope.source, envelope.destination, envelope.message_type, is_for_us, is_broadcast,
+        );
+
         // Deliver locally if addressed to us or broadcast
         if is_for_us || is_broadcast {
             let _ = self.incoming_tx.send(envelope.clone());
