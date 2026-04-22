@@ -520,6 +520,10 @@ pub struct FullReplicaFlow<S: DocumentSchema + 'static> {
     /// Known parties to this flow. Maps DeviceId → device Uuid.
     /// Persisted in `parties.json`.
     known_parties: Arc<std::sync::RwLock<HashMap<String, Uuid>>>,
+    /// Tokio runtime handle captured by `start()`. Used by `apply_edit()` to
+    /// spawn broadcast tasks when the calling thread has no runtime context
+    /// (e.g. FFI calls from Dart).
+    runtime_handle: Arc<std::sync::RwLock<Option<tokio::runtime::Handle>>>,
 }
 
 /// Transitional alias — use `FullReplicaFlow` in new code.
@@ -568,6 +572,7 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             state_stream: state_stream_notify,
             storage_path: None,
             known_parties: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            runtime_handle: Arc::new(std::sync::RwLock::new(None)),
         }
     }
 
@@ -730,6 +735,13 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             .messenger
             .as_ref()
             .ok_or_else(|| FlowError::SyncError("no messenger configured".into()))?;
+
+        // Capture the current runtime handle so apply_edit() can spawn
+        // broadcast tasks even when called from a thread with no runtime
+        // context (e.g. FFI from Dart).
+        if let Ok(mut handle) = self.runtime_handle.write() {
+            *handle = Some(tokio::runtime::Handle::current());
+        }
 
         // --- Task 1: Inbound message listener ---
         {
@@ -935,6 +947,8 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
 
                 // Best-effort immediate broadcast to all connected peers.
                 // This is the fast path — ops arrive instantly when peers are online.
+                // Uses the runtime handle captured by start() so this works even
+                // when called from a non-tokio thread (e.g. Dart FFI).
                 if let Some(messenger) = &self.messenger {
                     let msg = FlowSyncMessage::OperationBatch {
                         flow_id: self.id,
@@ -942,9 +956,17 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                     };
                     if let Ok(payload) = msg.to_cbor() {
                         let messenger = Arc::clone(messenger);
-                        tokio::spawn(async move {
-                            let _ = messenger.broadcast(MessageType::FlowSync, &payload).await;
-                        });
+                        let handle = self.runtime_handle.read().ok()
+                            .and_then(|h| h.clone());
+                        if let Some(handle) = handle {
+                            handle.spawn(async move {
+                                let _ = messenger.broadcast(MessageType::FlowSync, &payload).await;
+                            });
+                        } else if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                            handle.spawn(async move {
+                                let _ = messenger.broadcast(MessageType::FlowSync, &payload).await;
+                            });
+                        }
                     }
                 }
 

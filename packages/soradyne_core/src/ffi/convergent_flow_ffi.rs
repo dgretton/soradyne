@@ -620,6 +620,7 @@ pub extern "C" fn soradyne_flow_connect_ensemble(
 
 /// Start background sync for a flow.
 ///
+/// Requires the pairing bridge to be initialized (for the tokio runtime).
 /// Returns 0 on success, -1 on error.
 #[no_mangle]
 pub extern "C" fn soradyne_flow_start_sync(handle: *mut std::ffi::c_void) -> i32 {
@@ -679,19 +680,28 @@ pub extern "C" fn soradyne_flow_enable_sync(handle: *mut std::ffi::c_void) -> i3
         }
     }
 
-    // Start sync
-    match flow_arc.lock() {
-        Ok(flow) => {
-            let result = with_drip_flow!(flow, f => f.start());
-            match result {
-                Ok(()) => 0,
-                Err(e) => {
-                    eprintln!("soradyne_flow_enable_sync: start error: {:?}", e);
-                    -1
+    // Start sync inside the bridge runtime so start() can capture
+    // Handle::current() and tokio::spawn works for the spawned tasks.
+    match super::pairing_bridge::bridge_with_runtime(|| {
+        match flow_arc.lock() {
+            Ok(flow) => {
+                let result = with_drip_flow!(flow, f => f.start());
+                match result {
+                    Ok(()) => 0,
+                    Err(e) => {
+                        eprintln!("soradyne_flow_enable_sync: start error: {:?}", e);
+                        -1
+                    }
                 }
             }
+            Err(_) => -1,
         }
-        Err(_) => -1,
+    }) {
+        Ok(code) => code,
+        Err(e) => {
+            eprintln!("soradyne_flow_enable_sync: runtime error: {}", e);
+            -1
+        }
     }
 }
 

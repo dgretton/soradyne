@@ -102,6 +102,26 @@ pub(crate) fn error_json(msg: &str) -> *mut c_char {
     to_c_string(serde_json::json!({"error": msg}).to_string())
 }
 
+/// Run a closure inside the pairing bridge's tokio runtime context.
+///
+/// This is needed so that `tokio::spawn` works when called from FFI
+/// functions (which run outside any runtime). The closure runs
+/// synchronously but with the runtime entered, so spawned tasks
+/// land on the bridge's thread pool.
+pub(crate) fn bridge_with_runtime<F, R>(f: F) -> Result<R, String>
+where
+    F: FnOnce() -> R,
+{
+    let guard = PAIRING_BRIDGE
+        .read()
+        .map_err(|_| "bridge lock poisoned".to_string())?;
+    let bridge = guard
+        .as_ref()
+        .ok_or_else(|| "pairing bridge not initialized".to_string())?;
+    let _enter = bridge.runtime.enter();
+    Ok(f())
+}
+
 /// Return the ID of the first capsule in the local store, if any.
 ///
 /// Used by `soradyne_flow_enable_sync` so the app never needs a capsule ID.

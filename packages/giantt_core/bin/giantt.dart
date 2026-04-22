@@ -10,6 +10,23 @@ import 'package:giantt_core/giantt_core.dart';
 // ---------------------------------------------------------------------------
 
 bool _flowAvailable = false;
+bool _syncEnabled = false;
+
+/// Load the device UUID from ~/.soradyne/device_identity.json.
+///
+/// Returns null if the file doesn't exist or can't be parsed.
+String? _loadDeviceId() {
+  final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (home == null) return null;
+  final identityFile = File('$home/.soradyne/device_identity.json');
+  if (!identityFile.existsSync()) return null;
+  try {
+    final json = jsonDecode(identityFile.readAsStringSync());
+    return json['device_id'] as String?;
+  } catch (_) {
+    return null;
+  }
+}
 
 /// Try to wire up the Soradyne FFI flow system.
 ///
@@ -17,14 +34,38 @@ bool _flowAvailable = false;
 /// found, so the CLI still works without a Rust build.
 void _tryInitFlow() {
   if (Platform.environment['GIANTT_NO_FLOW'] == '1') return;
-  final deviceId = Platform.localHostname;
+  final deviceId = _loadDeviceId();
+  if (deviceId == null) {
+    stderr.writeln(
+        '[soradyne] No device identity found — using file-based storage.\n'
+        '           Run: soradyne-cli device-id  (creates identity on first run)');
+    return;
+  }
   _flowAvailable = FlowRepository.initializeIfAvailable(deviceId);
   if (!_flowAvailable) {
     stderr.writeln(
         '[soradyne] Native library unavailable — using file-based storage.\n'
-        '           Run: cargo build --release --features ble-central '
-        '--no-default-features\n'
+        '           Run: cargo build --release --no-default-features\n'
         '           and ensure libsoradyne is on the library search path.');
+  }
+}
+
+/// Enable peer-to-peer sync for the current flow.
+///
+/// Called once at startup after the flow system is initialized. Starts an
+/// EnsembleManager with TCP static peer connections so that every subsequent
+/// apply_edit broadcasts immediately to connected peers.
+void _tryEnableSync() {
+  if (!_flowAvailable) return;
+  final flowId = _getFlowId();
+  if (flowId == null) return;
+  try {
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    FlowRepository.enableSync(flowId, dataDir: home != null ? '$home/.soradyne' : null);
+    _syncEnabled = true;
+  } catch (e) {
+    // Non-fatal: sync is optional, flow operations still work locally
+    stderr.writeln('[soradyne] Sync not available: $e');
   }
 }
 
@@ -43,6 +84,7 @@ String? _getFlowId() {
 
 void main(List<String> arguments) async {
   _tryInitFlow();
+  _tryEnableSync();
   final parser = ArgParser()
     ..addFlag('help', abbr: 'h', help: 'Show help information', negatable: false)
     ..addFlag('version', abbr: 'v', help: 'Show version information', negatable: false);
@@ -95,6 +137,13 @@ void main(List<String> arguments) async {
     }
 
     await _executeCommand(results.command!);
+
+    // If sync is enabled, wait for the ensemble to connect and deliver
+    // any pending broadcasts. The TCP static peer connector and horizon
+    // exchange run asynchronously on the bridge runtime.
+    if (_syncEnabled) {
+      await Future.delayed(Duration(seconds: 2));
+    }
   } catch (e) {
     stderr.writeln('Error: $e');
     exit(1);

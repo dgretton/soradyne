@@ -297,22 +297,65 @@ impl EnsembleManager {
 
         // Task: connect to static peers (e.g. Tailscale/VPN addresses)
         //
-        // For each configured static peer, uses the UUID tiebreaker to decide
-        // who initiates. On disconnect, waits briefly and reconnects.
+        // Both sides listen AND connect on startup. Whichever process starts
+        // second immediately finds the first one's listener — no polling or
+        // retry loops needed. The UUID tiebreaker is used only for
+        // reconnect-after-disconnect to prevent both sides racing.
         if !self.config.static_peers.is_empty() {
+            // --- TCP listener (always started) ---
+            let listen_port = self.config.static_peers.values().next()
+                .map(|a| a.port())
+                .unwrap_or(7979);
+
+            let manager = Arc::clone(self);
+            let mut shutdown = self.shutdown_tx.subscribe();
+            tokio::spawn(async move {
+                let listen_addr: std::net::SocketAddr =
+                    ([0, 0, 0, 0], listen_port).into();
+                let listener = match tokio::net::TcpListener::bind(listen_addr).await {
+                    Ok(l) => l,
+                    Err(e) => {
+                        log::warn!("Static peer listener failed to bind {}: {}", listen_addr, e);
+                        return;
+                    }
+                };
+                log::info!("Static peer listener on {}", listen_addr);
+
+                loop {
+                    tokio::select! {
+                        result = listener.accept() => {
+                            match result {
+                                Ok((stream, _addr)) => {
+                                    let mgr = Arc::clone(&manager);
+                                    tokio::spawn(async move {
+                                        Self::handle_static_accept(&mgr, stream).await;
+                                    });
+                                }
+                                Err(e) => {
+                                    log::warn!("Static peer accept error: {}", e);
+                                }
+                            }
+                        }
+                        _ = shutdown.recv() => break,
+                    }
+                }
+            });
+
+            // --- Outbound connector (always attempts all peers) ---
             let manager = Arc::clone(self);
             let static_peers = self.config.static_peers.clone();
             let mut shutdown = self.shutdown_tx.subscribe();
 
             tokio::spawn(async move {
-                // Initial connection attempts for all static peers
+                // Try all peers on startup — if the peer is already listening,
+                // we connect immediately; if not, the peer will connect to our
+                // listener when it starts up.
                 for (&peer_id, &peer_addr) in &static_peers {
-                    if manager.should_initiate_connection(&peer_id).await {
-                        Self::try_static_connect(&manager, peer_id, peer_addr).await;
-                    }
+                    Self::try_static_connect(&manager, peer_id, peer_addr).await;
                 }
 
-                // Reconnect loop: watch for disconnects and re-establish
+                // Reconnect on disconnect: use UUID tiebreaker so only one
+                // side re-initiates, avoiding a reconnect race.
                 let mut disconnect_rx = manager.messenger.disconnections();
                 loop {
                     tokio::select! {
@@ -331,55 +374,6 @@ impl EnsembleManager {
                     }
                 }
             });
-
-            // For peers where *we* are the responder (higher UUID), we need a
-            // TCP listener. Use a single listener for all static peers.
-            let has_responder_peers = {
-                let device_id = self.device_id;
-                self.config.static_peers.keys().any(|peer_id| device_id >= *peer_id)
-            };
-            if has_responder_peers {
-                // Determine our listen port from any static peer entry that
-                // points to us (they all use the same port convention).
-                // Fall back to the first peer's port.
-                let listen_port = self.config.static_peers.values().next()
-                    .map(|a| a.port())
-                    .unwrap_or(7979);
-
-                let manager = Arc::clone(self);
-                let mut shutdown = self.shutdown_tx.subscribe();
-                tokio::spawn(async move {
-                    let listen_addr: std::net::SocketAddr =
-                        ([0, 0, 0, 0], listen_port).into();
-                    let listener = match tokio::net::TcpListener::bind(listen_addr).await {
-                        Ok(l) => l,
-                        Err(e) => {
-                            log::warn!("Static peer listener failed to bind {}: {}", listen_addr, e);
-                            return;
-                        }
-                    };
-                    log::info!("Static peer listener on {}", listen_addr);
-
-                    loop {
-                        tokio::select! {
-                            result = listener.accept() => {
-                                match result {
-                                    Ok((stream, _addr)) => {
-                                        let mgr = Arc::clone(&manager);
-                                        tokio::spawn(async move {
-                                            Self::handle_static_accept(&mgr, stream).await;
-                                        });
-                                    }
-                                    Err(e) => {
-                                        log::warn!("Static peer accept error: {}", e);
-                                    }
-                                }
-                            }
-                            _ = shutdown.recv() => break,
-                        }
-                    }
-                });
-            }
         }
     }
 
