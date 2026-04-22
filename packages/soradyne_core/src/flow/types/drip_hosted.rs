@@ -5,8 +5,9 @@
 //! This is one specific flow type (set of policies). Its characteristics:
 //! - **Memorization**: every party stores every other party's ops in per-party
 //!   journal files (`journals/{author_device_id}.jsonl`).
-//! - **Outbound queue**: ops are queued for each known peer in
-//!   `outbound/{peer_device_id}.jsonl` for later delivery.
+//! - **Sync**: immediate broadcast for online peers; horizon exchange for
+//!   catch-up when peers (re)connect. No per-peer outbound queue — the
+//!   journal + `operations_since(horizon)` computes what any peer needs.
 //! - **Fitting**: local on each device — all journals are loaded and piped
 //!   through the convergent document CRDT to materialize the drip stream.
 //!
@@ -252,31 +253,7 @@ fn append_to_journal(base_path: &std::path::Path, author: &str, envelope: &OpEnv
     }
 }
 
-/// Append a single `OpEnvelope` to the outbound queue for a specific peer.
-/// `base_path` is the flow's storage directory; the op goes into
-/// `outbound/{peer_device_id}.jsonl`.
-fn enqueue_for_peer(base_path: &std::path::Path, peer_device_id: &str, envelope: &OpEnvelope) {
-    let outbound_dir = base_path.join("outbound");
-    if let Err(e) = std::fs::create_dir_all(&outbound_dir) {
-        eprintln!("[full_replica] outbound: create_dir {:?} failed: {}", outbound_dir, e);
-        return;
-    }
-    let filename = format!("{}.jsonl", device_id_to_filename(peer_device_id));
-    let file_path = outbound_dir.join(filename);
-    match serde_json::to_string(envelope) {
-        Ok(json) => {
-            match std::fs::OpenOptions::new().create(true).append(true).open(&file_path) {
-                Ok(mut file) => {
-                    if let Err(e) = writeln!(file, "{}", json) {
-                        eprintln!("[full_replica] outbound: write failed: {}", e);
-                    }
-                }
-                Err(e) => eprintln!("[full_replica] outbound: open {:?} failed: {}", file_path, e),
-            }
-        }
-        Err(e) => eprintln!("[full_replica] outbound: serialize failed: {}", e),
-    }
-}
+
 
 /// Load the known parties mapping from `parties.json` in the flow's storage directory.
 /// Maps DeviceId (String) → device Uuid.
@@ -517,8 +494,6 @@ impl AccessoryMemorizer {
 ///   journals/
 ///     {device_id_A}.jsonl   # ops authored by party A
 ///     {device_id_B}.jsonl   # ops received from party B
-///   outbound/
-///     {device_id_B}.jsonl   # ops queued to send to party B
 ///   parties.json            # known party device IDs
 /// ```
 pub struct FullReplicaFlow<S: DocumentSchema + 'static> {
@@ -539,17 +514,12 @@ pub struct FullReplicaFlow<S: DocumentSchema + 'static> {
     /// notify_subscribers() on this after remote ops arrive, so UI pollers
     /// see the updated materialized state without needing a separate callback.
     state_stream: ConvergentDocumentStream<S>,
-    /// Filesystem path for per-party journal storage and outbound queues.
+    /// Filesystem path for per-party journal storage.
     /// `None` for in-memory flows (tests, ephemeral sessions).
     storage_path: Option<PathBuf>,
-    /// Known parties to this flow — their ops are stored locally and we
-    /// queue outbound ops for them. Maps DeviceId → device Uuid.
+    /// Known parties to this flow. Maps DeviceId → device Uuid.
     /// Persisted in `parties.json`.
     known_parties: Arc<std::sync::RwLock<HashMap<String, Uuid>>>,
-    /// Signal to trigger an outbound queue flush. Fired on: local edit,
-    /// inbound message received, new peer connected, and startup.
-    /// `Notify` coalesces multiple signals into one wakeup.
-    flush_notify: Arc<tokio::sync::Notify>,
 }
 
 /// Transitional alias — use `FullReplicaFlow` in new code.
@@ -598,7 +568,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             state_stream: state_stream_notify,
             storage_path: None,
             known_parties: Arc::new(std::sync::RwLock::new(HashMap::new())),
-            flush_notify: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -739,62 +708,7 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             if let Ok(parties) = self.known_parties.read() {
                 save_known_parties(path, &parties);
             }
-
-            // Queue all existing local ops for this new peer
-            let my_journal = path.join("journals").join(
-                format!("{}.jsonl", device_id_to_filename(&self.device_id))
-            );
-            if my_journal.exists() {
-                if let Ok(content) = std::fs::read_to_string(&my_journal) {
-                    for line in content.lines() {
-                        if let Ok(env) = serde_json::from_str::<OpEnvelope>(line) {
-                            enqueue_for_peer(path, party_device_id, &env);
-                        }
-                    }
-                }
-            }
         }
-    }
-
-    /// Read the outbound queue for a specific peer without clearing it.
-    fn peek_outbound(&self, peer_device_id: &str) -> Vec<OpEnvelope> {
-        let Some(ref path) = self.storage_path else {
-            return Vec::new();
-        };
-        let filename = format!("{}.jsonl", device_id_to_filename(peer_device_id));
-        let queue_path = path.join("outbound").join(filename);
-        if !queue_path.exists() {
-            return Vec::new();
-        }
-        let content = match std::fs::read_to_string(&queue_path) {
-            Ok(c) => c,
-            Err(_) => return Vec::new(),
-        };
-        content.lines()
-            .filter_map(|line| serde_json::from_str(line).ok())
-            .collect()
-    }
-
-    /// Clear the outbound queue for a specific peer (called after confirmed delivery).
-    fn clear_outbound(&self, peer_device_id: &str) {
-        let Some(ref path) = self.storage_path else {
-            return;
-        };
-        let filename = format!("{}.jsonl", device_id_to_filename(peer_device_id));
-        let queue_path = path.join("outbound").join(filename);
-        let _ = std::fs::write(&queue_path, "");
-    }
-
-    /// Drain the outbound queue for a specific peer.
-    ///
-    /// Returns all queued ops and clears the queue file. The caller is
-    /// responsible for actually delivering them.
-    pub fn drain_outbound(&self, peer_device_id: &str) -> Vec<OpEnvelope> {
-        let ops = self.peek_outbound(peer_device_id);
-        if !ops.is_empty() {
-            self.clear_outbound(peer_device_id);
-        }
-        ops
     }
 
     /// Get the known parties mapping (DeviceId → Uuid).
@@ -804,71 +718,18 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             .unwrap_or_default()
     }
 
-    /// Attempt to deliver all pending outbound ops to connected peers.
-    ///
-    /// For each known party with queued ops, reads the queue, sends an
-    /// `OperationBatch` via the messenger, and **only clears the queue if
-    /// the send succeeds**. If the peer is unreachable, ops stay in the
-    /// queue for the next flush attempt.
-    pub async fn flush_outbound(&self) -> HashMap<String, usize> {
-        let messenger = match &self.messenger {
-            Some(m) => Arc::clone(m),
-            None => return HashMap::new(),
-        };
-
-        let parties = self.known_parties();
-        let mut results = HashMap::new();
-
-        for (device_id, peer_uuid) in &parties {
-            let ops = self.peek_outbound(device_id);
-            if ops.is_empty() {
-                continue;
-            }
-            let count = ops.len();
-            let msg = FlowSyncMessage::OperationBatch {
-                flow_id: self.id,
-                ops,
-            };
-            if let Ok(payload) = msg.to_cbor() {
-                match messenger.send_to(*peer_uuid, MessageType::FlowSync, &payload).await {
-                    Ok(()) => {
-                        // Send confirmed — now clear the queue.
-                        self.clear_outbound(device_id);
-                        results.insert(device_id.clone(), count);
-                    }
-                    Err(_) => {
-                        // Send failed — leave queue intact for next attempt.
-                    }
-                }
-            }
-        }
-
-        results
-    }
-
-    /// Signal that the outbound queues should be flushed.
-    /// Safe to call from sync or async contexts. Multiple rapid signals
-    /// coalesce into a single flush.
-    pub fn signal_flush(&self) {
-        self.flush_notify.notify_one();
-    }
-
     /// Start the background sync tasks:
     ///
     /// 1. **Inbound listener**: handles `HorizonExchange`, `OperationBatch`,
     ///    and `HostAnnouncement` messages from peers.
-    /// 2. **Flush task**: drains outbound queues whenever signaled (by local
-    ///    edits, inbound messages, new peer connections, or startup). Only
-    ///    clears a peer's queue after confirmed delivery.
-    /// 3. **Topology watcher**: sends `HorizonExchange` to newly-connected
-    ///    peers so both sides catch up.
+    /// 2. **Topology watcher**: sends `HorizonExchange` to newly-connected
+    ///    peers so both sides catch up. The peer replies with ops we're
+    ///    missing (computed via `operations_since`).
     pub fn start(&self) -> Result<(), FlowError> {
         let messenger = self
             .messenger
             .as_ref()
             .ok_or_else(|| FlowError::SyncError("no messenger configured".into()))?;
-
-        let flush_notify = Arc::clone(&self.flush_notify);
 
         // --- Task 1: Inbound message listener ---
         {
@@ -879,7 +740,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             let messenger_task = Arc::clone(messenger);
             let state_stream = self.state_stream.clone();
             let storage_path = self.storage_path.clone();
-            let flush_notify = Arc::clone(&flush_notify);
             let mut shutdown_rx = self.shutdown_tx.subscribe();
 
             tokio::spawn(async move {
@@ -926,9 +786,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                             });
                                         }
                                     }
-                                    // A peer just connected and exchanged horizons —
-                                    // good time to flush our queues too.
-                                    flush_notify.notify_one();
                                 }
                                 FlowSyncMessage::OperationBatch { ops, .. } => {
                                     // Apply ops; collect only the ones that were genuinely new.
@@ -949,8 +806,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                         }
                                         // Notify UI subscribers so polling consumers see the new state.
                                         state_stream.notify_subscribers();
-                                        // Receiving ops means a peer is online — flush our queues.
-                                        flush_notify.notify_one();
                                     }
                                 }
                                 FlowSyncMessage::HostAnnouncement { host_id, epoch, .. } => {
@@ -968,87 +823,17 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             });
         }
 
-        // --- Task 2: Event-driven outbound flush ---
-        //
-        // Waits for flush_notify signals (from local edits, inbound messages,
-        // new peer connections) and attempts to deliver queued ops to all peers.
-        // Only clears a peer's queue after the send is confirmed.
-        {
-            let known_parties = Arc::clone(&self.known_parties);
-            let storage_path = self.storage_path.clone();
-            let messenger_flush = Arc::clone(messenger);
-            let flow_id = self.id;
-            let flush_notify = Arc::clone(&flush_notify);
-            let mut shutdown_rx = self.shutdown_tx.subscribe();
-
-            tokio::spawn(async move {
-                loop {
-                    tokio::select! {
-                        _ = flush_notify.notified() => {
-                            // Small delay to coalesce rapid signals (e.g. multiple
-                            // apply_edit calls in quick succession).
-                            tokio::time::sleep(Duration::from_millis(50)).await;
-
-                            let parties: HashMap<String, Uuid> = known_parties
-                                .read()
-                                .map(|p| p.clone())
-                                .unwrap_or_default();
-
-                            let Some(ref path) = storage_path else { continue };
-
-                            for (device_id, peer_uuid) in &parties {
-                                let filename = format!("{}.jsonl", device_id_to_filename(device_id));
-                                let queue_path = path.join("outbound").join(&filename);
-                                if !queue_path.exists() {
-                                    continue;
-                                }
-                                let content = match std::fs::read_to_string(&queue_path) {
-                                    Ok(c) if !c.is_empty() => c,
-                                    _ => continue,
-                                };
-                                let ops: Vec<OpEnvelope> = content.lines()
-                                    .filter_map(|line| serde_json::from_str(line).ok())
-                                    .collect();
-                                if ops.is_empty() {
-                                    continue;
-                                }
-                                let ops_count = ops.len();
-                                let msg = FlowSyncMessage::OperationBatch {
-                                    flow_id,
-                                    ops,
-                                };
-                                if let Ok(payload) = msg.to_cbor() {
-                                    match messenger_flush.send_to(*peer_uuid, MessageType::FlowSync, &payload).await {
-                                        Ok(()) => {
-                                            // Confirmed delivery — clear the queue.
-                                            let _ = std::fs::write(&queue_path, "");
-                                        }
-                                        Err(e) => {
-                                            // Send failed — leave queue intact for retry.
-                                            eprintln!("[full_replica] flush to {} failed: {} — {} ops remain queued", device_id, e, ops_count);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        _ = shutdown_rx.recv() => break,
-                    }
-                }
-            });
-        }
-
-        // --- Task 3: Topology watcher ---
+        // --- Task 2: Topology watcher ---
         //
         // When a new peer becomes directly reachable, send our horizon so they
         // respond with the ops we're missing. Both sides do this, so the
-        // exchange is symmetric. Also signals a flush so queued ops get sent.
+        // exchange is symmetric.
         if let Some(ref topology) = self.topology {
             let topology = Arc::clone(topology);
             let document = Arc::clone(&self.document);
             let messenger_watch = Arc::clone(messenger);
             let flow_id = self.id;
             let device_uuid = self.device_uuid;
-            let flush_notify = Arc::clone(&flush_notify);
             let mut shutdown_rx2 = self.shutdown_tx.subscribe();
 
             tokio::spawn(async move {
@@ -1091,8 +876,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                                     match messenger_watch.send_to(peer_id, MessageType::FlowSync, &payload).await {
                                         Ok(()) => {
                                             synced_peers.insert(peer_id);
-                                            // New peer connected — flush queued ops.
-                                            flush_notify.notify_one();
                                         }
                                         Err(e) => {
                                             eprintln!("[full_replica] horizon exchange with {} failed: {}", peer_id, e);
@@ -1106,9 +889,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                 }
             });
         }
-
-        // Signal initial flush so any ops queued before startup get sent.
-        flush_notify.notify_one();
 
         Ok(())
     }
@@ -1148,15 +928,9 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                     doc.apply_local(op)
                 };
 
-                // Persist to this device's journal (our own party's file).
+                // Persist to this device's journal.
                 if let Some(ref path) = self.storage_path {
                     append_to_journal(path, &self.device_id, &envelope);
-                    // Queue for all known peers.
-                    if let Ok(parties) = self.known_parties.read() {
-                        for peer_id in parties.keys() {
-                            enqueue_for_peer(path, peer_id, &envelope);
-                        }
-                    }
                 }
 
                 // Best-effort immediate broadcast to all connected peers.
@@ -1173,12 +947,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
                         });
                     }
                 }
-
-                // Also signal the flush task to attempt confirmed delivery
-                // from the outbound queue. This is the reliable path — ops
-                // stay in the queue until delivery is confirmed, catching
-                // anything the broadcast missed (peer offline, routing issues).
-                self.flush_notify.notify_one();
 
                 Ok(envelope)
             }
@@ -1332,11 +1100,6 @@ impl<S: DocumentSchema + 'static> FullReplicaFlow<S> {
             if let Some(ref path) = self.storage_path {
                 for env in &envelopes {
                     append_to_journal(path, &self.device_id, env);
-                    if let Ok(parties) = self.known_parties.read() {
-                        for peer_id in parties.keys() {
-                            enqueue_for_peer(path, peer_id, env);
-                        }
-                    }
                 }
             }
         }
@@ -2081,7 +1844,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // FullReplicaFlow per-party journal + outbound queue tests
+    // FullReplicaFlow per-party journal tests
     // -----------------------------------------------------------------------
 
     #[test]
@@ -2127,72 +1890,6 @@ mod tests {
         // Verify device_A's journal is unchanged (still 1 op)
         let a_content = std::fs::read_to_string(&journal_path).unwrap();
         assert_eq!(a_content.lines().count(), 1);
-
-        let _ = std::fs::remove_dir_all(&temp_dir);
-    }
-
-    #[test]
-    fn test_outbound_queue_for_known_parties() {
-        let temp_dir = std::env::temp_dir().join("soradyne_test_outbound_queue");
-        let _ = std::fs::remove_dir_all(&temp_dir);
-
-        let device_uuid = Uuid::new_v4();
-        let flow = FullReplicaFlow::new_persistent(
-            make_config("drip_hosted:test"),
-            TestSchema,
-            DripHostPolicy::default(),
-            device_uuid,
-            "device_A".to_string(),
-            temp_dir.clone(),
-        );
-
-        // Register a known party
-        flow.register_party("device_B", Uuid::new_v4());
-
-        // Apply a local edit
-        flow.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
-
-        // Verify the outbound queue has the op for device_B
-        let queue_path = temp_dir.join("outbound/device_B.jsonl");
-        assert!(queue_path.exists(), "outbound queue should exist");
-        let content = std::fs::read_to_string(&queue_path).unwrap();
-        assert_eq!(content.lines().count(), 1);
-
-        // Drain the queue
-        let ops = flow.drain_outbound("device_B");
-        assert_eq!(ops.len(), 1);
-
-        // Queue should be empty after drain
-        let content_after = std::fs::read_to_string(&queue_path).unwrap();
-        assert!(content_after.is_empty(), "queue should be empty after drain");
-
-        let _ = std::fs::remove_dir_all(&temp_dir);
-    }
-
-    #[test]
-    fn test_register_party_queues_existing_ops() {
-        let temp_dir = std::env::temp_dir().join("soradyne_test_register_party_backfill");
-        let _ = std::fs::remove_dir_all(&temp_dir);
-
-        let device_uuid = Uuid::new_v4();
-        let flow = FullReplicaFlow::new_persistent(
-            make_config("drip_hosted:test"),
-            TestSchema,
-            DripHostPolicy::default(),
-            device_uuid,
-            "device_A".to_string(),
-            temp_dir.clone(),
-        );
-
-        // Apply edits BEFORE registering any parties
-        flow.apply_edit(Operation::add_item("task_1", "Test")).unwrap();
-        flow.apply_edit(Operation::set_field("task_1", "title", Value::string("Hello"))).unwrap();
-
-        // Now register a party — should backfill all existing local ops
-        flow.register_party("device_C", Uuid::new_v4());
-
-        let ops = flow.drain_outbound("device_C");
-        assert_eq!(ops.len(), 2, "new party should get all existing local ops");
 
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
@@ -2309,13 +2006,15 @@ mod tests {
     }
 
     /// Helper: deliver all queued ops from `sender` to `receiver`.
-    /// Returns the number of ops delivered.
-    fn deliver_queued_ops<S: DocumentSchema + 'static>(
+    /// Simulate horizon exchange: compute ops receiver hasn't seen, deliver them.
+    fn sync_via_horizon<S: DocumentSchema + 'static>(
         sender: &FullReplicaFlow<S>,
         receiver: &FullReplicaFlow<S>,
-        receiver_device_id: &str,
     ) -> usize {
-        let ops = sender.drain_outbound(receiver_device_id);
+        let receiver_horizon = receiver.document.read().unwrap().horizon().clone();
+        let ops: Vec<OpEnvelope> = sender.document.read().unwrap()
+            .operations_since(&receiver_horizon)
+            .into_iter().cloned().collect();
         let count = ops.len();
         for op in ops {
             receiver.apply_remote_op(op);
@@ -2355,19 +2054,8 @@ mod tests {
         let mac_journal = temp_dir.join("mac/journals/mac.jsonl");
         assert_eq!(std::fs::read_to_string(&mac_journal).unwrap().lines().count(), 5);
 
-        // Verify outbound queues have 5 ops each
-        assert_eq!(mac.drain_outbound("linux").len(), 5);
-        // Note: drain clears, so let's re-apply for the next delivery test.
-        // Instead, let's check phone's queue without draining.
-        let phone_queue = temp_dir.join("mac/outbound/phone.jsonl");
-        assert_eq!(std::fs::read_to_string(&phone_queue).unwrap().lines().count(), 5);
-
-        // Re-queue for linux by re-registering (register_party is idempotent for
-        // existing parties — won't re-queue). We need to manually re-apply.
-        // Actually, drain already consumed them. Let's just use phone's queue.
-
-        // === Phase 2: Deliver mac→phone, verify phone has the items ===
-        let delivered = deliver_queued_ops(&mac, &phone, "phone");
+        // === Phase 2: Sync mac→phone via horizon exchange, verify phone has the items ===
+        let delivered = sync_via_horizon(&mac, &phone);
         assert_eq!(delivered, 5);
 
         let phone_doc = phone.document().read().unwrap();
@@ -2390,8 +2078,8 @@ mod tests {
         let linux_journal = temp_dir.join("linux/journals/linux.jsonl");
         assert_eq!(std::fs::read_to_string(&linux_journal).unwrap().lines().count(), 3);
 
-        // === Phase 4: Deliver linux→phone ===
-        let delivered = deliver_queued_ops(&linux, &phone, "phone");
+        // === Phase 4: Sync linux→phone via horizon exchange ===
+        let delivered = sync_via_horizon(&linux, &phone);
         assert_eq!(delivered, 3);
 
         // Phone should now have all 3 items (2 from mac + 1 from linux)
@@ -2416,17 +2104,19 @@ mod tests {
         assert!(phone_own_journal.exists());
         assert_eq!(std::fs::read_to_string(&phone_own_journal).unwrap().lines().count(), 2);
 
-        // Deliver phone→linux
-        let delivered = deliver_queued_ops(&phone, &linux, "linux");
-        assert_eq!(delivered, 2);
+        // Sync phone→linux via horizon exchange
+        let delivered = sync_via_horizon(&phone, &linux);
+        // Phone has 2 own ops; linux already has its own 3 ops (fix_server);
+        // linux doesn't have mac's ops, but phone does — so phone sends
+        // its 2 + mac's 5 = 7 ops that linux hasn't seen.
+        assert_eq!(delivered, 7);
 
-        // Linux should now have phone's item
+        // Linux should now have phone's item AND mac's items (via phone)
         let linux_doc = linux.document().read().unwrap();
         let linux_state = linux_doc.materialize();
         assert!(linux_state.get(&"call_mom".into()).is_some());
         assert!(linux_state.get(&"fix_server".into()).is_some());
-        // Linux hasn't received mac's ops yet (we drained mac→linux earlier)
-        assert!(linux_state.get(&"buy_groceries".into()).is_none());
+        assert!(linux_state.get(&"buy_groceries".into()).is_some(), "linux got mac's ops via phone");
         drop(linux_doc);
 
         let _ = std::fs::remove_dir_all(&temp_dir);
@@ -2470,11 +2160,11 @@ mod tests {
         flow_1.register_party("linux", Uuid::new_v4());
         flow_2.register_party("phone", Uuid::new_v4());
 
-        // flow_1 should queue for linux, flow_2 for phone
-        assert_eq!(flow_1.drain_outbound("linux").len(), 2);
-        assert_eq!(flow_1.drain_outbound("phone").len(), 0, "flow_1 has no phone party");
-        assert_eq!(flow_2.drain_outbound("phone").len(), 2);
-        assert_eq!(flow_2.drain_outbound("linux").len(), 0, "flow_2 has no linux party");
+        // Each flow tracks its own parties independently
+        assert!(flow_1.known_parties().contains_key("linux"));
+        assert!(!flow_1.known_parties().contains_key("phone"));
+        assert!(flow_2.known_parties().contains_key("phone"));
+        assert!(!flow_2.known_parties().contains_key("linux"));
 
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
@@ -2543,27 +2233,21 @@ mod tests {
         assert!(i_state.get(&"laptop_1".into()).is_some());
         assert!(i_state.get(&"deploy_v2".into()).is_none(), "inventory should not see giantt items");
 
-        // Independent outbound queues
-        let g_queued = giantt.drain_outbound("linux");
-        let i_queued = inventory.drain_outbound("linux");
+        // Verify operations_since returns the right ops for each flow
+        let empty_horizon = Horizon::new();
+        let g_ops = giantt.document().read().unwrap().operations_since(&empty_horizon).len();
+        let i_ops = inventory.document().read().unwrap().operations_since(&empty_horizon).len();
+        assert_eq!(g_ops, 2, "giantt should have 2 ops");
+        assert_eq!(i_ops, 3, "inventory should have 3 ops");
 
-        assert_eq!(g_queued.len(), 2, "giantt should queue 2 ops for linux");
-        assert_eq!(i_queued.len(), 3, "inventory should queue 3 ops for linux");
-
-        // Verify the ops are for the right schemas
-        assert!(matches!(g_queued[0].op, Operation::AddItem { ref item_type, .. } if item_type == "GianttItem"));
-        assert!(matches!(i_queued[0].op, Operation::AddItem { ref item_type, .. } if item_type == "InventoryItem"));
-
-        // Now deliver giantt ops to linux's giantt flow
+        // Sync giantt ops to linux's giantt flow via horizon exchange
         let (linux_giantt, _) = make_giantt_flow(&temp_dir, "linux_giantt", giantt_flow_id);
-        for op in g_queued {
-            linux_giantt.apply_remote_op(op);
-        }
+        sync_via_horizon(&giantt, &linux_giantt);
 
         let linux_g_state = linux_giantt.document().read().unwrap().materialize();
         assert!(linux_g_state.get(&"deploy_v2".into()).is_some(), "linux should have giantt item");
 
-        // Deliver inventory ops to linux's inventory flow
+        // Sync inventory ops to linux's inventory flow via horizon exchange
         let linux_inventory = FullReplicaFlow::new_persistent(
             FlowConfig {
                 id: inventory_flow_id,
@@ -2576,9 +2260,7 @@ mod tests {
             "linux".to_string(),
             temp_dir.join("linux_inventory"),
         );
-        for op in i_queued {
-            linux_inventory.apply_remote_op(op);
-        }
+        sync_via_horizon(&inventory, &linux_inventory);
 
         let linux_i_state = linux_inventory.document().read().unwrap().materialize();
         assert!(linux_i_state.get(&"laptop_1".into()).is_some(), "linux should have inventory item");
@@ -2587,8 +2269,9 @@ mod tests {
     }
 
     #[test]
-    fn test_session_persistence_with_parties_and_queues() {
-        // Verify that parties, journals, and queues survive across process restarts.
+    fn test_session_persistence_with_parties_and_journal() {
+        // Verify that parties and journal survive across process restarts,
+        // and that horizon exchange can catch up a peer after restart.
         let temp_dir = std::env::temp_dir().join("soradyne_test_session_persist");
         let _ = std::fs::remove_dir_all(&temp_dir);
 
@@ -2607,7 +2290,7 @@ mod tests {
             flow.apply_edit(Operation::set_field("task_1", "title", Value::string("Persistent task"))).unwrap();
         }
 
-        // Session 2: reopen flow, verify state and queues are intact
+        // Session 2: reopen flow, verify state persisted
         {
             let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
 
@@ -2616,35 +2299,34 @@ mod tests {
             assert!(parties.contains_key("linux"), "linux should be a known party");
             assert!(parties.contains_key("phone"), "phone should be a known party");
 
-            // Document should have the item
+            // Document should have the item from session 1
             let doc = flow.document().read().unwrap();
             let state = doc.materialize();
             assert!(state.get(&"task_1".into()).is_some());
+
+            // Journal should have 2 ops available via operations_since
+            let empty_horizon = Horizon::new();
+            let ops = doc.operations_since(&empty_horizon);
+            assert_eq!(ops.len(), 2, "journal should have 2 ops after restart");
             drop(doc);
-
-            // Outbound queues should still have the ops (not yet delivered)
-            let linux_ops = flow.drain_outbound("linux");
-            assert_eq!(linux_ops.len(), 2, "linux queue should survive restart");
-
-            let phone_ops = flow.drain_outbound("phone");
-            assert_eq!(phone_ops.len(), 2, "phone queue should survive restart");
 
             // Add another op in session 2
             flow.apply_edit(Operation::add_item("task_2", "GianttItem")).unwrap();
         }
 
-        // Session 3: verify the new op is also queued
+        // Session 3: verify all ops available for horizon exchange
         {
             let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
-
-            // linux and phone queues were drained in session 2, so only task_2 should be there
-            let linux_ops = flow.drain_outbound("linux");
-            assert_eq!(linux_ops.len(), 1, "only the new op should be queued");
 
             let doc = flow.document().read().unwrap();
             let state = doc.materialize();
             assert!(state.get(&"task_1".into()).is_some());
             assert!(state.get(&"task_2".into()).is_some());
+
+            // All 3 ops should be available for a fresh peer via horizon exchange
+            let empty_horizon = Horizon::new();
+            let ops = doc.operations_since(&empty_horizon);
+            assert_eq!(ops.len(), 3, "all 3 ops should be available for sync");
         }
 
         let _ = std::fs::remove_dir_all(&temp_dir);
@@ -3374,10 +3056,11 @@ mod tests {
 
             // B has no flow — it's just a relay.
 
-            // Start C's sync listener so it processes incoming batches.
+            // Start both sync listeners so broadcast is received.
+            flow_a.start().unwrap();
             flow_c.start().unwrap();
 
-            // --- A edits and flushes → should reach C via B ---
+            // --- A edits → broadcast reaches C via B ---
             flow_a
                 .apply_edit(Operation::add_item("write_report", "GianttTask"))
                 .unwrap();
@@ -3388,9 +3071,6 @@ mod tests {
                     Value::string("Write quarterly report"),
                 ))
                 .unwrap();
-
-            let sent_a = flow_a.flush_outbound().await;
-            assert_eq!(sent_a.get("laptop"), Some(&2), "A should flush 2 ops toward C");
 
             // Give time for B to forward and C's start() to process.
             tokio::time::sleep(Duration::from_millis(300)).await;
@@ -3404,17 +3084,10 @@ mod tests {
                 );
             }
 
-            // --- Now C edits and flushes back → should reach A via B ---
+            // --- Now C edits → broadcast reaches A via B ---
             flow_c
                 .apply_edit(Operation::add_item("review_draft", "GianttTask"))
                 .unwrap();
-
-            // Stop C's listener, start A's, so A can receive.
-            flow_c.stop();
-            flow_a.start().unwrap();
-
-            let sent_c = flow_c.flush_outbound().await;
-            assert_eq!(sent_c.get("phone"), Some(&1), "C should flush 1 op toward A");
 
             tokio::time::sleep(Duration::from_millis(300)).await;
 
@@ -3447,135 +3120,6 @@ mod tests {
             flow_a.stop();
         }
 
-        /// Full sender path: op → outbound queue → flush_outbound() → SimBLE →
-        /// TopologyMessenger → start() task on receiver → journal + convergence.
-        ///
-        /// Device A applies ops while offline (no messenger), queuing them.
-        /// Then A gets wired to a messenger and flushes. Device B's start()
-        /// task receives the batch and applies it.
-        #[tokio::test]
-        async fn test_flush_outbound_via_sim_ble() {
-            let network = SimBleNetwork::new();
-            let flow_id = Uuid::new_v4();
-            let id_a = Uuid::new_v4();
-            let id_b = Uuid::new_v4();
-
-            let tmp_a = tempfile::tempdir().unwrap();
-            let tmp_b = tempfile::tempdir().unwrap();
-
-            let config = FlowConfig {
-                id: flow_id,
-                type_name: "drip_hosted:test".into(),
-                params: serde_json::json!({}),
-            };
-
-            // --- Device A: persistent, no messenger yet ---
-            let flow_a = FullReplicaFlow::<TestSchema>::new_persistent(
-                config.clone(),
-                TestSchema,
-                DripHostPolicy::default(),
-                id_a,
-                "dev_A".into(),
-                tmp_a.path().to_path_buf(),
-            );
-
-            // Register B so ops queue for it
-            flow_a.register_party("dev_B", id_b);
-
-            // Apply two ops while offline
-            flow_a
-                .apply_edit(Operation::add_item("item_1", "Test"))
-                .unwrap();
-            flow_a
-                .apply_edit(Operation::set_field(
-                    "item_1",
-                    "title",
-                    Value::string("Hello from A"),
-                ))
-                .unwrap();
-
-            // Verify outbound queue has 2 ops
-            assert_eq!(flow_a.drain_outbound("dev_B").len(), 2);
-            // drain consumed them; re-apply so we can flush
-            // Actually: re-applying would create new ops. Instead, let's just
-            // do this test without draining first. Re-create flow_a from disk.
-            drop(flow_a);
-
-            let flow_a = FullReplicaFlow::<TestSchema>::new_persistent(
-                config.clone(),
-                TestSchema,
-                DripHostPolicy::default(),
-                id_a,
-                "dev_A".into(),
-                tmp_a.path().to_path_buf(),
-            );
-            flow_a.register_party("dev_B", id_b);
-
-            // Re-apply ops to rebuild outbound queue (reload from disk
-            // doesn't re-populate outbound). Apply fresh ops instead.
-            flow_a
-                .apply_edit(Operation::add_item("item_2", "Test"))
-                .unwrap();
-
-            // --- Device B: persistent + messenger + start() ---
-            let make_topo = || {
-                let mut t = EnsembleTopology::new();
-                t.add_edge(make_sim_edge(id_a, id_b));
-                t.add_edge(make_sim_edge(id_b, id_a));
-                Arc::new(RwLock::new(t))
-            };
-
-            let topo_b = make_topo();
-            let messenger_b = Arc::new(TopologyMessenger::new(id_b, topo_b.clone()));
-
-            let mut flow_b = FullReplicaFlow::<TestSchema>::new_persistent(
-                config.clone(),
-                TestSchema,
-                DripHostPolicy::default(),
-                id_b,
-                "dev_B".into(),
-                tmp_b.path().to_path_buf(),
-            );
-            flow_b.messenger = Some(Arc::clone(&messenger_b));
-            flow_b.topology = Some(topo_b);
-            flow_b.start().unwrap();
-
-            // --- Wire A to a messenger and BLE ---
-            let topo_a = make_topo();
-            let messenger_a = Arc::new(TopologyMessenger::new(id_a, topo_a.clone()));
-
-            let (conn_a, conn_b) = make_connection(&network).await;
-            messenger_a.add_connection(id_b, conn_a).await;
-            messenger_b.add_connection(id_a, conn_b).await;
-
-            // Attach messenger to flow_a (simulates coming online)
-            let flow_a = {
-                let mut f = flow_a;
-                f.messenger = Some(Arc::clone(&messenger_a));
-                f.topology = Some(topo_a);
-                f
-            };
-
-            // Flush the outbound queue over BLE
-            let sent = flow_a.flush_outbound().await;
-            assert_eq!(sent.get("dev_B"), Some(&1), "should have flushed 1 op to dev_B");
-
-            // Give B's start() task time to process
-            tokio::time::sleep(Duration::from_millis(200)).await;
-
-            // B should have item_2
-            let state_b = flow_b.document.read().unwrap().materialize();
-            assert!(
-                state_b.get(&"item_2".into()).is_some(),
-                "B should have received item_2 via flush_outbound"
-            );
-
-            // B's journal should have the op persisted
-            let journal_dir = tmp_b.path().join("journals");
-            assert!(journal_dir.exists(), "B should have journals directory");
-
-            flow_b.stop();
-        }
 
         /// Encrypted multi-hop: A↔B↔C where every link uses Noise IKpsk2.
         /// B is a relay (no flow). A and C sync a GianttSchema FullReplicaFlow
@@ -3737,16 +3281,14 @@ mod tests {
             flow_c.topology = Some(make_topo());
             flow_c.register_party("phone", id_a);
 
-            // Start C's listener
+            // Start both listeners
+            flow_a.start().unwrap();
             flow_c.start().unwrap();
 
-            // A applies ops and flushes through encrypted multi-hop
+            // A applies ops — broadcast goes through encrypted multi-hop
             flow_a
                 .apply_edit(Operation::add_item("encrypted_task", "GianttTask"))
                 .unwrap();
-
-            let sent = flow_a.flush_outbound().await;
-            assert_eq!(sent.get("laptop"), Some(&1));
 
             tokio::time::sleep(Duration::from_millis(300)).await;
 
@@ -3762,8 +3304,8 @@ mod tests {
 
         /// Two independent Giantt flows on the same device, sharing the same
         /// messenger and topology. Verifies that ops on flow_1 don't leak into
-        /// flow_2 and vice versa — each flow has its own document, journals,
-        /// and outbound queues keyed by flow_id.
+        /// flow_2 and vice versa — each flow has its own document and journals
+        /// keyed by flow_id.
         #[tokio::test]
         async fn test_two_giantt_flows_same_device() {
             let network = SimBleNetwork::new();
@@ -3859,6 +3401,10 @@ mod tests {
             flow_b2.register_party("phone", id_a);
             flow_b2.start().unwrap();
 
+            // Start A's flows so broadcast works
+            flow_a1.start().unwrap();
+            flow_a2.start().unwrap();
+
             // A writes to flow_1 only
             flow_a1
                 .apply_edit(Operation::add_item("work_task", "GianttTask"))
@@ -3868,12 +3414,6 @@ mod tests {
             flow_a2
                 .apply_edit(Operation::add_item("personal_task", "GianttTask"))
                 .unwrap();
-
-            // Flush both flows
-            let sent_1 = flow_a1.flush_outbound().await;
-            let sent_2 = flow_a2.flush_outbound().await;
-            assert_eq!(sent_1.get("laptop"), Some(&1));
-            assert_eq!(sent_2.get("laptop"), Some(&1));
 
             tokio::time::sleep(Duration::from_millis(300)).await;
 
@@ -3903,6 +3443,8 @@ mod tests {
                 );
             }
 
+            flow_a1.stop();
+            flow_a2.stop();
             flow_b1.stop();
             flow_b2.stop();
         }
@@ -4006,6 +3548,10 @@ mod tests {
             flow_b_inv.register_party("phone", id_a);
             flow_b_inv.start().unwrap();
 
+            // Start A's flows so broadcast works
+            flow_a_giantt.start().unwrap();
+            flow_a_inv.start().unwrap();
+
             // A writes a Giantt task
             flow_a_giantt
                 .apply_edit(Operation::add_item("write_report", "GianttTask"))
@@ -4022,12 +3568,6 @@ mod tests {
                     Value::string("Claw hammer"),
                 ))
                 .unwrap();
-
-            // Flush both flows
-            let sent_giantt = flow_a_giantt.flush_outbound().await;
-            let sent_inv = flow_a_inv.flush_outbound().await;
-            assert_eq!(sent_giantt.get("laptop"), Some(&1));
-            assert_eq!(sent_inv.get("laptop"), Some(&2));
 
             tokio::time::sleep(Duration::from_millis(300)).await;
 
@@ -4057,12 +3597,14 @@ mod tests {
                 );
             }
 
+            flow_a_giantt.stop();
+            flow_a_inv.stop();
             flow_b_giantt.stop();
             flow_b_inv.stop();
         }
 
         // =================================================================
-        // Reconnection and queue flush test suite
+        // Reconnection and horizon exchange test suite
         // =================================================================
 
         use crate::topology::ensemble::PiecePresence;
@@ -4263,195 +3805,5 @@ mod tests {
             flow_b.stop();
         }
 
-        /// Ops queued before start() is called are flushed on startup.
-        #[tokio::test(start_paused = true)]
-        async fn test_queue_flush_on_startup() {
-            let network = SimBleNetwork::new();
-            let flow_id = Uuid::new_v4();
-            let id_a = Uuid::new_v4();
-            let id_b = Uuid::new_v4();
-
-            let tmp_a = tempfile::tempdir().unwrap();
-            let tmp_b = tempfile::tempdir().unwrap();
-
-            let shared_topo = Arc::new(RwLock::new(EnsembleTopology::new()));
-            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
-            let messenger_b = TopologyMessenger::new(id_b, Arc::clone(&shared_topo));
-
-            let config = FlowConfig {
-                id: flow_id,
-                type_name: "drip_hosted:test".into(),
-                params: serde_json::json!({}),
-            };
-
-            // A: apply edits BEFORE wiring messenger (ops queue on disk).
-            let mut flow_a = FullReplicaFlow::new_persistent(
-                config.clone(), TestSchema, DripHostPolicy::default(),
-                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
-            );
-            flow_a.register_party("dev_B", id_b);
-            flow_a.apply_edit(Operation::add_item("pre_start", "Test")).unwrap();
-
-            // Verify ops are queued.
-            assert!(!flow_a.peek_outbound("dev_B").is_empty(), "ops should be queued");
-
-            // B: wired and started.
-            let mut flow_b = FullReplicaFlow::new_persistent(
-                config, TestSchema, DripHostPolicy::default(),
-                id_b, "dev_B".into(), tmp_b.path().to_path_buf(),
-            );
-            flow_b.register_party("dev_A", id_a);
-
-            let (conn_a, conn_b) = make_connection(&network).await;
-            messenger_a.add_connection(id_b, conn_a).await;
-            messenger_b.add_connection(id_a, conn_b).await;
-            add_direct_peer(&shared_topo, id_a, id_b).await;
-
-            flow_b.messenger = Some(Arc::clone(&messenger_b));
-            flow_b.topology = Some(Arc::clone(&shared_topo));
-            flow_b.start().unwrap();
-
-            // NOW wire and start A — the startup flush should deliver queued ops.
-            flow_a.messenger = Some(Arc::clone(&messenger_a));
-            flow_a.topology = Some(Arc::clone(&shared_topo));
-            flow_a.start().unwrap();
-
-            // Flush coalescing delay (50ms) + processing.
-            tokio::time::sleep(Duration::from_millis(200)).await;
-
-            // B should have the pre-start op.
-            {
-                let doc_b = flow_b.document().read().unwrap();
-                assert!(doc_b.materialize().get(&"pre_start".into()).is_some(),
-                    "B should have pre_start op from startup flush");
-            }
-
-            // A's queue should be cleared.
-            assert!(flow_a.peek_outbound("dev_B").is_empty(),
-                "queue should be cleared after confirmed delivery");
-
-            flow_a.stop();
-            flow_b.stop();
-        }
-
-        /// Ops are only removed from the outbound queue after confirmed delivery.
-        /// Failed sends leave the queue intact.
-        #[tokio::test(start_paused = true)]
-        async fn test_confirmed_delivery_retains_on_failure() {
-            let flow_id = Uuid::new_v4();
-            let id_a = Uuid::new_v4();
-            let id_b = Uuid::new_v4();
-            let tmp_a = tempfile::tempdir().unwrap();
-
-            // Topology with edges but NO actual BLE connection — send_to will fail.
-            let shared_topo = {
-                let mut t = EnsembleTopology::new();
-                t.add_edge(make_sim_edge(id_a, id_b));
-                t.add_edge(make_sim_edge(id_b, id_a));
-                Arc::new(RwLock::new(t))
-            };
-            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
-
-            let config = FlowConfig {
-                id: flow_id,
-                type_name: "drip_hosted:test".into(),
-                params: serde_json::json!({}),
-            };
-
-            let mut flow_a = FullReplicaFlow::new_persistent(
-                config, TestSchema, DripHostPolicy::default(),
-                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
-            );
-            flow_a.register_party("dev_B", id_b);
-            flow_a.apply_edit(Operation::add_item("queued_item", "Test")).unwrap();
-            flow_a.messenger = Some(Arc::clone(&messenger_a));
-
-            // Flush with no connection — should fail, queue stays intact.
-            let result = flow_a.flush_outbound().await;
-            assert!(result.is_empty(), "no deliveries should succeed without connection");
-            assert!(!flow_a.peek_outbound("dev_B").is_empty(),
-                "queue should remain intact after failed send");
-
-            // Now add a real connection.
-            let network = SimBleNetwork::new();
-            let (conn_a, _conn_b) = make_connection(&network).await;
-            messenger_a.add_connection(id_b, conn_a).await;
-
-            // Flush again — should succeed, queue clears.
-            let result = flow_a.flush_outbound().await;
-            assert_eq!(result.get("dev_B"), Some(&1), "should deliver 1 op (AddItem)");
-            assert!(flow_a.peek_outbound("dev_B").is_empty(),
-                "queue should be empty after successful delivery");
-        }
-
-        /// After apply_edit, the flush task delivers queued ops and clears the queue.
-        #[tokio::test(start_paused = true)]
-        async fn test_queue_flush_on_local_edit() {
-            let network = SimBleNetwork::new();
-            let flow_id = Uuid::new_v4();
-            let id_a = Uuid::new_v4();
-            let id_b = Uuid::new_v4();
-
-            let tmp_a = tempfile::tempdir().unwrap();
-            let tmp_b = tempfile::tempdir().unwrap();
-
-            let shared_topo = Arc::new(RwLock::new(EnsembleTopology::new()));
-            let messenger_a = TopologyMessenger::new(id_a, Arc::clone(&shared_topo));
-            let messenger_b = TopologyMessenger::new(id_b, Arc::clone(&shared_topo));
-
-            let config = FlowConfig {
-                id: flow_id,
-                type_name: "drip_hosted:test".into(),
-                params: serde_json::json!({}),
-            };
-
-            let mut flow_a = FullReplicaFlow::new_persistent(
-                config.clone(), TestSchema, DripHostPolicy::default(),
-                id_a, "dev_A".into(), tmp_a.path().to_path_buf(),
-            );
-            flow_a.register_party("dev_B", id_b);
-
-            let mut flow_b = FullReplicaFlow::new_persistent(
-                config, TestSchema, DripHostPolicy::default(),
-                id_b, "dev_B".into(), tmp_b.path().to_path_buf(),
-            );
-            flow_b.register_party("dev_A", id_a);
-
-            let (conn_a, conn_b) = make_connection(&network).await;
-            messenger_a.add_connection(id_b, conn_a).await;
-            messenger_b.add_connection(id_a, conn_b).await;
-            add_direct_peer(&shared_topo, id_a, id_b).await;
-
-            flow_a.messenger = Some(Arc::clone(&messenger_a));
-            flow_a.topology = Some(Arc::clone(&shared_topo));
-            flow_b.messenger = Some(Arc::clone(&messenger_b));
-            flow_b.topology = Some(Arc::clone(&shared_topo));
-
-            flow_a.start().unwrap();
-            flow_b.start().unwrap();
-
-            // Wait for startup flush to clear any initial queue state.
-            tokio::time::sleep(Duration::from_millis(200)).await;
-
-            // Apply edit — this enqueues + signals flush + broadcasts.
-            flow_a.apply_edit(Operation::add_item("live_item", "Test")).unwrap();
-
-            // Wait for flush coalescing + delivery.
-            tokio::time::sleep(Duration::from_millis(200)).await;
-
-            // B should have the item.
-            {
-                let doc_b = flow_b.document().read().unwrap();
-                assert!(doc_b.materialize().get(&"live_item".into()).is_some(),
-                    "B should receive live_item");
-            }
-
-            // A's queue should be cleared (confirmed delivery).
-            assert!(flow_a.peek_outbound("dev_B").is_empty(),
-                "outbound queue should be cleared after confirmed delivery");
-
-            flow_a.stop();
-            flow_b.stop();
-        }
     }
 }
