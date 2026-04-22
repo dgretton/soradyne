@@ -249,13 +249,15 @@ struct FlowRegistry {
 
 impl FlowRegistry {
     fn new(device_id: DeviceId) -> Self {
-        let data_dir = if cfg!(target_os = "macos") {
-            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
-                .join("Library/Application Support/Soradyne/flows")
-        } else {
-            PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
-                .join(".soradyne/flows")
-        };
+        // Derive flow storage path from the pairing bridge's data directory
+        // when available, so CLI and app always agree on where flows live.
+        // Falls back to platform defaults for standalone/test usage.
+        let data_dir = super::pairing_bridge::bridge_data_dir()
+            .map(|base| base.join("flows"))
+            .unwrap_or_else(|| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                PathBuf::from(home).join(".soradyne/flows")
+            });
 
         let _ = std::fs::create_dir_all(&data_dir);
 
@@ -630,15 +632,28 @@ pub extern "C" fn soradyne_flow_start_sync(handle: *mut std::ffi::c_void) -> i32
 
     let flow_arc = unsafe { &*(handle as *const Mutex<ConvergentFlow>) };
 
-    match flow_arc.lock() {
-        Ok(flow) => {
-            let result = with_drip_flow!(flow, f => f.start());
-            match result {
-                Ok(()) => 0,
-                Err(_) => -1,
+    // Run inside the bridge runtime so start() can capture
+    // Handle::current() and tokio::spawn works for the spawned tasks.
+    match super::pairing_bridge::bridge_with_runtime(|| {
+        match flow_arc.lock() {
+            Ok(flow) => {
+                let result = with_drip_flow!(flow, f => f.start());
+                match result {
+                    Ok(()) => 0,
+                    Err(e) => {
+                        eprintln!("soradyne_flow_start_sync: {:?}", e);
+                        -1
+                    }
+                }
             }
+            Err(_) => -1,
         }
-        Err(_) => -1,
+    }) {
+        Ok(code) => code,
+        Err(e) => {
+            eprintln!("soradyne_flow_start_sync: runtime error: {}", e);
+            -1
+        }
     }
 }
 

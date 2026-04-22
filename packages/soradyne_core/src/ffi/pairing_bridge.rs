@@ -122,6 +122,16 @@ where
     Ok(f())
 }
 
+/// Return the bridge's base data directory, if the bridge is initialized.
+///
+/// Used by `FlowRegistry` to derive its flow storage path from the same
+/// base directory that capsules, identity, and static peers use.
+pub(crate) fn bridge_data_dir() -> Option<PathBuf> {
+    let guard = PAIRING_BRIDGE.read().ok()?;
+    let bridge = guard.as_ref()?;
+    Some(bridge.data_dir.clone())
+}
+
 /// Return the ID of the first capsule in the local store, if any.
 ///
 /// Used by `soradyne_flow_enable_sync` so the app never needs a capsule ID.

@@ -298,18 +298,30 @@ class FlowRepository {
 
   /// Enable peer-to-peer sync for a flow.
   ///
-  /// Initializes the pairing bridge if needed, then enables sync. The
-  /// runtime automatically finds the appropriate capsule — the caller
-  /// never provides a capsule ID.
+  /// Initializes the pairing bridge if needed, then connects the flow to
+  /// the capsule recorded in its `capsule_id` file. Falls back to the
+  /// auto-detect path (`enableSync`) if no capsule_id file exists.
   static void enableSync(String flowUuid, {String? dataDir}) {
     _ensureInitialized();
 
     // Ensure pairing bridge is up (loads capsule store, static peers, etc.)
     FlowClient.initPairingBridge(dataDir);
 
+    // Read the explicit capsule_id from the flow's data directory
+    final effectiveDataDir = dataDir ??
+        '${Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.'}/.soradyne';
+    final capsuleIdFile = File('$effectiveDataDir/flows/$flowUuid/capsule_id');
+    final capsuleId = capsuleIdFile.existsSync()
+        ? capsuleIdFile.readAsStringSync().trim()
+        : null;
+
     final client = FlowClient.open(flowUuid);
     try {
-      client.enableSync();
+      if (capsuleId != null && capsuleId.isNotEmpty) {
+        client.connectAndStartSync(capsuleId);
+      } else {
+        client.enableSync();
+      }
     } finally {
       client.close();
     }

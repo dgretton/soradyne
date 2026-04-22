@@ -271,6 +271,31 @@ class FlowClient {
     }
   }
 
+  /// Connect this flow to a specific capsule's ensemble and start sync.
+  ///
+  /// Unlike [enableSync] which picks the first capsule, this uses an
+  /// explicit capsule ID. The pairing bridge must be initialized first.
+  void connectAndStartSync(String capsuleId) {
+    _checkNotClosed();
+
+    final capsuleIdPtr = capsuleId.toNativeUtf8();
+    try {
+      final connectResult = _ffi.flowConnectEnsemble(_handle, capsuleIdPtr);
+      if (connectResult != 0) {
+        throw FlowException(
+            'Failed to connect to ensemble for capsule $capsuleId',
+            'connectAndStartSync');
+      }
+    } finally {
+      malloc.free(capsuleIdPtr);
+    }
+
+    final startResult = _ffi.flowStartSync(_handle);
+    if (startResult != 0) {
+      throw FlowException('Failed to start sync', 'connectAndStartSync');
+    }
+  }
+
   /// Clean up the flow system.
   ///
   /// Call this when the application is shutting down to release all resources.
