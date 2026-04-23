@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 use uuid::Uuid;
 
 use soradyne::ble::simulated::SimBleNetwork;
+use soradyne::convergent::{Operation, Value};
 use soradyne::ffi::convergent_flow_ffi::ConvergentFlow;
 use soradyne::identity::{CapsuleKeyBundle, DeviceIdentity};
 use soradyne::topology::{
@@ -103,6 +104,29 @@ enum FlowAction {
         #[arg(long, default_value = "giantt")]
         schema: String,
     },
+    /// Create a new empty flow and associate it with a capsule
+    Create {
+        /// Capsule UUID to associate with
+        #[arg(long)]
+        capsule: String,
+        /// Schema: "giantt" or "inventory"
+        #[arg(long, default_value = "giantt")]
+        schema: String,
+    },
+    /// Add an item to a flow
+    AddItem {
+        /// Flow UUID
+        uuid: String,
+        /// Item ID (unique within the flow)
+        item_id: String,
+        /// Item title
+        title: String,
+        /// Schema: "giantt" or "inventory"
+        #[arg(long, default_value = "giantt")]
+        schema: String,
+    },
+    /// List all flows in the data directory
+    List,
 }
 
 /// Data exchanged when inviting a peer.
@@ -425,6 +449,116 @@ fn handle_flow(action: FlowAction, base: &PathBuf) {
                     );
                     std::process::exit(1);
                 }
+            }
+        }
+
+        FlowAction::Create { capsule, schema } => {
+            let capsule_id = Uuid::parse_str(&capsule).expect("invalid capsule UUID");
+
+            // Verify the capsule exists
+            let store = load_capsule_store(base);
+            if store.get_capsule(&capsule_id).is_none() {
+                eprintln!("Capsule {} not found.", capsule_id);
+                std::process::exit(1);
+            }
+
+            let flow_uuid = Uuid::new_v4();
+            let flow_dir = base.join("flows").join(flow_uuid.to_string());
+            std::fs::create_dir_all(&flow_dir).expect("failed to create flow directory");
+
+            // Write capsule_id association
+            std::fs::write(flow_dir.join("capsule_id"), capsule_id.to_string())
+                .expect("failed to write capsule_id");
+
+            // Initialize the flow so its journal directory exists
+            let device_id: soradyne::convergent::DeviceId =
+                identity.device_id().to_string().into();
+            if ConvergentFlow::new_persistent(&schema, device_id, flow_dir, flow_uuid).is_none() {
+                eprintln!(
+                    "Unknown schema: \"{}\". Use \"giantt\" or \"inventory\".",
+                    schema
+                );
+                std::process::exit(1);
+            }
+
+            println!("{}", flow_uuid);
+        }
+
+        FlowAction::AddItem {
+            uuid,
+            item_id,
+            title,
+            schema,
+        } => {
+            let flow_uuid = Uuid::parse_str(&uuid).expect("invalid flow UUID");
+            let flow_dir = base.join("flows").join(&uuid);
+            if !flow_dir.exists() {
+                eprintln!("Flow directory not found: {}", flow_dir.display());
+                std::process::exit(1);
+            }
+
+            let device_id: soradyne::convergent::DeviceId =
+                identity.device_id().to_string().into();
+
+            let item_type = match schema.as_str() {
+                "giantt" => "GianttItem",
+                "inventory" => "InventoryItem",
+                _ => {
+                    eprintln!(
+                        "Unknown schema: \"{}\". Use \"giantt\" or \"inventory\".",
+                        schema
+                    );
+                    std::process::exit(1);
+                }
+            };
+
+            let mut flow = ConvergentFlow::new_persistent(&schema, device_id, flow_dir, flow_uuid)
+                .expect("failed to open flow");
+
+            flow.apply_operation(Operation::AddItem {
+                item_id: item_id.clone(),
+                item_type: item_type.to_string(),
+            });
+            flow.apply_operation(Operation::SetField {
+                item_id: item_id.clone(),
+                field: "title".to_string(),
+                value: Value::string(&title),
+            });
+
+            println!("Added item \"{}\" ({}) to flow {}", item_id, title, flow_uuid);
+        }
+
+        FlowAction::List => {
+            let flows_dir = base.join("flows");
+            if !flows_dir.is_dir() {
+                println!("(no flows)");
+                return;
+            }
+
+            let mut entries: Vec<_> = std::fs::read_dir(&flows_dir)
+                .expect("failed to read flows directory")
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().map_or(false, |ft| ft.is_dir()))
+                .filter_map(|e| {
+                    let name = e.file_name().to_string_lossy().to_string();
+                    Uuid::parse_str(&name).ok().map(|uuid| (uuid, e.path()))
+                })
+                .collect();
+
+            if entries.is_empty() {
+                println!("(no flows)");
+                return;
+            }
+
+            entries.sort_by_key(|(uuid, _)| *uuid);
+
+            for (uuid, path) in &entries {
+                let capsule_id = std::fs::read_to_string(path.join("capsule_id"))
+                    .ok()
+                    .map(|s| s.trim().to_string())
+                    .unwrap_or_else(|| "(none)".to_string());
+                let schema = detect_flow_schema(path);
+                println!("  {} schema={} capsule={}", uuid, schema, capsule_id);
             }
         }
     }
