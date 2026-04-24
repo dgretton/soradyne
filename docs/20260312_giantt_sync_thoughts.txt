@@ -1,0 +1,194 @@
+The connection was established but there's no log of any operations being exchanged. The RemoveItem
+   op doesn't seem to have come through. A few possibilities:
+
+  1. The remove happened after the HorizonExchange — the peer sent its horizon, this side responded,
+  but the remove was applied on the peer after the initial exchange and no subsequent OperationBatch
+  was sent.
+  2. The peer's horizon didn't include the remove — maybe it was a local file edit (not a CRDT op) on
+   the other side.
+  3. The TCP connection is half-alive — connected but not actively streaming new ops.
+
+  How did you remove the item on the other side — via giantt set-status / giantt occlude, or by
+  editing the .giantt file directly? If it was a file edit, that wouldn't generate a CRDT operation.
+  Only changes through the CRDT (apply_edit) produce sync-able ops.
+
+✻ Baked for 10m 25s · 1 background task still running (↓ to manage)
+
+❯ I asked your question over there, and this is the response: This is the reverse direction of the
+same process isolation problem from the
+  analysis. The giantt remove command ran in a separate process from the sync
+  process. It opened its own GianttFlow, applied the RemoveItem op, persisted it
+  to operations.jsonl, and exited. But the running sync process has its own
+  in-memory DripHostedFlow that doesn't know about the new op on disk.
+
+  So the remove is persisted locally (that's why show <item id> returns "not
+  found" here), but it was never broadcast to the peer because the sync process
+  doesn't watch for new ops added by other CLI commands.
+
+  This is the write-side counterpart to the read-side fix that just landed: local
+  ops from other processes need to reach the running sync process so they can be
+  broadcast. Either:
+  1. The sync process watches operations.jsonl for new entries and broadcasts them
+  2. The remove/add/modify commands communicate with the running sync process
+  (e.g., via a local socket or shared memory)
+  3. All mutation commands go through the sync process rather than opening their
+  own flow instances
+ ---- I agree with this, basically, and the correct behavior we actually want is, for any writer
+trying to mutate the flow by applying an op, to record that op by sending it to the rust side, and
+it should be possible (though not always necessary) for the writer themself to immediately validate
+within the same process by querying the convergentdocument drip stream that the effect took place;
+meanwhile, if there's a sync process going on, which there generally should be, then that op is also
+ sent to all the other parties to the flow, possibly via multiple hops in the forwarding mesh using
+envelopes etc.
+
+⏺ That's a clear description of the right architecture. The immediate fix is straightforward: the
+  sync process should watch operations.jsonl for new ops appended by other CLI processes and
+  broadcast them. Let me look at the current sync/persistence code to implement this.
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Now let me read the relevant sections of drip_hosted.rs — the start() method and the persistence
+  functions — to understand where to add the file-watching logic.
+
+⏺ Read 1 file (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+  wait, I don't think that's working at quite the right level. operations.jsonl is a file, which is
+a sort of thing that might assist a memorization role in tabulating past occurrences such as
+operations written to a stream, but is not necessarily the way that has to work--for example, it
+could be saved using the erasure coding stuff. the issue here, I think, is that operations.jsonl
+exists at all--or really, that the CLI or any other tool making use of this flow (the operation
+streams plus the drip stream) is aware of the exact file. abstractly, the CLI should be writing to a
+ stream, which is an aspect of the flow with the id 540e600e-92e6-43f1-b7ca-88fd51218238. a flow is
+a bundle of streams, and streams do not exist outside their flows. the functionality of writing to
+and reading from operations.jsonl should be entirely encapsulated by soradyne, so that the data
+might be stored far away or in a different form and the application writing to the stream would
+never know the difference. talk about this with me for a moment?
+
+⏺ You're right, and this cuts to the heart of the problem. Let me articulate what I think you're
+  pointing at.
+
+  Right now there are two abstraction violations:
+
+  1. Multiple flow instances for the same flow ID on one device. When giantt remove
+  runs, it opens its own DripHostedFlow, writes the op (which internally appends to
+  operations.jsonl), and exits. Meanwhile giantt sync --listen has a separate DripHostedFlow for the
+  same flow ID. These are two independent in-memory instances that happen to share a file. But a flow
+   is not a file — it's a living thing with streams, and there should be exactly one instance of it
+  per device.
+  2. The file as the integration point. My instinct to "watch operations.jsonl" was solving the
+  symptom by doubling down on the leak. If I made the sync process tail the file, I'd be enshrining
+  operations.jsonl as a public API contract between processes — when it should be an internal detail
+  of how one particular memorization role happens to store state right now.
+
+  The tex doc says memorization is a role within the flow — it might store plaintext, encrypted, or
+  dissolved across devices. The application writing RemoveItem shouldn't
+  know or care which. It should just write to the operation stream, which is an aspect of the flow.
+
+  So the real question becomes: how does a CLI command that runs and exits talk to a flow that
+  outlives it? The flow needs a presence on the device that persists across CLI invocations. Either:
+
+  - The flow runs as a service (daemon, long-lived process) and CLI commands are clients that send
+  ops to it via local IPC
+  - Or the CLI command connects to the flow through soradyne's FFI in a way that soradyne internally
+  handles the "is there already an active instance?" question — maybe via a lock file and local
+  socket that the FFI layer manages transparently
+
+  Either way, the Dart side should never touch operations.jsonl. It should call something like
+  soradyne_flow_write_op(handle, op_json) and soradyne figures out whether to apply locally, forward
+  to an active sync process, persist, broadcast to peers — all of that is soradyne's concern.
+
+  Is that the shape you're seeing?
+
+yes, and the latter is my preference, or really, all of the above, sort of--the point of the policies that define the flow is, in part, to give rules that specify which roles are necessary, and which devices perform what roles, at any given moment.
+
+If a certain process, say the giantt process trying to remove an item by writing an op, tries to write to a stream, well first, it only has the stream to work with because it had the flow id in the first place, and then, when those ops come through (and from now on we are entirely in rust), the source of truth on where those ops go and what happens next is the flow, which in this case is written in rust such that its policies are manifest in its implementation. the flow defines memorization roles and fitting roles. the piece (in the rim protocol sense, i.e. the device), which finds itself to be in the same capsule as the other pieces that are party to the flow (in this case, the mac, the linux machine, and soon my phone all as read/edit parties, and an esp32 microcontroller as a participating party e.g. for forwarding or possible operation log storage) and is authorized as such, writes to the stream, but also finds that (according to the policy implemented in the flow) it is also responsible for persisting its own operations, and also the operations of all other parties to the flow that have edit streams, stored separately, so that they can each be read and recovered, and in the case of this simple flow, the policy will just be that everyone stores everyone else's operations and their own as all as separate local files forever. if there were two giantt files synced between two different partially-overlapping capsules, there would be a new set of files, one for each of the read/edit parties, for each of those two giantt flows, replicated on every read/edit party. more advanced later flows (policies) will have things like compaction and the responsibility to store others' data expiring after a time (it can be re-fetched from them), things like that, but for now it can just be simple and a little inefficient. so the flow specifies a place on disk where the operation should be stored. that can be a jsonl file, managed by rust. but the policy also says that everyone has to store everyone else's streams in their files, meaning that at this moment, the policy embodied by the flow specifies that this operation needs to be sent to all other read/edit parties, so that it can be serialized and stored there. It's possible that not all of (or none of) those parties are online at that exact moment, so they get queued to be sent when possible. the write completes with one jsonl file extended by one line and 1 op queued to be sent elsewhere.
+
+later, a different piece which is a read/edit party to the flow makes a change, say it sets a REQUIRES dependency in the giantt graph. the dart CLI or application gets the edit stream from the flow and writes an op to it. the flow policy specifies that this be written to disk locally, and also queued to be sent elsewhere.
+
+even later, a different process wants to know what the current state of the drip is. this process tries to pull data from the drip stream--immediately it's the flow's responsibility to implement the policy for how that data will be served. it's going to provide it as serialized data, but it will need some entity, probably some piece, to actually be the fitting, to fill the fitting role, to execute the fitting code, that connects the internal streams from the memorization roles to the drip stream. this flow is a convergentdocument, configured to just use convergentdocument rust code it already has to implement the fitting, i.e. it will be done locally and separately on each piece. the output is clear, the serialized data from the convergentdocument will go to the querying application, but the inputs? that's according to the policies embodied in the flow--it knows that all the edits from all read/edit parties are stored locally, and all of them need to get piped into the convergentdocument crdt to materialize the drip stream. They're all pulled from disk (the memorization roles are filled by the local disk) and the convergentdocument code executes; the dart application gets the current state of the drip stream as a serialized binary blob via ffi.
+
+the only thing that's assumed to actually be exactly the same between the parties to the flow is the flow itself, that is, the set of policies, so each can assume that wherever the flow specifies data should be stored on another device, that is where it will be. if the flow changed to a different type, e.g. one using erasure coding to persist longer-term consensus snapshots with ephemeral edits layered on top, the representation on disk would be quite different and involve more devices, and the flow id would be different, but the application using the flow would not change.
+
+I'm getting the impression that no authentication was actually required to do any communication between these synchronized instances, and nothing is encrypted in flight? we may have some backing up to do before we can move forward but that's ok, that's why we're doing this.
+
+I think we need to fully abandon the current thrust to put in tcp for now, it's bringing too many "normal" networking patterns and assumptions in. Let's keep it, but bookmark it for later--eventually it will replace some of the bluetooth connections.
+
+Let's focus on getting up to this point, where the flow is written such that every time an op write completes, it writes to disk locally, extending a jsonl file, and also queues that op to be sent elsewhere. the memorization file and the queue should not be the same thing, but they can both be files if that's a good way to implement the queue as well. we'll set up a flow with a giantt file materialized as a convergentdocument shared between simulated entities, each of which have their local file stores, and then use the giantt cli to manipulate them, which should result in an expected pattern of messages queued to be sent in various places. then we'll get two giantt documents working at the same time and independently, to reinforce that it is one giantt graph per flow, not one per device etc; then, we'll get a giantt graph and an inventory list, two different types of convergentdocument working at the same time, each independently manipulated using their independent CLIs, and each verified to be producing the correct pattern of operations persisted and queued to be sent elsewhere; all this, without ever sending any information anywhere, even in simulation; then, once that's all in order, we can try implementing a process that goes and finds those queued items and sends them where they need to go. sending will always be done with authentication and everything will be encrypted in flight. this is what everything we've been building up to this point has been about. this should all fit comfortably within the current bluetooth simulation testing environment. It could be a daemon that goes and polls all the queues, but honestly it might be possible for it to be simpler than that, just a piece of code that wakes up and attempts to send everything pending where it's supposed to go every time it is invoked; most of the time, it will be invoked right when it needs to send something. we'll see. I'm guessing the complexity will have to turn up when we get into the zone where we're establishing a new bluetooth connection to transmit the contents of every op queue, whereas it would be better to persist them.
+
+Let me reflect back the architecture I'm reading
+  here, because I want to make sure I have it right before we start building.
+
+  The flow is the authority. The CLI doesn't know about files, sockets, or transport. It has a flow
+  ID, gets a stream from the flow, writes ops to it. Everything downstream is the flow's business.
+
+  Per-party op storage. When this device writes an op, the flow's policy says: persist it to this
+  device's local store (one file per party), AND queue it to be sent to every other read/edit party.
+  Those are separate concerns — the memorization file and the outbound queue are not the same thing.
+  On the receiving end, when an op arrives from another party, it gets written to that party's local
+  file. So with 3 devices, each device has 3 op files (its own + one for each peer's stream).
+
+  Fitting is local. When someone reads the drip stream, the flow pulls all parties' ops from local
+  storage, pipes them through the convergent document, materializes. No network call needed — the
+  data is already here (or will be, once queued ops are eventually delivered).
+
+  TCP is shelved. It brought in unauth'd, unencrypted "normal" networking patterns that bypass
+  everything the capsule/pairing/BLE infrastructure was built for. Keep the code, but don't use it.
+
+  The plan, in order:
+  1. Refactor so op writes go through the flow properly: persist locally (per-party file) + queue for
+   outbound
+  2. Simulated multi-entity setup where CLI manipulation produces the correct pattern of persisted
+  ops and queued messages — without sending anything
+  3. Two independent giantt flows on the same device (one graph per flow, not per device)
+  4. Giantt + inventory flows simultaneously, each with their own CLI, same verification
+  5. Then build the sender — something that wakes up, drains the queues, sends via
+  authenticated+encrypted BLE (simulated first). Could be a daemon polling queues, or a simpler
+  "flush all pending" invocation
+
+  Does this match? And shall I start with step 1 — restructuring the flow so that
+  soradyne_flow_write_op persists the op to the local party's file and enqueues it, with the flow's
+  policy governing both behaviors?
+
+✻ Baked for 33s · 1 background task still running (↓ to manage)
+
+❯ One edit: "So with 3 devices, each device has 3 op files (its own + one for each peer's stream)."
+-> "So with 3 devices, each flow has 3 associated op files (its own + one for each peer's stream)."
+and e.g. with 2 flows, each device technically has 6 op files, for a total of 18 op files across all
+ devices--I only point this out to say, there could be any number of flows, each of which represents
+ a giantt graph or other convergentdocument, shared across subsets of various devices. no single
+flow would ever deal with more than N^2 op files, and local to each device, no flow would ever deal
+with more than N, where N is the number of read/edit parties.
+
+⏺ Right, that's an important correction. The flow is the organizing unit, not the device. Each flow
+  has its own set of per-party op files on each device that's party to it. The device is just a place
+   where multiple flows might happen to coexist — they don't share anything with each other.
+
+  So the mental model is: device × flow × party → one op file. And a given flow instance on a given
+  device only ever thinks about N files (one per party to that flow), regardless of what other flows
+  exist on the same device.
+
+  Shall I start on step 1?
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ yes, and as you do, please keep in mind that other flow types (other policies for memorization
+  and fittings etc) will probably be used in the future, and this one is just a start that I know
+  will definitely work. I bring this up to say, your observation that ops are stored per-party is
+  correct, for this flow type. similarly, that the relevant fitting is local is correct, for this
+  flow type. neither of these are characteristic of soradyne or the rim protocol. things that ARE
+  characteristic of the rim protocol, all of whose implementations in soradyne will have in common,
+  are authentication among pieces in a capsule with firm exclusion by design of non-authenticated
+  participants, encrypted bluetooth-first communication, and immediate local completion and
+  persistence for all writes followed by slow consensus and integrity/robustness. a lot of this
+  pursuit will be to see all the local things complete correctly and fast, and then to allow
+  interchange, and inspect the correct emergence of consensus a bit later. probably we should name
+  this messy, duplication-heavily flow type something descriptive, and also name a different
+  possible flow type just so they're both nouns we can keep separate in our heads. please put just
+  about everything that seems ad-hoc about what you're about to implement (the jsonl files stored
+  in particular places etc) in the flow code for this particular type of convergentdocument flow,
+  and keep it all contained so we could pivot to a different type of convergentdocument flow that
+  implements different policies instead (e.g. fitting materializing the drip stream hosted on a
+  remote server but data stored locally in a sqlite database?), and leave all those ad-hoc
+  decisions behind. it's also probably appropriate at this point, or very soon, to remove .giantt
+  directories entirely, as they're redundant once we're in a multi-device setting where the disk is
+  not the source of truth anymore.
