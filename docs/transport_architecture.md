@@ -86,8 +86,9 @@ where it can be used, because:
 3. **No infrastructure.** No WiFi, no router, no internet, no accounts.
    Two devices in the same room can sync.
 
-TCP and WAN transports extend reach when BLE is unavailable, but they
-are supplements, not replacements.
+TCP and WAN transports extend reach when BLE is unavailable, or when
+it's available but the bandwidth requirements exceed what BLE can
+support; still, they are supplements as needed, not replacements.
 
 ---
 
@@ -99,7 +100,8 @@ background daemon that must be running for sync to work.
 
 **Rationale**: If apps were built to depend on a running daemon, the
 daemon becomes a hidden requirement — an inconsistent design pattern
-that makes it unclear how to build new apps against soradyne. Instead,
+that makes it unclear how to build new apps against soradyne, especially
+on mobile and other platforms that cannot reliably host a daemon. Instead,
 each app embeds soradyne directly. The Rust code is the sync engine;
 the app is the host process.
 
@@ -116,7 +118,19 @@ the app is the host process.
   conditional module loading keep the footprint appropriate.
 
 - **Short-lived vs long-lived processes.** A CLI command like `giantt add`
-  runs, writes an op to the local journal, and exits. A GUI app like the
+  runs, starts a soradyne engine, writes an op to the flow (which has the
+  side effect of writing to a local journal file if the flow type uses
+  files for recording the operation history, as in the case of
+  FullReplicaFlow, but which would not be the case if the operations were
+  stored using dissolved storage or a different policy for its memory
+  roles), kicking off an event-based sync, and exits. (It's possible
+  this sync does not fully propagate to all other devices within the
+  lifetime of this process, whether because the right connections are not
+  present at the time, or because the process does not need the current
+  distributed state.) Any processes that need the current distributed
+  state of that flow will come with their own instances of the soradyne
+  sync engine, which will negotiate whatever syncing is possible among
+  connected devices in an event-based manner as needed. A GUI app like the
   giantt desktop app runs continuously and maintains live sync connections.
   Both are valid usage patterns. CRDT convergence ensures correctness
   regardless of how many processes write concurrently — they all converge
@@ -186,7 +200,7 @@ Sync should be triggered by actions, not timers:
   peers. No polling interval.
 - **Connection drops trigger reconnect.** When a peer disconnects,
   soradyne reacts to the disconnect event and attempts to reconnect.
-  Exponential backoff is acceptable; a process sitting in a `sleep` loop
+  Exponential backoff is acceptable; a thread sitting in a `sleep` loop
   as its primary mode of operation is not.
 - **Peer discovery is event-based.** BLE scan results arrive as events.
   mDNS announcements arrive as events. Static peer connections are
@@ -241,7 +255,8 @@ These hold regardless of transport tier:
   are internal to soradyne. Apps work with flows. The FFI surface
   exposes flow operations, not capsule operations. (Setup/pairing is
   the exception — mobile apps may need to present a pairing UI, but
-  this is ideally one-time.)
+  this is ideally one-time. The way Link uses a one-time embedded frame,
+  only re-authenticated as needed, may serve as a conceptual template.)
 
 ---
 
