@@ -41,7 +41,13 @@ It never knows or cares what physical transport is underneath.
 | LoRa | Future | Long-range low-power |
 
 A device can have connections from multiple backends simultaneously.
-A single `EnsembleManager` accepts them all as `Box<dyn BleConnection>`.
+Within a single process, one `EnsembleManager` accepts them all as
+`Arc<dyn BleConnection>` — a TCP connection and a BLE connection to
+different peers are handled identically. However, multiple apps on
+the same device each run their own soradyne engine with their own
+`EnsembleManager` (see "The embedded engine model" below). Under
+BLE this is fine — the OS multiplexes. Under TCP this creates port
+contention, which is an open design problem (see "TCP multiplexing").
 
 ---
 
