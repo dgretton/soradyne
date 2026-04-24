@@ -1,5 +1,6 @@
 # Project
 .giantt/
+target/
 
 # Build artifacts
 *.dylib
