@@ -355,7 +355,7 @@ mod tests {
         let path = dir.path().join("capsules");
 
         let keys = make_test_keys();
-        let flow = make_test_flow("giantt");
+        let flow = make_test_flow("tasks");
         let flow_id = flow.id;
 
         let capsule_id;

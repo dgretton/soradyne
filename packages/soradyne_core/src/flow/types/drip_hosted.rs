@@ -1341,10 +1341,15 @@ impl<S: DocumentSchema + 'static> Flow for FullReplicaFlow<S> {
 }
 
 // ---------------------------------------------------------------------------
-// FlowRegistry constructors
+// FlowRegistry constructor
 // ---------------------------------------------------------------------------
 
-fn construct_giantt_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, FlowError> {
+/// Construct a `FullReplicaFlow<()>` from a [FlowConfig].
+///
+/// The `type_name` in the config is used as a tag by the registry (e.g.
+/// `"drip_hosted"`, `"drip_hosted:notes"`) but carries no schema semantics —
+/// all flows use the same generic `()` schema.
+fn construct_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, FlowError> {
     let policy: DripHostPolicy = serde_json::from_value(
         config
             .params
@@ -1374,40 +1379,15 @@ fn construct_giantt_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, Flo
     Ok(Box::new(flow))
 }
 
-fn construct_inventory_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, FlowError> {
-    let policy: DripHostPolicy = serde_json::from_value(
-        config
-            .params
-            .get("policy")
-            .cloned()
-            .unwrap_or(serde_json::json!({})),
-    )
-    .unwrap_or_default();
-
-    let device_uuid: Uuid = serde_json::from_value(
-        config
-            .params
-            .get("device_uuid")
-            .cloned()
-            .unwrap_or(serde_json::json!(null)),
-    )
-    .unwrap_or_else(|_| Uuid::new_v4());
-
-    let device_id: String = config
-        .params
-        .get("device_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-
-    let flow = FullReplicaFlow::new(config, (), policy, device_uuid, device_id);
-    Ok(Box::new(flow))
-}
-
-/// Register FullReplicaFlow constructors for all known schemas.
+/// Register the `FullReplicaFlow` constructor under the `"drip_hosted"` family.
+///
+/// Legacy type-name variants are registered as aliases so existing persisted
+/// flow configs continue to load correctly.
 pub fn register_drip_hosted_flows(registry: &mut FlowRegistry) {
-    registry.register("drip_hosted:giantt", construct_giantt_drip_hosted);
-    registry.register("drip_hosted:inventory", construct_inventory_drip_hosted);
+    registry.register("drip_hosted", construct_drip_hosted);
+    // Legacy aliases kept for backward compatibility with persisted flow configs.
+    registry.register("drip_hosted:giantt", construct_drip_hosted);
+    registry.register("drip_hosted:inventory", construct_drip_hosted);
 }
 
 // ===========================================================================
@@ -2001,7 +1981,7 @@ mod tests {
 
     /// Helper: create a persistent FullReplicaFlow in a temp dir.
     /// Returns (flow, device_uuid) so the UUID can be used for party registration.
-    fn make_giantt_flow(
+    fn make_flow(
         base_dir: &std::path::Path,
         device_name: &str,
         flow_id: Uuid,
@@ -2011,7 +1991,7 @@ mod tests {
         let flow = FullReplicaFlow::new_persistent(
             FlowConfig {
                 id: flow_id,
-                type_name: "drip_hosted:giantt".into(),
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             },
             (),
@@ -2048,9 +2028,9 @@ mod tests {
         let flow_id = Uuid::new_v4();
 
         // Create three devices, each with their own storage
-        let (mac, mac_uuid) = make_giantt_flow(&temp_dir, "mac", flow_id);
-        let (linux, linux_uuid) = make_giantt_flow(&temp_dir, "linux", flow_id);
-        let (phone, phone_uuid) = make_giantt_flow(&temp_dir, "phone", flow_id);
+        let (mac, mac_uuid) = make_flow(&temp_dir, "mac", flow_id);
+        let (linux, linux_uuid) = make_flow(&temp_dir, "linux", flow_id);
+        let (phone, phone_uuid) = make_flow(&temp_dir, "phone", flow_id);
 
         // Register each other as parties
         mac.register_party("linux", linux_uuid);
@@ -2149,8 +2129,8 @@ mod tests {
         let flow_id_2 = Uuid::new_v4();
 
         // Same device, two different flows (two different giantt graphs)
-        let (flow_1, _) = make_giantt_flow(&temp_dir, "mac_flow1", flow_id_1);
-        let (flow_2, _) = make_giantt_flow(&temp_dir, "mac_flow2", flow_id_2);
+        let (flow_1, _) = make_flow(&temp_dir, "mac_flow1", flow_id_1);
+        let (flow_2, _) = make_flow(&temp_dir, "mac_flow2", flow_id_2);
 
         // Add items to flow 1
         flow_1.apply_edit(Operation::add_item("task_a", "GianttItem")).unwrap();
@@ -2188,28 +2168,28 @@ mod tests {
     }
 
     #[test]
-    fn test_giantt_and_inventory_flows_simultaneously() {
+    fn test_independent_flows_simultaneously() {
         
-        let temp_dir = std::env::temp_dir().join("soradyne_test_giantt_inventory");
+        let temp_dir = std::env::temp_dir().join("soradyne_test_two_flows");
         let _ = std::fs::remove_dir_all(&temp_dir);
 
-        let giantt_flow_id = Uuid::new_v4();
+        let flow_a_id = Uuid::new_v4();
         let inventory_flow_id = Uuid::new_v4();
 
         let device_uuid = Uuid::new_v4();
 
         // Create a giantt flow
-        let giantt = FullReplicaFlow::new_persistent(
+        let flow_a = FullReplicaFlow::new_persistent(
             FlowConfig {
-                id: giantt_flow_id,
-                type_name: "drip_hosted:giantt".into(),
+                id: flow_a_id,
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             },
             (),
             DripHostPolicy::default(),
             device_uuid,
             "mac".to_string(),
-            temp_dir.join("giantt"),
+            temp_dir.join("flow_a"),
         );
 
         // Create an inventory flow
@@ -2228,12 +2208,12 @@ mod tests {
 
         // Both share the same device but have independent storage
         let linux_uuid = Uuid::new_v4();
-        giantt.register_party("linux", linux_uuid);
+        flow_a.register_party("linux", linux_uuid);
         inventory.register_party("linux", linux_uuid);
 
         // Add a giantt item
-        giantt.apply_edit(Operation::add_item("deploy_v2", "GianttItem")).unwrap();
-        giantt.apply_edit(Operation::set_field("deploy_v2", "title", Value::string("Deploy v2"))).unwrap();
+        flow_a.apply_edit(Operation::add_item("deploy_v2", "GianttItem")).unwrap();
+        flow_a.apply_edit(Operation::set_field("deploy_v2", "title", Value::string("Deploy v2"))).unwrap();
 
         // Add an inventory item
         inventory.apply_edit(Operation::add_item("laptop_1", "InventoryItem")).unwrap();
@@ -2241,7 +2221,7 @@ mod tests {
         inventory.apply_edit(Operation::set_field("laptop_1", "category", Value::string("Electronics"))).unwrap();
 
         // Verify independent state
-        let g_state = giantt.document().read().unwrap().materialize();
+        let g_state = flow_a.document().read().unwrap().materialize();
         let i_state = inventory.document().read().unwrap().materialize();
 
         assert!(g_state.get(&"deploy_v2".into()).is_some());
@@ -2252,16 +2232,16 @@ mod tests {
 
         // Verify operations_since returns the right ops for each flow
         let empty_horizon = Horizon::new();
-        let g_ops = giantt.document().read().unwrap().operations_since(&empty_horizon).len();
+        let g_ops = flow_a.document().read().unwrap().operations_since(&empty_horizon).len();
         let i_ops = inventory.document().read().unwrap().operations_since(&empty_horizon).len();
         assert_eq!(g_ops, 2, "giantt should have 2 ops");
         assert_eq!(i_ops, 3, "inventory should have 3 ops");
 
         // Sync giantt ops to linux's giantt flow via horizon exchange
-        let (linux_giantt, _) = make_giantt_flow(&temp_dir, "linux_giantt", giantt_flow_id);
+        let (linux_giantt, _) = make_flow(&temp_dir, "linux_giantt", giantt_flow_id);
         sync_via_horizon(&giantt, &linux_giantt);
 
-        let linux_g_state = linux_giantt.document().read().unwrap().materialize();
+        let linux_g_state = linux_flow_a.document().read().unwrap().materialize();
         assert!(linux_g_state.get(&"deploy_v2".into()).is_some(), "linux should have giantt item");
 
         // Sync inventory ops to linux's inventory flow via horizon exchange
@@ -2299,7 +2279,7 @@ mod tests {
 
         // Session 1: create flow, register parties, add ops
         {
-            let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
+            let (flow, _) = make_flow(&temp_dir, "mac", flow_id);
             flow.register_party("linux", linux_uuid);
             flow.register_party("phone", phone_uuid);
 
@@ -2309,7 +2289,7 @@ mod tests {
 
         // Session 2: reopen flow, verify state persisted
         {
-            let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
+            let (flow, _) = make_flow(&temp_dir, "mac", flow_id);
 
             // Known parties should be restored
             let parties = flow.known_parties();
@@ -2333,7 +2313,7 @@ mod tests {
 
         // Session 3: verify all ops available for horizon exchange
         {
-            let (flow, _) = make_giantt_flow(&temp_dir, "mac", flow_id);
+            let (flow, _) = make_flow(&temp_dir, "mac", flow_id);
 
             let doc = flow.document().read().unwrap();
             let state = doc.materialize();
@@ -3042,7 +3022,7 @@ mod tests {
             // --- Flow A: persistent FullReplicaFlow<()> ---
             let config = FlowConfig {
                 id: flow_id,
-                type_name: "drip_hosted:giantt".into(),
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             };
 
@@ -3270,7 +3250,7 @@ mod tests {
             // --- Flows on A and C (B is relay only) ---
             let config = FlowConfig {
                 id: flow_id,
-                type_name: "drip_hosted:giantt".into(),
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             };
 
@@ -3357,7 +3337,7 @@ mod tests {
             // --- Flow 1: "work tasks" ---
             let config_1 = FlowConfig {
                 id: flow_id_1,
-                type_name: "drip_hosted:giantt".into(),
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             };
 
@@ -3389,7 +3369,7 @@ mod tests {
             // --- Flow 2: "personal tasks" ---
             let config_2 = FlowConfig {
                 id: flow_id_2,
-                type_name: "drip_hosted:giantt".into(),
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             };
 
@@ -3470,13 +3450,13 @@ mod tests {
         /// sharing the same messenger and topology. Verifies that different schema
         /// types coexist without interference.
         #[tokio::test]
-        async fn test_giantt_and_inventory_flows_simultaneously() {
+        async fn test_independent_flows_simultaneously() {
             
             let network = SimBleNetwork::new();
 
             let id_a = Uuid::new_v4();
             let id_b = Uuid::new_v4();
-            let giantt_flow_id = Uuid::new_v4();
+            let flow_a_id = Uuid::new_v4();
             let inventory_flow_id = Uuid::new_v4();
 
             let tmp_a_giantt = tempfile::tempdir().unwrap();
@@ -3502,8 +3482,8 @@ mod tests {
 
             // --- Giantt flow ---
             let giantt_config = FlowConfig {
-                id: giantt_flow_id,
-                type_name: "drip_hosted:giantt".into(),
+                id: flow_a_id,
+                type_name: "drip_hosted".into(),
                 params: serde_json::json!({}),
             };
 
@@ -3517,7 +3497,7 @@ mod tests {
             );
             flow_a_giantt.messenger = Some(Arc::clone(&messenger_a));
             flow_a_giantt.topology = Some(topo_a.clone());
-            flow_a_giantt.register_party("laptop", id_b);
+            flow_a_flow_a.register_party("laptop", id_b);
 
             let mut flow_b_giantt = FullReplicaFlow::new_persistent(
                 giantt_config,
@@ -3529,7 +3509,7 @@ mod tests {
             );
             flow_b_giantt.messenger = Some(Arc::clone(&messenger_b));
             flow_b_giantt.topology = Some(topo_b.clone());
-            flow_b_giantt.register_party("phone", id_a);
+            flow_b_flow_a.register_party("phone", id_a);
             flow_b_giantt.start().unwrap();
 
             // --- Inventory flow ---

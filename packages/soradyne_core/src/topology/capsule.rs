@@ -105,7 +105,7 @@ pub struct FlowConfig {
     pub id: Uuid,
     /// Human-friendly name
     pub name: String,
-    /// Identifies the flow's data type (e.g. "giantt", "inventory")
+    /// Identifies the flow's data type (e.g. "notes", "tasks")
     pub schema_type: String,
     pub created_at: DateTime<Utc>,
 }
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_add_flow() {
         let mut capsule = make_test_capsule("test");
-        let flow = make_test_flow("giantt");
+        let flow = make_test_flow("tasks");
 
         assert!(capsule.add_flow(flow.clone()));
         assert_eq!(capsule.flows.len(), 1);
@@ -289,7 +289,7 @@ mod tests {
         let mut capsule_a = Capsule::new("a".to_string(), keys.clone());
         let mut capsule_b = Capsule::new("b".to_string(), keys);
 
-        let flow1 = make_test_flow("giantt");
+        let flow1 = make_test_flow("tasks");
         let flow2 = make_test_flow("inventory");
 
         capsule_a.add_flow(flow1);
@@ -365,7 +365,7 @@ mod tests {
         let mut capsule = make_test_capsule("gossip test");
         capsule.add_piece(make_test_piece("phone"));
         capsule.add_piece(make_test_piece("laptop"));
-        capsule.add_flow(make_test_flow("giantt"));
+        capsule.add_flow(make_test_flow("tasks"));
 
         let bytes = capsule.to_gossip_bytes().unwrap();
         let restored = Capsule::from_gossip_bytes(&bytes).unwrap();
