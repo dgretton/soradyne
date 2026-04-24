@@ -101,20 +101,32 @@ impl ValidationIssue {
 
 /// Trait for document schemas
 ///
-/// A schema defines:
-/// - What item types exist
-/// - How to materialize state from operations
-/// - How to validate the materialized state
+/// A schema provides optional structural metadata and validation for a
+/// `ConvergentDocument`. The simplest schema is `()`, which accepts any
+/// item type and performs no validation.
+///
+/// App-specific schemas can be defined outside soradyne_core to add
+/// validation without coupling app logic to the sync library.
 pub trait DocumentSchema: Send + Sync + Clone {
-    /// The materialized state type
-    type State: Send + Sync;
-
-    /// Get the item type spec for a given type name
+    /// Get the item type spec for a given type name, if the schema knows about it.
     fn item_type_spec(&self, type_name: &str) -> Option<Box<dyn ItemTypeSpec>>;
 
-    /// Get all known item type names
+    /// Get all known item type names (empty means "accept anything").
     fn item_types(&self) -> HashSet<String>;
 
-    /// Schema-specific validation of materialized state
-    fn validate(&self, state: &Self::State) -> Vec<ValidationIssue>;
+    /// Validate the materialized document state. Returns an empty vec if valid.
+    fn validate(&self, state: &super::document::DocumentState) -> Vec<ValidationIssue>;
+}
+
+/// The no-op schema: accepts any item type, performs no validation.
+impl DocumentSchema for () {
+    fn item_type_spec(&self, _: &str) -> Option<Box<dyn ItemTypeSpec>> {
+        None
+    }
+    fn item_types(&self) -> HashSet<String> {
+        HashSet::new()
+    }
+    fn validate(&self, _: &super::document::DocumentState) -> Vec<ValidationIssue> {
+        vec![]
+    }
 }

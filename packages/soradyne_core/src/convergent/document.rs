@@ -8,6 +8,7 @@ use super::operation::{ItemId, OpEnvelope, OpId, Operation, Value};
 use super::schema::DocumentSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use serde_json;
 
 /// Materialized state of a single item
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -27,6 +28,37 @@ pub struct DocumentState {
 impl DocumentState {
     pub fn get(&self, item_id: &ItemId) -> Option<&ItemState> {
         self.items.get(item_id).filter(|i| i.exists)
+    }
+
+    /// Serialize to clean JSON: only existing items, no internal `exists` flag.
+    ///
+    /// Format: `{"items": {"<id>": {"item_type": "…", "fields": {…}, "sets": {…}}}}`
+    ///
+    /// This is the canonical wire/FFI format consumed by app layers (Dart, etc.).
+    pub fn to_json(&self) -> String {
+        let items: serde_json::Map<String, serde_json::Value> = self
+            .iter_existing()
+            .map(|(id, item)| {
+                let sets: serde_json::Map<String, serde_json::Value> = item
+                    .sets
+                    .iter()
+                    .map(|(k, vs)| {
+                        let arr: Vec<serde_json::Value> = vs
+                            .iter()
+                            .map(|v| serde_json::to_value(v).unwrap_or(serde_json::Value::Null))
+                            .collect();
+                        (k.clone(), serde_json::Value::Array(arr))
+                    })
+                    .collect();
+                let obj = serde_json::json!({
+                    "item_type": item.item_type,
+                    "fields": item.fields,
+                    "sets": sets,
+                });
+                (id.clone(), obj)
+            })
+            .collect();
+        serde_json::json!({ "items": items }).to_string()
     }
 
     pub fn iter_existing(&self) -> impl Iterator<Item = (&ItemId, &ItemState)> {
@@ -294,21 +326,10 @@ impl<S: DocumentSchema> ConvergentDocument<S> {
             .unwrap_or_default()
     }
 
-    /// Validate the current state using the schema
+    /// Validate the current document state using the schema.
     pub fn validate(&self) -> Vec<super::schema::ValidationIssue> {
         let state = self.materialize();
-        // For now, delegate to schema. In the future, could add generic validation.
-        // Note: This requires DocumentSchema::State to be DocumentState or compatible.
-        // For generic schemas with custom state types, they'd override this.
-        self.schema.validate(&self.schema_state(&state))
-    }
-
-    /// Convert generic DocumentState to schema-specific state
-    /// Override this in schema-specific implementations
-    fn schema_state(&self, _state: &DocumentState) -> S::State {
-        // This is a placeholder - real implementations would convert
-        // For now, panic if called on a schema that doesn't use DocumentState
-        panic!("Schema must implement custom state conversion")
+        self.schema.validate(&state)
     }
 
     /// Compute a hash of the current state for compaction coordination
@@ -362,8 +383,6 @@ mod tests {
     struct TestSchema;
 
     impl DocumentSchema for TestSchema {
-        type State = DocumentState;
-
         fn item_type_spec(&self, _: &str) -> Option<Box<dyn super::super::schema::ItemTypeSpec>> {
             None
         }
@@ -372,7 +391,7 @@ mod tests {
             HashSet::from(["Test".to_string()])
         }
 
-        fn validate(&self, _: &Self::State) -> Vec<super::super::schema::ValidationIssue> {
+        fn validate(&self, _: &DocumentState) -> Vec<super::super::schema::ValidationIssue> {
             Vec::new()
         }
     }

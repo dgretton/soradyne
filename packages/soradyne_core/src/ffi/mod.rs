@@ -10,7 +10,6 @@ use crate::album::album::*;
 
 // Unified convergent-document flow FFI module
 pub mod convergent_flow_ffi;
-mod serializer;
 
 // Pairing Bridge FFI module
 pub mod pairing_bridge;

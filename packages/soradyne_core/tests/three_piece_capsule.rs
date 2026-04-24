@@ -13,7 +13,7 @@ use std::time::Duration;
 use soradyne::ble::gatt::MessageType;
 use soradyne::ble::simulated::SimBleNetwork;
 use soradyne::ble::transport::{BleConnection, BleCentral, BlePeripheral};
-use soradyne::convergent::inventory::{InventorySchema, InventoryState};
+use soradyne::convergent::DocumentState;
 use soradyne::convergent::{Horizon, OpEnvelope, Operation, Value};
 use soradyne::flow::{
     DripHostPolicy, DripHostedFlow, Flow, FlowConfig, FlowSyncMessage, HostSelectionStrategy,
@@ -75,10 +75,9 @@ fn make_topology(mac: Uuid, phone: Uuid, accessory: Uuid) -> EnsembleTopology {
     t
 }
 
-/// Materialize the inventory state from a flow's document.
-fn read_inventory(flow: &DripHostedFlow<InventorySchema>) -> InventoryState {
-    let doc = flow.document().read().unwrap();
-    InventoryState::from_document_state(&doc.materialize())
+/// Materialize the document state from a flow.
+fn read_inventory(flow: &DripHostedFlow<()>) -> DocumentState {
+    flow.document().read().unwrap().materialize()
 }
 
 // ---------------------------------------------------------------------------
@@ -160,23 +159,23 @@ async fn test_three_piece_data_sync() {
     messenger_acc.add_connection(mac_id, conn_ma_acc).await;
 
     // Create flows (manual message processing — no start())
-    let flow_mac = DripHostedFlow::<InventorySchema>::new(
+    let flow_mac = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         mac_id,
         "Mac".into(),
     );
-    let flow_phone = DripHostedFlow::<InventorySchema>::new(
+    let flow_phone = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         phone_id,
         "Phone".into(),
     );
-    let flow_acc = DripHostedFlow::<InventorySchema>::new(
+    let flow_acc = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         accessory_id,
         "Accessory".into(),
@@ -206,9 +205,9 @@ async fn test_three_piece_data_sync() {
 
     // Verify Phone has the item locally
     let phone_state = read_inventory(&flow_phone);
-    assert_eq!(phone_state.items.len(), 1);
+    assert_eq!(phone_state.iter_existing().count(), 1);
     assert_eq!(
-        phone_state.items.get("item_1").unwrap().description,
+        phone_state.get(&"item_1".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Hammer"
     );
 
@@ -234,9 +233,9 @@ async fn test_three_piece_data_sync() {
 
     // Verify Mac now has the item
     let mac_state = read_inventory(&flow_mac);
-    assert_eq!(mac_state.items.len(), 1, "Mac should have 1 item");
+    assert_eq!(mac_state.iter_existing().count(), 1, "Mac should have 1 item");
     assert_eq!(
-        mac_state.items.get("item_1").unwrap().description,
+        mac_state.get(&"item_1".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Hammer"
     );
 
@@ -256,17 +255,17 @@ async fn test_three_piece_data_sync() {
 
     // Verify Accessory now has the same item
     let acc_state = read_inventory(&flow_acc);
-    assert_eq!(acc_state.items.len(), 1, "Accessory should have 1 item");
+    assert_eq!(acc_state.iter_existing().count(), 1, "Accessory should have 1 item");
     assert_eq!(
-        acc_state.items.get("item_1").unwrap().description,
+        acc_state.get(&"item_1".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Hammer"
     );
     assert_eq!(
-        acc_state.items.get("item_1").unwrap().category,
+        acc_state.get(&"item_1".to_string()).unwrap().fields.get("category").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Tools"
     );
     assert_eq!(
-        acc_state.items.get("item_1").unwrap().location,
+        acc_state.get(&"item_1".to_string()).unwrap().fields.get("location").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Garage"
     );
 }
@@ -302,9 +301,9 @@ async fn test_multi_hop_unicast() {
     messenger_acc.add_connection(mac_id, conn_ma_acc).await;
 
     // Create flow on Accessory
-    let flow_acc = DripHostedFlow::<InventorySchema>::new(
+    let flow_acc = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         accessory_id,
         "Accessory".into(),
@@ -342,7 +341,7 @@ async fn test_multi_hop_unicast() {
 
     let acc_state = read_inventory(&flow_acc);
     assert!(
-        acc_state.items.contains_key("item_hop"),
+        acc_state.get(&"item_hop".to_string()).is_some(),
         "Accessory should have item_hop from multi-hop unicast"
     );
 }
@@ -361,9 +360,9 @@ async fn test_host_assignment_best_connected() {
 
     let topo = Arc::new(RwLock::new(make_topology(mac_id, phone_id, accessory_id)));
 
-    let flow = DripHostedFlow::<InventorySchema>::new_with_ensemble(
+    let flow = DripHostedFlow::<()>::new_with_ensemble(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy {
             selection: HostSelectionStrategy::BestConnected,
             ..Default::default()
@@ -437,16 +436,16 @@ async fn test_offline_merge_failover() {
     let phone_id = Uuid::new_v4();
 
     // Both flows start disconnected (simulating host going offline)
-    let flow_mac = DripHostedFlow::<InventorySchema>::new(
+    let flow_mac = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         mac_id,
         "Mac".into(),
     );
-    let flow_phone = DripHostedFlow::<InventorySchema>::new(
+    let flow_phone = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         phone_id,
         "Phone".into(),
@@ -470,10 +469,10 @@ async fn test_offline_merge_failover() {
     // Verify they have different items
     let mac_state = read_inventory(&flow_mac);
     let phone_state = read_inventory(&flow_phone);
-    assert_eq!(mac_state.items.len(), 1);
-    assert_eq!(phone_state.items.len(), 1);
-    assert!(mac_state.items.contains_key("item_A"));
-    assert!(phone_state.items.contains_key("item_B"));
+    assert_eq!(mac_state.iter_existing().count(), 1);
+    assert_eq!(phone_state.iter_existing().count(), 1);
+    assert!(mac_state.get(&"item_A".to_string()).is_some());
+    assert!(phone_state.get(&"item_B".to_string()).is_some());
 
     // Simulate reconnection: exchange all operations
     let mac_ops: Vec<OpEnvelope> = flow_mac
@@ -510,22 +509,22 @@ async fn test_offline_merge_failover() {
     let mac_state = read_inventory(&flow_mac);
     let phone_state = read_inventory(&flow_phone);
 
-    assert_eq!(mac_state.items.len(), 2, "Mac should have 2 items after merge");
-    assert_eq!(phone_state.items.len(), 2, "Phone should have 2 items after merge");
+    assert_eq!(mac_state.iter_existing().count(), 2, "Mac should have 2 items after merge");
+    assert_eq!(phone_state.iter_existing().count(), 2, "Phone should have 2 items after merge");
     assert_eq!(
-        mac_state.items.get("item_A").unwrap().description,
+        mac_state.get(&"item_A".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Wrench"
     );
     assert_eq!(
-        mac_state.items.get("item_B").unwrap().description,
+        mac_state.get(&"item_B".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Pliers"
     );
     assert_eq!(
-        phone_state.items.get("item_A").unwrap().description,
+        phone_state.get(&"item_A".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Wrench"
     );
     assert_eq!(
-        phone_state.items.get("item_B").unwrap().description,
+        phone_state.get(&"item_B".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Pliers"
     );
 }
@@ -569,9 +568,9 @@ async fn test_accessory_cached_state() {
     assert_eq!(missing_ops.len(), 2, "Mac should need 2 ops from cache");
 
     // Mac creates a flow and applies the cached ops
-    let flow_mac = DripHostedFlow::<InventorySchema>::new(
+    let flow_mac = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         mac_id,
         "Mac".into(),
@@ -584,9 +583,9 @@ async fn test_accessory_cached_state() {
     }
 
     let mac_state = read_inventory(&flow_mac);
-    assert_eq!(mac_state.items.len(), 1);
+    assert_eq!(mac_state.iter_existing().count(), 1);
     assert_eq!(
-        mac_state.items.get("item_cached").unwrap().description,
+        mac_state.get(&"item_cached".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""),
         "Cached Hammer"
     );
 
@@ -628,25 +627,25 @@ async fn test_host_announcement_propagation() {
     messenger_acc.add_connection(mac_id, conn_ma_acc).await;
 
     // Create flows with ensemble wiring
-    let mut flow_mac = DripHostedFlow::<InventorySchema>::new(
+    let mut flow_mac = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         mac_id,
         "Mac".into(),
     );
     flow_mac.set_ensemble(messenger_mac.clone(), topo_mac);
 
-    let flow_phone = DripHostedFlow::<InventorySchema>::new(
+    let flow_phone = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         phone_id,
         "Phone".into(),
     );
-    let flow_acc = DripHostedFlow::<InventorySchema>::new(
+    let flow_acc = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         accessory_id,
         "Accessory".into(),
@@ -724,16 +723,16 @@ async fn test_bidirectional_convergence() {
     messenger_mac.add_connection(phone_id, conn_mac).await;
     messenger_phone.add_connection(mac_id, conn_phone).await;
 
-    let flow_mac = DripHostedFlow::<InventorySchema>::new(
+    let flow_mac = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         mac_id,
         "Mac".into(),
     );
-    let flow_phone = DripHostedFlow::<InventorySchema>::new(
+    let flow_phone = DripHostedFlow::<()>::new(
         make_flow_config(flow_id),
-        InventorySchema,
+        (),
         DripHostPolicy::default(),
         phone_id,
         "Phone".into(),
@@ -803,11 +802,11 @@ async fn test_bidirectional_convergence() {
     let mac_state = read_inventory(&flow_mac);
     let phone_state = read_inventory(&flow_phone);
 
-    assert_eq!(mac_state.items.len(), 2, "Mac should have 2 items");
-    assert_eq!(phone_state.items.len(), 2, "Phone should have 2 items");
+    assert_eq!(mac_state.iter_existing().count(), 2, "Mac should have 2 items");
+    assert_eq!(phone_state.iter_existing().count(), 2, "Phone should have 2 items");
 
-    assert_eq!(mac_state.items.get("item_X").unwrap().description, "Drill");
-    assert_eq!(mac_state.items.get("item_Y").unwrap().description, "Saw");
-    assert_eq!(phone_state.items.get("item_X").unwrap().description, "Drill");
-    assert_eq!(phone_state.items.get("item_Y").unwrap().description, "Saw");
+    assert_eq!(mac_state.get(&"item_X".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""), "Drill");
+    assert_eq!(mac_state.get(&"item_Y".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""), "Saw");
+    assert_eq!(phone_state.get(&"item_X".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""), "Drill");
+    assert_eq!(phone_state.get(&"item_Y".to_string()).unwrap().fields.get("description").and_then(|v| if let soradyne::convergent::Value::String(s) = v { Some(s.as_str()) } else { None }).unwrap_or(""), "Saw");
 }

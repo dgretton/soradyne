@@ -531,7 +531,7 @@ async fn main() {
 
     let mut flow = FullReplicaFlow::new_persistent(
         flow_config,
-        soradyne::convergent::inventory::InventorySchema,
+        (),
         DripHostPolicy::default(),
         device_id,
         identity.device_id_string(),
@@ -702,7 +702,7 @@ async fn main() {
                             _ => None,
                         })
                         .unwrap_or("(no description)");
-                    println!("  [{}] {}", &id[..8.min(id.len())], desc);
+                    println!("  [{}] {}", &id[..8_usize.min(id.len())], desc);
                 }
             }
         } else if line == "peers" {
@@ -739,7 +739,7 @@ async fn main() {
         } else if line == "clear" {
             let doc = flow.document().read().unwrap();
             let ids: Vec<String> = doc.materialize().iter_existing()
-                .map(|(id, _)| id.to_string())
+                .map(|(id, _): (&String, _)| id.to_string())
                 .collect();
             drop(doc);
             for id in &ids {

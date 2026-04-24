@@ -1,15 +1,13 @@
 //! Convergent Document System
 //!
 //! Generic infrastructure for leaderless, peer-to-peer document synchronization.
-//! Supports any structured data (Giantt graphs, photo albums, network topology)
-//! through schema definitions.
+//! App-specific schemas (field definitions, validation) live outside soradyne_core.
+//! The default schema is `()`, which accepts any item type and performs no validation.
 
 mod horizon;
 mod operation;
 mod document;
 mod schema;
-pub mod giantt;
-pub mod inventory;
 
 pub use horizon::{Horizon, DeviceId, SeqNum};
 pub use operation::{Operation, OpId, OpEnvelope, Value, ItemId};

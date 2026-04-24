@@ -109,20 +109,16 @@ async fn test_tcp_static_peer_flow_sync() {
     let tmp_b = tempfile::tempdir().unwrap();
 
     let mut flow_a = ConvergentFlow::new_persistent(
-        "giantt",
         device_id_a.clone(),
         tmp_a.path().to_path_buf(),
         flow_uuid,
-    )
-    .expect("failed to create flow A");
+    );
 
     let mut flow_b = ConvergentFlow::new_persistent(
-        "giantt",
         device_id_b.clone(),
         tmp_b.path().to_path_buf(),
         flow_uuid,
-    )
-    .expect("failed to create flow B");
+    );
 
     // Wire flows to their respective ensembles
     flow_a.set_ensemble(

@@ -2,10 +2,12 @@ import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
 
-/// Dart FFI bindings for Soradyne flow operations.
+/// Dart FFI bindings for Soradyne convergent-document flows.
 ///
-/// Wraps the unified soradyne_flow_* C FFI functions exported by soradyne_core.
-/// Passes schema="inventory" for inventory flows.
+/// Wraps the `soradyne_flow_*` C FFI functions exported by soradyne_core.
+/// Schema knowledge lives entirely in the calling app; this client is
+/// schema-agnostic. `read_drip` returns generic DocumentState JSON:
+///   `{"items": {"<id>": {"item_type": "…", "fields": {…}, "sets": {…}}}}`
 class FlowClient {
   static FlowClient? _instance;
   late final DynamicLibrary _lib;
@@ -31,40 +33,36 @@ class FlowClient {
   }
 
   // ===========================================================================
-  // Inventory Flow FFI (using unified soradyne_flow_* symbols)
+  // Lifecycle
   // ===========================================================================
 
   /// Initialize the flow system with a device ID.
-  void inventoryInit(String deviceId) {
+  void init(String deviceId) {
     final func = _lib.lookupFunction<
         Int32 Function(Pointer<Utf8>),
         int Function(Pointer<Utf8>)>('soradyne_flow_init');
 
-    final deviceIdPtr = deviceId.toNativeUtf8();
+    final ptr = deviceId.toNativeUtf8();
     try {
-      final result = func(deviceIdPtr);
-      if (result != 0) {
-        throw Exception('Failed to initialize flow system');
-      }
+      if (func(ptr) != 0) throw Exception('Failed to initialize flow system');
       _initialized = true;
     } finally {
-      calloc.free(deviceIdPtr);
+      calloc.free(ptr);
     }
   }
 
-  /// Open an inventory flow by UUID.
-  Pointer<Void> inventoryOpen(String uuid) {
+  /// Open a flow by UUID. [schema] is passed through for compatibility but
+  /// currently unused — all flows are schema-agnostic on the Rust side.
+  Pointer<Void> open(String uuid, {String schema = ''}) {
     final func = _lib.lookupFunction<
         Pointer<Void> Function(Pointer<Utf8>, Pointer<Utf8>),
         Pointer<Void> Function(Pointer<Utf8>, Pointer<Utf8>)>('soradyne_flow_open');
 
     final uuidPtr = uuid.toNativeUtf8();
-    final schemaPtr = 'inventory'.toNativeUtf8();
+    final schemaPtr = schema.toNativeUtf8();
     try {
       final handle = func(uuidPtr, schemaPtr);
-      if (handle == nullptr) {
-        throw Exception('Failed to open inventory flow "$uuid"');
-      }
+      if (handle == nullptr) throw Exception('Failed to open flow "$uuid"');
       return handle;
     } finally {
       calloc.free(uuidPtr);
@@ -73,41 +71,46 @@ class FlowClient {
   }
 
   /// Close a flow handle.
-  void inventoryClose(Pointer<Void> handle) {
-    final func = _lib.lookupFunction<
+  void close(Pointer<Void> handle) {
+    _lib.lookupFunction<
         Void Function(Pointer<Void>),
-        void Function(Pointer<Void>)>('soradyne_flow_close');
-    func(handle);
+        void Function(Pointer<Void>)>('soradyne_flow_close')(handle);
   }
 
+  /// Tear down the flow system.
+  void cleanup() {
+    _lib.lookupFunction<Void Function(), void Function()>('soradyne_flow_cleanup')();
+    _initialized = false;
+  }
+
+  // ===========================================================================
+  // Data operations
+  // ===========================================================================
+
   /// Write a convergent operation to a flow.
-  void inventoryWriteOp(Pointer<Void> handle, String opJson) {
+  /// [opJson]: JSON-encoded Operation, e.g. `{"AddItem":{"item_id":"x","item_type":"T"}}`
+  void writeOp(Pointer<Void> handle, String opJson) {
     final func = _lib.lookupFunction<
         Int32 Function(Pointer<Void>, Pointer<Utf8>),
         int Function(Pointer<Void>, Pointer<Utf8>)>('soradyne_flow_write_op');
 
-    final opPtr = opJson.toNativeUtf8();
+    final ptr = opJson.toNativeUtf8();
     try {
-      final result = func(handle, opPtr);
-      if (result != 0) {
-        throw Exception('Failed to write operation');
-      }
+      if (func(handle, ptr) != 0) throw Exception('Failed to write operation');
     } finally {
-      calloc.free(opPtr);
+      calloc.free(ptr);
     }
   }
 
-  /// Read the current materialized inventory state as JSON.
-  String inventoryReadDrip(Pointer<Void> handle) {
+  /// Read the current materialized state as generic DocumentState JSON.
+  /// Format: `{"items": {"<id>": {"item_type":"…","fields":{…},"sets":{…}}}}`
+  String readDrip(Pointer<Void> handle) {
     final func = _lib.lookupFunction<
         Pointer<Utf8> Function(Pointer<Void>),
         Pointer<Utf8> Function(Pointer<Void>)>('soradyne_flow_read_drip');
 
     final resultPtr = func(handle);
-    if (resultPtr == nullptr) {
-      throw Exception('Failed to read drip');
-    }
-
+    if (resultPtr == nullptr) throw Exception('Failed to read drip');
     try {
       return resultPtr.toDartString();
     } finally {
@@ -115,17 +118,14 @@ class FlowClient {
     }
   }
 
-  /// Get all operations as a JSON array (for syncing).
-  String inventoryGetOperations(Pointer<Void> handle) {
+  /// Get all operations as a JSON array (for manual syncing if needed).
+  String getOperations(Pointer<Void> handle) {
     final func = _lib.lookupFunction<
         Pointer<Utf8> Function(Pointer<Void>),
         Pointer<Utf8> Function(Pointer<Void>)>('soradyne_flow_get_operations');
 
     final resultPtr = func(handle);
-    if (resultPtr == nullptr) {
-      throw Exception('Failed to get operations');
-    }
-
+    if (resultPtr == nullptr) throw Exception('Failed to get operations');
     try {
       return resultPtr.toDartString();
     } finally {
@@ -134,87 +134,61 @@ class FlowClient {
   }
 
   /// Apply remote operations received from another device.
-  void inventoryApplyRemote(Pointer<Void> handle, String opsJson) {
+  void applyRemote(Pointer<Void> handle, String opsJson) {
     final func = _lib.lookupFunction<
         Int32 Function(Pointer<Void>, Pointer<Utf8>),
         int Function(Pointer<Void>, Pointer<Utf8>)>('soradyne_flow_apply_remote');
 
-    final opsPtr = opsJson.toNativeUtf8();
+    final ptr = opsJson.toNativeUtf8();
     try {
-      final result = func(handle, opsPtr);
-      if (result != 0) {
-        throw Exception('Failed to apply remote operations');
-      }
+      if (func(handle, ptr) != 0) throw Exception('Failed to apply remote operations');
     } finally {
-      calloc.free(opsPtr);
+      calloc.free(ptr);
     }
   }
 
-  /// Tear down the flow system.
-  void inventoryCleanup() {
-    final func = _lib.lookupFunction<
-        Void Function(),
-        void Function()>('soradyne_flow_cleanup');
-    func();
-    _initialized = false;
-  }
-
   // ===========================================================================
-  // Flow Sync FFI
+  // Sync
   // ===========================================================================
 
-  /// Connect a flow to an ensemble for sync.
-  void inventoryConnectEnsemble(Pointer<Void> handle, String capsuleId) {
+  /// Connect a flow to a capsule ensemble for sync.
+  void connectEnsemble(Pointer<Void> handle, String capsuleId) {
     final func = _lib.lookupFunction<
         Int32 Function(Pointer<Void>, Pointer<Utf8>),
         int Function(Pointer<Void>, Pointer<Utf8>)>('soradyne_flow_connect_ensemble');
 
-    final capsuleIdPtr = capsuleId.toNativeUtf8();
+    final ptr = capsuleId.toNativeUtf8();
     try {
-      final result = func(handle, capsuleIdPtr);
-      if (result != 0) {
-        throw Exception('Failed to connect flow to ensemble');
-      }
+      if (func(handle, ptr) != 0) throw Exception('Failed to connect flow to ensemble');
     } finally {
-      calloc.free(capsuleIdPtr);
+      calloc.free(ptr);
     }
   }
 
   /// Start background sync for a flow.
-  void inventoryStartSync(Pointer<Void> handle) {
+  void startSync(Pointer<Void> handle) {
     final func = _lib.lookupFunction<
         Int32 Function(Pointer<Void>),
         int Function(Pointer<Void>)>('soradyne_flow_start_sync');
-
-    final result = func(handle);
-    if (result != 0) {
-      throw Exception('Failed to start sync');
-    }
+    if (func(handle) != 0) throw Exception('Failed to start sync');
   }
 
   /// Stop background sync for a flow.
-  void inventoryStopSync(Pointer<Void> handle) {
+  void stopSync(Pointer<Void> handle) {
     final func = _lib.lookupFunction<
         Int32 Function(Pointer<Void>),
         int Function(Pointer<Void>)>('soradyne_flow_stop_sync');
-
-    final result = func(handle);
-    if (result != 0) {
-      throw Exception('Failed to stop sync');
-    }
+    if (func(handle) != 0) throw Exception('Failed to stop sync');
   }
 
-  /// Get the sync status of a flow.
-  String inventoryGetSyncStatus(Pointer<Void> handle) {
+  /// Get the sync status of a flow as a JSON string.
+  String getSyncStatus(Pointer<Void> handle) {
     final func = _lib.lookupFunction<
         Pointer<Utf8> Function(Pointer<Void>),
         Pointer<Utf8> Function(Pointer<Void>)>('soradyne_flow_get_sync_status');
 
     final resultPtr = func(handle);
-    if (resultPtr == nullptr) {
-      throw Exception('Failed to get sync status');
-    }
-
+    if (resultPtr == nullptr) throw Exception('Failed to get sync status');
     try {
       return resultPtr.toDartString();
     } finally {
@@ -222,11 +196,9 @@ class FlowClient {
     }
   }
 
-  /// Free a string allocated by the Rust side.
   void _freeString(Pointer<Utf8> ptr) {
-    final func = _lib.lookupFunction<
+    _lib.lookupFunction<
         Void Function(Pointer<Utf8>),
-        void Function(Pointer<Utf8>)>('soradyne_free_string');
-    func(ptr);
+        void Function(Pointer<Utf8>)>('soradyne_free_string')(ptr);
   }
 }

@@ -31,8 +31,6 @@ use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::ble::gatt::MessageType;
-use crate::convergent::giantt::GianttSchema;
-use crate::convergent::inventory::InventorySchema;
 use crate::convergent::{
     ConvergentDocument, DeviceId, DocumentSchema, Horizon, OpEnvelope, Operation,
 };
@@ -1372,7 +1370,7 @@ fn construct_giantt_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, Flo
         .unwrap_or("unknown")
         .to_string();
 
-    let flow = FullReplicaFlow::new(config, GianttSchema, policy, device_uuid, device_id);
+    let flow = FullReplicaFlow::new(config, (), policy, device_uuid, device_id);
     Ok(Box::new(flow))
 }
 
@@ -1402,7 +1400,7 @@ fn construct_inventory_drip_hosted(config: FlowConfig) -> Result<Box<dyn Flow>, 
         .unwrap_or("unknown")
         .to_string();
 
-    let flow = FullReplicaFlow::new(config, InventorySchema, policy, device_uuid, device_id);
+    let flow = FullReplicaFlow::new(config, (), policy, device_uuid, device_id);
     Ok(Box::new(flow))
 }
 
@@ -1428,8 +1426,6 @@ mod tests {
     struct TestSchema;
 
     impl DocumentSchema for TestSchema {
-        type State = DocumentState;
-
         fn item_type_spec(
             &self,
             _: &str,
@@ -1443,7 +1439,7 @@ mod tests {
 
         fn validate(
             &self,
-            _: &Self::State,
+            _: &DocumentState,
         ) -> Vec<crate::convergent::ValidationIssue> {
             Vec::new()
         }
@@ -2003,13 +1999,13 @@ mod tests {
     // ops between them.
     // -----------------------------------------------------------------------
 
-    /// Helper: create a persistent FullReplicaFlow with GianttSchema in a temp dir.
+    /// Helper: create a persistent FullReplicaFlow in a temp dir.
     /// Returns (flow, device_uuid) so the UUID can be used for party registration.
     fn make_giantt_flow(
         base_dir: &std::path::Path,
         device_name: &str,
         flow_id: Uuid,
-    ) -> (FullReplicaFlow<crate::convergent::giantt::GianttSchema>, Uuid) {
+    ) -> (FullReplicaFlow<()>, Uuid) {
         let storage_path = base_dir.join(device_name);
         let device_uuid = Uuid::new_v4();
         let flow = FullReplicaFlow::new_persistent(
@@ -2018,7 +2014,7 @@ mod tests {
                 type_name: "drip_hosted:giantt".into(),
                 params: serde_json::json!({}),
             },
-            crate::convergent::giantt::GianttSchema,
+            (),
             DripHostPolicy::default(),
             device_uuid,
             device_name.to_string(),
@@ -2193,8 +2189,7 @@ mod tests {
 
     #[test]
     fn test_giantt_and_inventory_flows_simultaneously() {
-        use crate::convergent::inventory::InventorySchema;
-
+        
         let temp_dir = std::env::temp_dir().join("soradyne_test_giantt_inventory");
         let _ = std::fs::remove_dir_all(&temp_dir);
 
@@ -2210,7 +2205,7 @@ mod tests {
                 type_name: "drip_hosted:giantt".into(),
                 params: serde_json::json!({}),
             },
-            crate::convergent::giantt::GianttSchema,
+            (),
             DripHostPolicy::default(),
             device_uuid,
             "mac".to_string(),
@@ -2224,7 +2219,7 @@ mod tests {
                 type_name: "drip_hosted:inventory".into(),
                 params: serde_json::json!({}),
             },
-            InventorySchema,
+            (),
             DripHostPolicy::default(),
             device_uuid,
             "mac".to_string(),
@@ -2276,7 +2271,7 @@ mod tests {
                 type_name: "drip_hosted:inventory".into(),
                 params: serde_json::json!({}),
             },
-            InventorySchema,
+            (),
             DripHostPolicy::default(),
             Uuid::new_v4(),
             "linux".to_string(),
@@ -3005,7 +3000,7 @@ mod tests {
         }
 
         /// Multi-hop sync: A↔B↔C chain where B is a relay-only party (no flow).
-        /// A and C each run a persistent FullReplicaFlow<GianttSchema>.
+        /// A and C each run a persistent FullReplicaFlow<()>.
         /// A edits, flushes → B forwards → C receives. Then C edits, flushes
         /// → B forwards → A receives. Both sides converge.
         #[tokio::test]
@@ -3044,7 +3039,7 @@ mod tests {
             messenger_b.add_connection(id_c, conn_bc_b).await;
             messenger_c.add_connection(id_b, conn_bc_c).await;
 
-            // --- Flow A: persistent GianttSchema ---
+            // --- Flow A: persistent FullReplicaFlow<()> ---
             let config = FlowConfig {
                 id: flow_id,
                 type_name: "drip_hosted:giantt".into(),
@@ -3053,7 +3048,7 @@ mod tests {
 
             let mut flow_a = FullReplicaFlow::new_persistent(
                 config.clone(),
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_a,
                 "phone".into(),
@@ -3063,10 +3058,10 @@ mod tests {
             flow_a.topology = Some(make_topo());
             flow_a.register_party("laptop", id_c);
 
-            // --- Flow C: persistent GianttSchema ---
+            // --- Flow C: persistent FullReplicaFlow<()> ---
             let mut flow_c = FullReplicaFlow::new_persistent(
                 config.clone(),
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_c,
                 "laptop".into(),
@@ -3144,7 +3139,7 @@ mod tests {
 
 
         /// Encrypted multi-hop: A↔B↔C where every link uses Noise IKpsk2.
-        /// B is a relay (no flow). A and C sync a GianttSchema FullReplicaFlow
+        /// B is a relay (no flow). A and C sync a FullReplicaFlow<()>
         /// through B with all traffic encrypted per-link.
         #[tokio::test]
         async fn test_encrypted_multi_hop_giantt_sync() {
@@ -3281,7 +3276,7 @@ mod tests {
 
             let mut flow_a = FullReplicaFlow::new_persistent(
                 config.clone(),
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_a,
                 "phone".into(),
@@ -3293,7 +3288,7 @@ mod tests {
 
             let mut flow_c = FullReplicaFlow::new_persistent(
                 config,
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_c,
                 "laptop".into(),
@@ -3368,7 +3363,7 @@ mod tests {
 
             let mut flow_a1 = FullReplicaFlow::new_persistent(
                 config_1.clone(),
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_a,
                 "phone".into(),
@@ -3380,7 +3375,7 @@ mod tests {
 
             let mut flow_b1 = FullReplicaFlow::new_persistent(
                 config_1,
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_b,
                 "laptop".into(),
@@ -3400,7 +3395,7 @@ mod tests {
 
             let mut flow_a2 = FullReplicaFlow::new_persistent(
                 config_2.clone(),
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_a,
                 "phone".into(),
@@ -3412,7 +3407,7 @@ mod tests {
 
             let mut flow_b2 = FullReplicaFlow::new_persistent(
                 config_2,
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_b,
                 "laptop".into(),
@@ -3476,8 +3471,7 @@ mod tests {
         /// types coexist without interference.
         #[tokio::test]
         async fn test_giantt_and_inventory_flows_simultaneously() {
-            use crate::convergent::inventory::InventorySchema;
-
+            
             let network = SimBleNetwork::new();
 
             let id_a = Uuid::new_v4();
@@ -3515,7 +3509,7 @@ mod tests {
 
             let mut flow_a_giantt = FullReplicaFlow::new_persistent(
                 giantt_config.clone(),
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_a,
                 "phone".into(),
@@ -3527,7 +3521,7 @@ mod tests {
 
             let mut flow_b_giantt = FullReplicaFlow::new_persistent(
                 giantt_config,
-                GianttSchema,
+                (),
                 DripHostPolicy::default(),
                 id_b,
                 "laptop".into(),
@@ -3547,7 +3541,7 @@ mod tests {
 
             let mut flow_a_inv = FullReplicaFlow::new_persistent(
                 inventory_config.clone(),
-                InventorySchema,
+                (),
                 DripHostPolicy::default(),
                 id_a,
                 "phone".into(),
@@ -3559,7 +3553,7 @@ mod tests {
 
             let mut flow_b_inv = FullReplicaFlow::new_persistent(
                 inventory_config,
-                InventorySchema,
+                (),
                 DripHostPolicy::default(),
                 id_b,
                 "laptop".into(),
