@@ -50,6 +50,18 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **What it is**: Architecture document for multi-tiered transport. Tier 1: in-process (SimBLE + LAN TCP). Tier 2: LAN (mDNS/DNS-SD + TCP). Tier 3a: WAN via mesh VPN overlay. Tier 3b: WAN native (STUN + hole punching). Tier 3c: global relay fallback. Maps BLE operations to LAN/WAN equivalents.
 - **Status**: **Current as design intent; only Tier 1 is implemented.** SimBleNetwork and static-peer TCP (a simplified variant of Tier 1b) exist. Tiers 2–3 are unbuilt. The mDNS mapping table and encrypted-advertisement-in-TXT-record design are still the plan.
 
+### `transport_architecture.md`
+- **Written**: Apr 24, 2026
+- **Last modified**: Apr 24, 2026
+- **What it is**: Comprehensive transport architecture document covering principles that span multiple areas: BLE as the universal abstraction for all networking (with TCP, CAN bus, LoRa as backends behind the same traits), transparent transport switching, the embedded engine model (soradyne runs within apps via FFI, no daemon required), TCP multiplexing challenges (emulating BLE's OS-managed connection sharing), event-driven design (sync triggered by actions, not polling), the discovery progression (static peers → mDNS → STUN/rendezvous → relay at rimm.ing), security invariants, and the relationship between `soradyne-cli` daemon and app-embedded soradyne.
+- **Status**: **Current.** Captures design principles and constraints as of Apr 2026. References `transport_tiers.md` for the detailed tier plan. The TCP multiplexing section identifies an open design problem (multiple app processes sharing a TCP listener port to emulate BLE's OS-managed multiplexing).
+
+### `tcp_emulation_of_ble_plan.txt`
+- **Written**: Apr 24, 2026
+- **Last modified**: Apr 24, 2026
+- **What it is**: Raw design notes from Dana articulating the transport architecture principles: TCP backing BLE transparently, the embedded engine model, per-process soradyne instances, TCP multiplexing challenges, event-driven design, and the relationship between the CLI daemon and app-embedded soradyne. Stream-of-consciousness format.
+- **Status**: **Superseded by `transport_architecture.md`**, which distills and contextualizes the same ideas. Retained as the original articulation.
+
 ---
 
 ## Reference Code
