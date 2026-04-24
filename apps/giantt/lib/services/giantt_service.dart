@@ -1,101 +1,96 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:giantt_core/giantt_core.dart';
 
-/// Service class for managing Giantt operations in Flutter
+/// Service class for managing Giantt operations in the Flutter app.
+///
+/// Reads and writes via soradyne [FlowRepository]. Flow UUIDs are stored
+/// in app documents under `giantt/flows.json`. On first launch,
+/// [_installDevFlows] seeds a hardcoded dev UUID so all builds from this
+/// monorepo share the same flow by default — see that method for removal
+/// instructions once real flow sharing exists.
 class GianttService {
   static final GianttService _instance = GianttService._internal();
   factory GianttService() => _instance;
   GianttService._internal();
 
-  String? _workspacePath;
-  GianttGraph? _graph;
-  LogCollection? _logs;
+  bool _initialized = false;
 
-  /// Initialize the service with workspace path
+  /// Ordered list of active flow UUIDs for this app instance.
+  /// The first entry is the default flow (receives new items).
+  List<String> _flowUuids = [];
+
+  /// Maps item ID → the flow UUID it was loaded from, refreshed on each read.
+  Map<String, String> _itemToFlow = {};
+
+  // ── Hardcoded dev flow UUID ─────────────────────────────────────────────────
+  // TODO: remove when real flow sharing (app-level invite/join) is implemented.
+  // All giantt software built from this monorepo uses this UUID by default so
+  // that CLI and app instances on the same device see the same data.
+  static const String _devDefaultFlowUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+  // ── Initialization ──────────────────────────────────────────────────────────
+
   Future<void> initialize() async {
-    if (_workspacePath == null) {
-      final documentsDir = await getApplicationDocumentsDirectory();
-      _workspacePath = '${documentsDir.path}/giantt';
-      
-      // Ensure workspace exists
-      if (!FileRepository.isWorkspaceInitialized(_workspacePath!)) {
-        FileRepository.initializeWorkspace(_workspacePath!);
-      }
+    if (_initialized) return;
+
+    final docsDir = await getApplicationDocumentsDirectory();
+    final gianttDir = Directory('${docsDir.path}/giantt');
+    if (!gianttDir.existsSync()) gianttDir.createSync(recursive: true);
+
+    final flowsFile = File('${gianttDir.path}/flows.json');
+
+    if (!flowsFile.existsSync()) {
+      await _installDevFlows(flowsFile);
     }
+
+    final stored = jsonDecode(flowsFile.readAsStringSync()) as List<dynamic>;
+    _flowUuids = stored.map((e) => e.toString()).toList();
+
+    final deviceId = await _getOrCreateDeviceId(gianttDir.path);
+    FlowRepository.initialize(deviceId);
+
+    _initialized = true;
   }
 
-  /// Get the current workspace path
-  String get workspacePath {
-    if (_workspacePath == null) {
-      throw StateError('GianttService not initialized. Call initialize() first.');
-    }
-    return _workspacePath!;
+  /// Writes the dev-default flow UUID to app storage on first launch.
+  ///
+  /// TODO: replace with a proper "create new flow" call once soradyne
+  /// exposes flow creation and app-level sharing is designed.
+  Future<void> _installDevFlows(File flowsFile) async {
+    flowsFile.writeAsStringSync(jsonEncode([_devDefaultFlowUuid]));
   }
 
-  /// Get the current graph, loading if necessary
+  /// Returns (and creates if absent) a stable device ID stored in app storage.
+  Future<String> _getOrCreateDeviceId(String gianttDirPath) async {
+    final file = File('$gianttDirPath/device_id');
+    if (file.existsSync()) return file.readAsStringSync().trim();
+    // Derive from platform — use a UUID-shaped hash of hostname + pid for dev.
+    final raw = '${Platform.localHostname}-${Platform.environment['USER'] ?? 'user'}';
+    final bytes = raw.codeUnits;
+    final hash = bytes.fold(0, (h, b) => (h * 31 + b) & 0xFFFFFFFF);
+    final id =
+        '00000000-0000-4000-8000-${hash.toRadixString(16).padLeft(12, '0')}';
+    file.writeAsStringSync(id);
+    return id;
+  }
+
+  // ── Graph access ────────────────────────────────────────────────────────────
+
   Future<GianttGraph> getGraph() async {
     await initialize();
-    
-    if (_graph == null) {
-      await _loadGraph();
-    }
-    return _graph!;
+    final result = FlowRepository.loadMergedGraph(_flowUuids);
+    _itemToFlow = result.itemToFlow;
+    return result.graph;
   }
 
-  /// Get the current logs, loading if necessary
-  Future<LogCollection> getLogs() async {
-    await initialize();
-    
-    if (_logs == null) {
-      await _loadLogs();
-    }
-    return _logs!;
-  }
+  // ── Writes ──────────────────────────────────────────────────────────────────
 
-  /// Load the graph from files
-  Future<void> _loadGraph() async {
-    final paths = FileRepository.getDefaultFilePaths(_workspacePath);
-    _graph = DualFileManager.loadGraph(
-      paths['items']!,
-      paths['occlude_items']!,
-    );
-  }
+  String get _defaultFlow => _flowUuids.first;
 
-  /// Load the logs from files
-  Future<void> _loadLogs() async {
-    final paths = FileRepository.getDefaultFilePaths(_workspacePath);
-    _logs = DualFileManager.loadLogs(
-      paths['logs']!,
-      paths['occlude_logs']!,
-    );
-  }
+  String _flowFor(String itemId) => _itemToFlow[itemId] ?? _defaultFlow;
 
-  /// Save the current graph to files
-  Future<void> saveGraph() async {
-    if (_graph == null) return;
-    
-    final paths = FileRepository.getDefaultFilePaths(_workspacePath);
-    DualFileManager.saveGraph(
-      paths['items']!,
-      paths['occlude_items']!,
-      _graph!,
-    );
-  }
-
-  /// Save the current logs to files
-  Future<void> saveLogs() async {
-    if (_logs == null) return;
-    
-    final paths = FileRepository.getDefaultFilePaths(_workspacePath);
-    DualFileManager.saveLogs(
-      paths['logs']!,
-      paths['occlude_logs']!,
-      _logs!,
-    );
-  }
-
-  /// Add a new item to the graph
   Future<CommandResult<GianttItem>> addItem({
     required String id,
     required String title,
@@ -107,15 +102,13 @@ class GianttService {
     Map<String, List<String>> relations = const {},
     List<TimeConstraint> timeConstraints = const [],
   }) async {
+    await initialize();
     final graph = await getGraph();
-    
-    // Check if item already exists
     if (graph.items.containsKey(id)) {
       return CommandResult.failure('Item with ID "$id" already exists');
     }
 
-    // Create new item
-    final newItem = GianttItem(
+    final item = GianttItem(
       id: id,
       title: title,
       status: status,
@@ -127,187 +120,137 @@ class GianttService {
       timeConstraints: timeConstraints,
     );
 
-    // Add to graph
-    graph.addItem(newItem);
-    _graph = graph;
-
-    // Save to files
-    await saveGraph();
-
-    return CommandResult.success(newItem, 'Added item "$id" successfully');
+    FlowRepository.saveOperations(_defaultFlow, GianttOp.fromItem(item));
+    _itemToFlow[id] = _defaultFlow;
+    return CommandResult.success(item, 'Added item "$id" successfully');
   }
 
-  /// Get items matching a search term
-  Future<List<GianttItem>> searchItems(String searchTerm, {bool includeOccluded = false}) async {
+  Future<CommandResult<GianttItem>> updateItem(
+      String itemId, GianttItem updatedItem) async {
+    await initialize();
     final graph = await getGraph();
-    
-    final items = includeOccluded 
-        ? graph.items.values.toList()
-        : graph.includedItems.values.toList();
-    
-    if (searchTerm.isEmpty) {
-      return items;
+    if (!graph.items.containsKey(itemId)) {
+      return CommandResult.failure('Item with ID "$itemId" not found');
     }
-    
-    return items.where((item) =>
-        item.id.toLowerCase().contains(searchTerm.toLowerCase()) ||
-        item.title.toLowerCase().contains(searchTerm.toLowerCase()) ||
-        item.tags.any((tag) => tag.toLowerCase().contains(searchTerm.toLowerCase()))
-    ).toList();
+    final flow = _flowFor(itemId);
+    final old = graph.items[itemId]!;
+
+    final ops = <GianttOp>[];
+    if (updatedItem.title != old.title) ops.add(GianttOp.setTitle(itemId, updatedItem.title));
+    if (updatedItem.status != old.status) ops.add(GianttOp.setStatus(itemId, updatedItem.status));
+    if (updatedItem.priority != old.priority) ops.add(GianttOp.setPriority(itemId, updatedItem.priority));
+    if (updatedItem.duration.toString() != old.duration.toString()) {
+      ops.add(GianttOp.setDuration(itemId, updatedItem.duration));
+    }
+    if (updatedItem.userComment != old.userComment) {
+      ops.add(GianttOp.setComment(itemId, updatedItem.userComment));
+    }
+    if (updatedItem.occlude != old.occlude) {
+      ops.add(GianttOp.setOccluded(itemId, updatedItem.occlude));
+    }
+    for (final tag in updatedItem.tags.where((t) => !old.tags.contains(t))) {
+      ops.add(GianttOp.addTag(itemId, tag));
+    }
+    for (final chart in updatedItem.charts.where((c) => !old.charts.contains(c))) {
+      ops.add(GianttOp.addChart(itemId, chart));
+    }
+
+    if (ops.isNotEmpty) FlowRepository.saveOperations(flow, ops);
+    return CommandResult.success(updatedItem, 'Updated item "$itemId" successfully');
   }
 
-  /// Get items by chart
-  Future<List<GianttItem>> getItemsByChart(String chartName, {bool includeOccluded = false}) async {
+  Future<CommandResult<String>> occludeItem(String itemId) async {
+    await initialize();
     final graph = await getGraph();
-    
-    final items = includeOccluded 
+    final item = graph.items[itemId];
+    if (item == null) return CommandResult.failure('Item "$itemId" not found');
+    if (item.occlude) return CommandResult.failure('Item "$itemId" is already occluded');
+    FlowRepository.saveOperation(_flowFor(itemId), GianttOp.setOccluded(itemId, true));
+    return CommandResult.success(itemId, 'Occluded item "$itemId"');
+  }
+
+  Future<CommandResult<String>> includeItem(String itemId) async {
+    await initialize();
+    final graph = await getGraph();
+    final item = graph.items[itemId];
+    if (item == null) return CommandResult.failure('Item "$itemId" not found');
+    if (!item.occlude) return CommandResult.failure('Item "$itemId" is not occluded');
+    FlowRepository.saveOperation(_flowFor(itemId), GianttOp.setOccluded(itemId, false));
+    return CommandResult.success(itemId, 'Included item "$itemId"');
+  }
+
+  // ── Queries ─────────────────────────────────────────────────────────────────
+
+  Future<List<GianttItem>> searchItems(String searchTerm,
+      {bool includeOccluded = false}) async {
+    final graph = await getGraph();
+    final items = includeOccluded
         ? graph.items.values.toList()
         : graph.includedItems.values.toList();
-    
-    return items.where((item) => item.charts.contains(chartName)).toList();
+    if (searchTerm.isEmpty) return items;
+    final q = searchTerm.toLowerCase();
+    return items
+        .where((i) =>
+            i.id.toLowerCase().contains(q) ||
+            i.title.toLowerCase().contains(q) ||
+            i.tags.any((t) => t.toLowerCase().contains(q)))
+        .toList();
   }
 
-  /// Get all unique chart names
+  Future<List<GianttItem>> getItemsByChart(String chartName,
+      {bool includeOccluded = false}) async {
+    final graph = await getGraph();
+    final items = includeOccluded
+        ? graph.items.values.toList()
+        : graph.includedItems.values.toList();
+    return items.where((i) => i.charts.contains(chartName)).toList();
+  }
+
   Future<List<String>> getAllCharts({bool includeOccluded = false}) async {
     final graph = await getGraph();
-    
-    final items = includeOccluded 
+    final items = includeOccluded
         ? graph.items.values.toList()
         : graph.includedItems.values.toList();
-    
     final charts = <String>{};
     for (final item in items) {
       charts.addAll(item.charts);
     }
-    
     return charts.toList()..sort();
   }
 
-  /// Get all unique tags
   Future<List<String>> getAllTags({bool includeOccluded = false}) async {
     final graph = await getGraph();
-    
-    final items = includeOccluded 
+    final items = includeOccluded
         ? graph.items.values.toList()
         : graph.includedItems.values.toList();
-    
     final tags = <String>{};
     for (final item in items) {
       tags.addAll(item.tags);
     }
-    
     return tags.toList()..sort();
   }
 
-  /// Update an existing item
-  Future<CommandResult<GianttItem>> updateItem(String itemId, GianttItem updatedItem) async {
-    final graph = await getGraph();
-    
-    if (!graph.items.containsKey(itemId)) {
-      return CommandResult.failure('Item with ID "$itemId" not found');
-    }
-
-    // Update the item
-    graph.addItem(updatedItem);
-    _graph = graph;
-
-    // Save to files
-    await saveGraph();
-
-    return CommandResult.success(updatedItem, 'Updated item "$itemId" successfully');
-  }
-
-  /// Occlude an item
-  Future<CommandResult<String>> occludeItem(String itemId) async {
-    final graph = await getGraph();
-    
-    final item = graph.items[itemId];
-    if (item == null) {
-      return CommandResult.failure('Item with ID "$itemId" not found');
-    }
-
-    if (item.occlude) {
-      return CommandResult.failure('Item "$itemId" is already occluded');
-    }
-
-    // Occlude the item
-    graph.occludeItem(itemId);
-    _graph = graph;
-
-    // Save to files
-    await saveGraph();
-
-    return CommandResult.success(itemId, 'Occluded item "$itemId" successfully');
-  }
-
-  /// Include (un-occlude) an item
-  Future<CommandResult<String>> includeItem(String itemId) async {
-    final graph = await getGraph();
-    
-    final item = graph.items[itemId];
-    if (item == null) {
-      return CommandResult.failure('Item with ID "$itemId" not found');
-    }
-
-    if (!item.occlude) {
-      return CommandResult.failure('Item "$itemId" is not occluded');
-    }
-
-    // Include the item
-    graph.includeItem(itemId);
-    _graph = graph;
-
-    // Save to files
-    await saveGraph();
-
-    return CommandResult.success(itemId, 'Included item "$itemId" successfully');
-  }
-
-  /// Refresh data from files (reload)
-  Future<void> refresh() async {
-    _graph = null;
-    _logs = null;
-    await _loadGraph();
-    await _loadLogs();
-  }
-
-  /// Get workspace statistics
   Future<Map<String, dynamic>> getWorkspaceStats() async {
     final graph = await getGraph();
-    final logs = await getLogs();
-    
-    final includedItems = graph.includedItems.values.toList();
-    final occludedItems = graph.occludedItems.values.toList();
-    
+    final included = graph.includedItems.values.toList();
+    final occluded = graph.occludedItems.values.toList();
     return {
       'total_items': graph.items.length,
-      'included_items': includedItems.length,
-      'occluded_items': occludedItems.length,
-      'total_logs': logs.length,
-      'included_logs': logs.includedEntries.length,
-      'occluded_logs': logs.occludedEntries.length,
+      'included_items': included.length,
+      'occluded_items': occluded.length,
       'charts': await getAllCharts(),
       'tags': await getAllTags(),
-      'status_breakdown': _getStatusBreakdown(includedItems),
-      'priority_breakdown': _getPriorityBreakdown(includedItems),
+      'status_breakdown': _breakdown(included, (i) => i.status.name),
+      'priority_breakdown': _breakdown(included, (i) => i.priority.name),
     };
   }
 
-  Map<String, int> _getStatusBreakdown(List<GianttItem> items) {
-    final breakdown = <String, int>{};
+  Map<String, int> _breakdown(List<GianttItem> items, String Function(GianttItem) key) {
+    final m = <String, int>{};
     for (final item in items) {
-      final status = item.status.name;
-      breakdown[status] = (breakdown[status] ?? 0) + 1;
+      final k = key(item);
+      m[k] = (m[k] ?? 0) + 1;
     }
-    return breakdown;
-  }
-
-  Map<String, int> _getPriorityBreakdown(List<GianttItem> items) {
-    final breakdown = <String, int>{};
-    for (final item in items) {
-      final priority = item.priority.name;
-      breakdown[priority] = (breakdown[priority] ?? 0) + 1;
-    }
-    return breakdown;
+    return m;
   }
 }

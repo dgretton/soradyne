@@ -79,6 +79,11 @@ abstract class GianttOp {
     return SetFieldOp(itemId, 'comment', comment ?? '');
   }
 
+  /// Set the occluded state of an item.
+  static GianttOp setOccluded(String itemId, bool occluded) {
+    return SetFieldOp(itemId, 'occluded', occluded);
+  }
+
   /// Add a tag to an item.
   static GianttOp addTag(String itemId, String tag) {
     return AddToSetOp(itemId, 'tags', tag);
@@ -126,6 +131,9 @@ abstract class GianttOp {
 
     if (item.userComment != null && item.userComment!.isNotEmpty) {
       ops.add(SetFieldOp(item.id, 'comment', item.userComment!));
+    }
+    if (item.occlude) {
+      ops.add(SetFieldOp(item.id, 'occluded', true));
     }
 
     // Add tags

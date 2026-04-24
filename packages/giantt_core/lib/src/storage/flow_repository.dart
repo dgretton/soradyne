@@ -5,13 +5,18 @@
 /// preserved for legacy migration.
 library;
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import '../ffi/flow_client.dart';
 import '../graph/giantt_graph.dart';
-import '../parser/giantt_parser.dart';
+import '../models/duration.dart';
+import '../models/giantt_item.dart';
 import '../models/graph_exceptions.dart';
+import '../models/priority.dart';
+import '../models/status.dart';
 import '../operations/giantt_operations.dart';
+import '../parser/giantt_parser.dart';
 
 /// Repository for Flow-based Giantt operations.
 ///
@@ -146,20 +151,38 @@ class FlowRepository {
 
   /// Load a graph from a flow.
   ///
-  /// Opens the flow, reads the current state as .giantt text,
-  /// and parses it using the existing [GianttParser].
-  ///
-  /// Returns an empty graph if the flow is empty.
+  /// Opens the flow, reads the current DocumentState JSON, and builds a
+  /// [GianttGraph] from it. Returns an empty graph if the flow is empty.
   static GianttGraph loadGraph(String flowUuid) {
     _ensureInitialized();
 
     final client = FlowClient.open(flowUuid);
     try {
-      final text = client.readDrip();
-      return _parseText(text);
+      return _parseDocumentState(client.readDrip());
     } finally {
       client.close();
     }
+  }
+
+  /// Load the merged graph across multiple flows.
+  ///
+  /// Items from all flows are combined into one graph. Each item is
+  /// associated with the flow it came from so writes can be routed back.
+  static ({GianttGraph graph, Map<String, String> itemToFlow}) loadMergedGraph(
+    List<String> flowUuids,
+  ) {
+    _ensureInitialized();
+    final graph = GianttGraph();
+    final itemToFlow = <String, String>{};
+
+    for (final uuid in flowUuids) {
+      final partial = loadGraph(uuid);
+      for (final item in partial.items.values) {
+        graph.addItem(item);
+        itemToFlow[item.id] = uuid;
+      }
+    }
+    return (graph: graph, itemToFlow: itemToFlow);
   }
 
   /// Save an operation to a flow.
@@ -214,7 +237,7 @@ class FlowRepository {
     }
 
     final text = file.readAsStringSync();
-    final graph = _parseText(text);
+    final graph = _parseLegacyText(text);
 
     final client = FlowClient.open(flowUuid);
     try {
@@ -347,23 +370,87 @@ class FlowRepository {
     }
   }
 
-  /// Parse .giantt text into a graph.
-  static GianttGraph _parseText(String text) {
+  /// Parse a legacy .giantt text file into a graph (migration path only).
+  static GianttGraph _parseLegacyText(String text) {
     final graph = GianttGraph();
-
     for (final line in text.split('\n')) {
       final trimmed = line.trim();
       if (trimmed.isNotEmpty && !trimmed.startsWith('#')) {
         try {
-          final item = GianttParser.fromString(trimmed);
-          graph.addItem(item);
+          graph.addItem(GianttParser.fromString(trimmed));
         } catch (e) {
-          // Skip invalid lines with warning
-          print('Warning: Skipping invalid line: $e');
+          stderr.writeln('[soradyne] Warning: skipping invalid line: $e');
         }
       }
     }
+    return graph;
+  }
 
+  /// Parse generic DocumentState JSON (from soradyne_flow_read_drip) into a graph.
+  ///
+  /// Format: {"items": {"<id>": {"item_type":"…","fields":{…},"sets":{…}}}}
+  static GianttGraph _parseDocumentState(String json) {
+    final graph = GianttGraph();
+    final Map<String, dynamic> doc;
+    try {
+      doc = jsonDecode(json) as Map<String, dynamic>;
+    } catch (_) {
+      return graph;
+    }
+    final items = doc['items'] as Map<String, dynamic>? ?? {};
+    for (final entry in items.entries) {
+      final id = entry.key;
+      final raw = entry.value as Map<String, dynamic>? ?? {};
+      if (raw['item_type'] != 'GianttItem') continue;
+      final fields = raw['fields'] as Map<String, dynamic>? ?? {};
+      final sets = raw['sets'] as Map<String, dynamic>? ?? {};
+
+      String str(String k) => (fields[k] as String?) ?? '';
+      List<String> set(String k) =>
+          ((sets[k] as List<dynamic>?) ?? []).map((e) => e.toString()).toList();
+
+      GianttStatus status;
+      try {
+        status = GianttStatus.fromName(str('status'));
+      } catch (_) {
+        status = GianttStatus.notStarted;
+      }
+      GianttPriority priority;
+      try {
+        priority = GianttPriority.fromName(str('priority'));
+      } catch (_) {
+        priority = GianttPriority.neutral;
+      }
+      GianttDuration duration;
+      try {
+        duration = GianttDuration.parse(str('duration'));
+      } catch (_) {
+        duration = GianttDuration.zero();
+      }
+
+      final occluded = fields['occluded'];
+      final isOccluded = occluded == true;
+
+      final relations = <String, List<String>>{};
+      for (final rel in ['REQUIRES', 'ANYOF', 'BLOCKS']) {
+        final targets = set(rel.toLowerCase());
+        if (targets.isNotEmpty) relations[rel] = targets;
+      }
+
+      final item = GianttItem(
+        id: id,
+        title: str('title'),
+        status: status,
+        priority: priority,
+        duration: duration,
+        charts: set('charts'),
+        tags: set('tags'),
+        relations: relations,
+        userComment: fields['comment'] as String?,
+        occlude: isOccluded,
+      );
+      graph.addItem(item);
+    }
     return graph;
   }
 }
