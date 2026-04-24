@@ -62,6 +62,12 @@ cargo test --no-default-features
 # Run examples
 cargo run --example block_storage_demo
 cargo run --example heartrate_demo
+
+# Docker-based distributed sync integration tests
+cd packages/soradyne_core/tests/docker
+./run_tests.sh              # build image + run all 3 scenarios
+./run_tests.sh --no-build   # skip image rebuild
+./run_tests.sh 01           # run only scenario 01
 ```
 
 ### Android Cross-Compilation
@@ -114,6 +120,11 @@ dart run giantt_core:giantt
 soradyne-cli --help
 # Start sync for all local flows (long-running process)
 soradyne-cli sync
+# Flow management (used by Docker tests and for debugging)
+soradyne-cli flow list
+soradyne-cli flow create --capsule <CAPSULE_UUID>
+soradyne-cli flow add-item <FLOW_UUID> <ITEM_ID> <TITLE>
+soradyne-cli flow inspect <FLOW_UUID>
 ```
 
 ## Architecture: soradyne_core (Rust)
@@ -123,7 +134,7 @@ soradyne-cli sync
 ```
 convergent/   — CRDT engine: Operation, ConvergentDocument, schemas
     ↓
-flow/         — DripHostedFlow: CRDT-backed sync with host failover
+flow/         — FullReplicaFlow: CRDT-backed sync with per-party journal replication
     ↓
 ble/          — Transport layer: traits + simulated + btleplug + android JNI
     ↓
@@ -186,11 +197,13 @@ Five primitive operations (serde enum, externally tagged):
 
 Two schemas: `giantt.rs` (GianttSchema) and `inventory.rs` (InventorySchema with `InventoryItem`: id, category, description, location, tags).
 
-### `flow/types/drip_hosted.rs` — DripHostedFlow
+### `flow/types/drip_hosted.rs` — FullReplicaFlow
 
-CRDT-backed sync where one piece is the authoritative host:
-- Host selection via configurable policy (FirstEligible, BestConnected, Preferred, Scored)
-- Under `OfflineMerge` failover, all pieces accept edits locally and converge via CRDT on reconnect
+Every device replicates every other device's operation journal locally. Materialization (fitting) happens independently on each device. `DripHostedFlow` is a transitional type alias.
+
+- **Per-party journals**: each device's ops stored in `journals/{author_device_id}.jsonl`
+- **Sync model**: immediate broadcast for online peers; horizon exchange for catch-up when peers (re)connect. No per-peer outbound queue — `operations_since(horizon)` computes what any peer needs.
+- **Write path**: apply to in-memory doc → journal append → immediate broadcast via stored `runtime_handle`
 - Wire protocol: CBOR-serialized `FlowSync` messages in `RoutedEnvelope`
 - `set_ensemble(messenger, topology)` wires the flow to a topology's messenger for routing
 
@@ -255,16 +268,17 @@ Key design notes:
 - **SelfDataFlow** — user-owned data stream that syncs peer-to-peer. Generic over `T: Send + Sync + Clone`.
 - **Capsule** — a named trust group of pieces (devices). Holds a `CapsuleKeyBundle` for encryption. Established via `PairingEngine`.
 - **Piece** — one device's slot in a capsule, with a role (Full, Accessory) and device_id.
-- **DripHostedFlow** — CRDT-backed hosted flow; one piece acts as host; others send diffs; host broadcasts merged state.
+- **FullReplicaFlow** — CRDT-backed flow where every device replicates every other device's op journal. Per-party journals, horizon-based catch-up sync. (`DripHostedFlow` is a transitional alias.)
 - **SimBleNetwork** — in-process BLE transport for tests. Always present in the bridge; used for sim accessories.
 - **Data Dissolution / Crystallization** — erasure-coding data across devices (reed-solomon) for security/resilience.
 
 ## Phase History (for context)
 
 - **Phase 4**: PairingEngine + FFI bridge + Flutter pairing UI
-- **Phase 5**: DripHostedFlow with host assignment + failover
+- **Phase 5**: DripHostedFlow with host assignment + failover (now FullReplicaFlow with per-party journals)
 - **Phase 5.5**: FFI bridge + Flutter UI for DripHostedFlow
 - **Phase 6.1**: Three-piece capsule integration tests (all simulated)
 - **Phase 6.2**: Mixed real+simulated BLE — Android peripheral (JNI) + Mac central (btleplug) — **real BLE pairing working**
 - **Phase 6.3**: Flow Demo — shared notes via inventory CRDT, wired to capsule ensemble
-- **Phase 7 (planned)**: Post-pairing persistent BLE — `EnsembleManager::start()` with real transport so DripHostedFlow syncs CRDT ops across devices over BLE
+- **Phase 6.4**: TCP static peer sync — cross-machine sync working (Linux ↔ Mac), both-sides-connect pattern, Docker integration tests (3 scenarios passing)
+- **Phase 7 (planned)**: Post-pairing persistent BLE — `EnsembleManager::start()` with real transport so FullReplicaFlow syncs CRDT ops across devices over BLE
