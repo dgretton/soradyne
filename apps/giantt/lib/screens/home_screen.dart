@@ -118,6 +118,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _load,
             tooltip: 'Refresh',
           ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.pushNamed(context, '/settings'),
+            tooltip: 'Settings',
+          ),
         ],
       ),
       body: _loading
