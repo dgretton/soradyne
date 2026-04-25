@@ -13,6 +13,10 @@ dependencies:
   # Core giantt logic
   giantt_core:
     path: ../../packages/giantt_core
+
+  # Bundles libsoradyne.so/.dylib into the app via ffiPlugin
+  soradyne_flutter:
+    path: ../../packages/soradyne_flutter
   
   
   # CLI dependencies

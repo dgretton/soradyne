@@ -215,6 +215,30 @@ class GianttService {
     return CommandResult.success(itemId, 'Included item "$itemId"');
   }
 
+  // ── Compatibility stubs for callers written against the old file-based API ──
+
+  /// Returns the giantt documents directory. Include directives and file-based
+  /// operations are no-ops in the soradyne-backed service.
+  String get workspacePath {
+    if (!_initialized) return '';
+    final docsPath = _appSupportPath ?? (Platform.environment['HOME'] ?? '');
+    return '$docsPath/giantt';
+  }
+
+  /// No-op — writes are persisted immediately when ops are applied.
+  Future<void> saveGraph() async {}
+
+  /// Re-fetches the graph from the flow (clears any stale cached state).
+  Future<void> refresh() async {
+    _itemToFlow = {};
+  }
+
+  /// Returns an empty log collection — logs are not yet modelled in soradyne.
+  Future<LogCollection> getLogs() async => LogCollection();
+
+  /// No-op — log persistence is not yet implemented in the soradyne-backed service.
+  Future<void> saveLogs() async {}
+
   // ── Queries ─────────────────────────────────────────────────────────────────
 
   Future<List<GianttItem>> searchItems(String searchTerm,
