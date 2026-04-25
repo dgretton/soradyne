@@ -36,6 +36,12 @@ class AppTheme {
       backgroundColor: accentColor,
       foregroundColor: Colors.white,
     ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      selectedItemColor: primaryColor,
+      unselectedItemColor: Color(0xFF757575),
+      backgroundColor: Colors.white,
+      elevation: 8,
+    ),
   );
 
   static ThemeData darkTheme = ThemeData(
@@ -67,6 +73,12 @@ class AppTheme {
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: accentColor,
       foregroundColor: Colors.white,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      selectedItemColor: primaryColor,
+      unselectedItemColor: Color(0xFF9E9E9E),
+      backgroundColor: Color(0xFF1E1E1E),
+      elevation: 8,
     ),
   );
 }

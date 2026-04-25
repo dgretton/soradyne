@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -25,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DeviceActivity> _syncActivity = [];
   List<String> _recentCharts = [];
   bool _syncExpanded = false;
+  int _localRecentOpCount = 0;
+  DateTime? _localLatestOpTime;
 
   @override
   void initState() {
@@ -62,6 +65,31 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
+      // Count recent local outgoing ops.
+      int localCount = 0;
+      DateTime? localLatest;
+      if (soradyneDir != null && localDeviceId != null) {
+        final flowUuid = _service.primaryFlowUuid;
+        if (flowUuid != null) {
+          final localJournal = File(
+              '$soradyneDir/flows/$flowUuid/journals/$localDeviceId.jsonl');
+          if (localJournal.existsSync()) {
+            final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+            for (final line in localJournal.readAsLinesSync().reversed) {
+              if (line.trim().isEmpty) continue;
+              try {
+                final json = jsonDecode(line) as Map<String, dynamic>;
+                final ts = DateTime.fromMillisecondsSinceEpoch(
+                    (json['timestamp'] as num).toInt());
+                if (ts.isBefore(cutoff)) break;
+                localCount++;
+                localLatest ??= ts;
+              } catch (_) {}
+            }
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _graph = graph;
@@ -69,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _inProgress = inProgress;
           _syncActivity = syncActivity;
           _recentCharts = recentCharts;
+          _localRecentOpCount = localCount;
+          _localLatestOpTime = localLatest;
           _loading = false;
         });
       }
@@ -97,7 +127,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 32),
                 children: [
-                  if (_syncActivity.isNotEmpty) _buildSyncStrip(),
+                  if (_syncActivity.isNotEmpty || _localRecentOpCount > 0)
+                    _buildSyncStrip(),
                   _buildAvailableNow(),
                   if (_inProgress.isNotEmpty) _buildInProgress(),
                   if (_recentCharts.isNotEmpty) _buildChartStrip(),
@@ -110,17 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Sync strip ─────────────────────────────────────────────────────────────
 
   Widget _buildSyncStrip() {
-    final latest = _syncActivity.first;
-    final count = _syncActivity.fold(0, (s, a) => s + a.ops.length);
-    final deviceSummary = _syncActivity.length == 1
-        ? latest.displayName
-        : '${_syncActivity.length} devices';
-
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: () => setState(() => _syncExpanded = !_syncExpanded),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: cs.surfaceContainerHighest,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -128,19 +154,15 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  _PulseDot(color: Theme.of(context).colorScheme.primary),
+                  _PulseDot(color: cs.primary),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      '$deviceSummary · $count op${count == 1 ? '' : 's'} · '
-                      '${SyncActivityService.timeAgo(latest.latestTimestamp)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    child: _buildSyncSummaryText(),
                   ),
                   Icon(
                     _syncExpanded ? Icons.expand_less : Icons.expand_more,
                     size: 18,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: cs.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -149,6 +171,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSyncSummaryText() {
+    final parts = <String>[];
+
+    // Incoming from peers.
+    if (_syncActivity.isNotEmpty) {
+      final latest = _syncActivity.first;
+      final inCount = _syncActivity.fold(0, (s, a) => s + a.ops.length);
+      final who = _syncActivity.length == 1
+          ? latest.displayName
+          : '${_syncActivity.length} peers';
+      parts.add('↓ $who · $inCount op${inCount == 1 ? '' : 's'} · '
+          '${SyncActivityService.timeAgo(latest.latestTimestamp)}');
+    }
+
+    // Outgoing — ops this device authored (confirms writes are persisted).
+    if (_localRecentOpCount > 0) {
+      parts.add('↑ $_localRecentOpCount sent · '
+          '${SyncActivityService.timeAgo(_localLatestOpTime!)}');
+    }
+
+    if (parts.isEmpty) return const SizedBox.shrink();
+    return Text(
+      parts.join('   '),
+      style: Theme.of(context).textTheme.bodySmall,
     );
   }
 
