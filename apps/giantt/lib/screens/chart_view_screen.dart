@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/app_state.dart';
 import '../services/giantt_service.dart';
 import '../layout/gantt_layout.dart';
 import '../widgets/gantt_chart.dart';
@@ -28,6 +30,24 @@ class _ChartViewScreenState extends State<ChartViewScreen> {
     _loadCharts();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final appState = context.read<GianttAppState>();
+    final pending = appState.pendingChart;
+    if (pending != null && _charts.contains(pending)) {
+      appState.consumePendingChart();
+      setState(() => _selectedChart = pending);
+      _computeLayout();
+    } else if (pending != null && _charts.isEmpty) {
+      // Charts not loaded yet — will be applied once _loadCharts finishes.
+      appState.consumePendingChart();
+      _pendingChartFromNav = pending;
+    }
+  }
+
+  String? _pendingChartFromNav;
+
   Future<void> _loadCharts() async {
     setState(() => _isLoading = true);
     try {
@@ -35,7 +55,10 @@ class _ChartViewScreenState extends State<ChartViewScreen> {
       setState(() {
         _charts = charts;
         _isLoading = false;
-        if (charts.isNotEmpty && _selectedChart == null) {
+        if (_pendingChartFromNav != null && charts.contains(_pendingChartFromNav)) {
+          _selectedChart = _pendingChartFromNav;
+          _pendingChartFromNav = null;
+        } else if (charts.isNotEmpty && _selectedChart == null) {
           _selectedChart = charts.first;
         }
       });

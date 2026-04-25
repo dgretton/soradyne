@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:giantt_core/giantt_core.dart';
+import 'package:provider/provider.dart';
+import '../models/app_state.dart';
 import '../services/giantt_service.dart';
 import '../services/graph_intelligence.dart';
 import '../services/sync_activity_service.dart';
@@ -407,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final graph = _graph;
     if (graph == null) return const SizedBox.shrink();
     final byChart = GraphIntelligence.byChart(graph);
+    final appState = context.read<GianttAppState>();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 0, 0),
@@ -428,18 +431,15 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(right: 16),
               itemCount: _recentCharts.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, i) {
+              itemBuilder: (_, i) {
                 final chart = _recentCharts[i];
                 final items = byChart[chart] ?? [];
                 return _ChartChip(
                   name: chart,
                   items: items,
-                  onTap: () async {
-                    await ChartRecencyService.instance.touch(chart);
-                    if (mounted) {
-                      // Navigate to chart view — for now show filtered home.
-                      // TODO: dedicated chart screen.
-                    }
+                  onTap: () {
+                    ChartRecencyService.instance.touch(chart);
+                    appState.openChart(chart);
                   },
                 );
               },
