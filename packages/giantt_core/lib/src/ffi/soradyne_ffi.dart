@@ -134,6 +134,12 @@ class SoradyneFFI {
         path.join(Directory.current.path, 'target', 'release', libraryName),
         path.join(Directory.current.path, 'target', 'debug', libraryName),
       ]);
+    } else if (Platform.isAndroid) {
+      // On Android the .so is bundled in the APK by soradyne_flutter (ffiPlugin).
+      // The dynamic linker finds it by name from the app's lib directory.
+      return DynamicLibrary.open('libsoradyne.so');
+    } else if (Platform.isIOS) {
+      return DynamicLibrary.process();
     } else {
       throw UnsupportedError('Platform not supported: ${Platform.operatingSystem}');
     }

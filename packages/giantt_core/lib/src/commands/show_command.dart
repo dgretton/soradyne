@@ -75,10 +75,7 @@ class ShowCommand extends CliCommand<ShowArgs> {
   Future<CommandResult<ShowArgs>> execute(CommandContext context) async {
     try {
       // Load graph
-      context.graph ??= DualFileManager.loadGraph(
-        context.itemsPath,
-        context.occludeItemsPath,
-      );
+      context.loadGraph();
 
       final args = ShowArgs(); // This will be set by parseArgs in CLI usage
       

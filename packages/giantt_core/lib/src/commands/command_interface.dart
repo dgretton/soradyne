@@ -4,6 +4,8 @@ import '../models/giantt_item.dart';
 import '../models/log_entry.dart';
 import '../graph/giantt_graph.dart';
 import '../logging/log_collection.dart';
+import '../storage/dual_file_manager.dart';
+import '../storage/flow_repository.dart';
 
 /// Base interface for all CLI commands
 abstract class Command {
@@ -123,6 +125,7 @@ class CommandUtils {
 class CommandContext {
   CommandContext({
     required this.workspacePath,
+    this.flowId,
     this.graph,
     this.logs,
     this.dryRun = false,
@@ -130,6 +133,11 @@ class CommandContext {
   });
 
   final String workspacePath;
+
+  /// Flow UUID to use for reading/writing. When set, graph reads prefer the
+  /// flow over file-based storage so CRDT-synced items are visible.
+  final String? flowId;
+
   GianttGraph? graph;
   LogCollection? logs;
   final bool dryRun;
@@ -139,4 +147,17 @@ class CommandContext {
   String get occludeItemsPath => '$workspacePath/occlude/items.txt';
   String get logsPath => '$workspacePath/logs.txt';
   String get occludeLogsPath => '$workspacePath/occlude/logs.txt';
+
+  /// Load the graph, preferring the flow when available.
+  GianttGraph loadGraph() {
+    if (graph != null) return graph!;
+    if (flowId != null) {
+      try {
+        graph = FlowRepository.loadGraph(flowId!);
+        return graph!;
+      } catch (_) {}
+    }
+    graph = DualFileManager.loadGraph(itemsPath, occludeItemsPath);
+    return graph!;
+  }
 }

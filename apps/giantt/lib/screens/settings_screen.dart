@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_chat_flutter/ai_chat_flutter.dart';
+import '../services/device_nickname_service.dart';
+import '../services/giantt_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -95,8 +97,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             maxLines: 5,
           ),
+          const SizedBox(height: 28),
+          Text('Device Nicknames',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Give readable names to peer devices shown in the sync strip.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          _DeviceNicknameEditor(),
         ],
       ),
+    );
+  }
+}
+
+class _DeviceNicknameEditor extends StatefulWidget {
+  @override
+  State<_DeviceNicknameEditor> createState() => _DeviceNicknameEditorState();
+}
+
+class _DeviceNicknameEditorState extends State<_DeviceNicknameEditor> {
+  Map<String, String> _nicknames = {};
+  String? _localDeviceId;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final nicknames = await DeviceNicknameService.instance.getAll();
+    final localId = await GianttService().localDeviceId;
+    if (mounted) {
+      setState(() {
+        _nicknames = Map.from(nicknames);
+        _localDeviceId = localId;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _edit(String deviceId) async {
+    final controller =
+        TextEditingController(text: _nicknames[deviceId] ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(deviceId.substring(0, 8) + '…'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nickname',
+            hintText: 'e.g. MacBook, Linux server',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    if (result != null) {
+      await DeviceNicknameService.instance.setNickname(deviceId, result);
+      await _load();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const SizedBox(height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+    if (_nicknames.isEmpty) {
+      return Text(
+        'No peer devices seen yet. They appear here once sync runs.',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+      );
+    }
+    return Column(
+      children: [
+        for (final entry in _nicknames.entries)
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.devices_other, size: 20),
+            title: Text(entry.value.isEmpty
+                ? entry.key.substring(0, 8) + '…'
+                : entry.value),
+            subtitle: Text(entry.key.substring(0, 16) + '…',
+                style: Theme.of(context).textTheme.bodySmall),
+            trailing: entry.key == _localDeviceId
+                ? const Chip(label: Text('this device'))
+                : IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    onPressed: () => _edit(entry.key),
+                  ),
+          ),
+      ],
     );
   }
 }

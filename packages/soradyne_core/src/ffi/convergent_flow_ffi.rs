@@ -250,6 +250,15 @@ pub extern "C" fn soradyne_flow_init(device_id_ptr: *const c_char) -> i32 {
         Err(_) => return -1,
     };
 
+    // If already initialized with the same device ID, leave the running registry
+    // intact — replacing it would drop active flows and kill background sync tasks
+    // (e.g. on a Dart hot restart where native statics persist but Dart state resets).
+    if let Some(existing) = registry.as_ref() {
+        if existing.device_id.as_ref() == device_id {
+            return 0;
+        }
+    }
+
     *registry = Some(FlowRegistry::new(device_id.into()));
     0
 }

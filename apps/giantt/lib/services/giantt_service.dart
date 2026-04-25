@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:giantt_core/giantt_core.dart';
 
@@ -50,6 +51,21 @@ class GianttService {
 
     final stored = jsonDecode(flowsFile.readAsStringSync()) as List<dynamic>;
     _flowUuids = stored.map((e) => e.toString()).toList();
+
+    // Initialize pairing bridge BEFORE FlowRepository so that when
+    // soradyne_flow_init creates the FlowRegistry it picks up the correct
+    // data_dir from the bridge (via bridge_data_dir()). Without this, the
+    // registry falls back to "./soradyne/flows" (wrong on Android) and flows
+    // open empty even when journals exist on disk.
+    final soradyneDir = _soradyneDataDir();
+    if (soradyneDir != null) {
+      try {
+        FlowClient.initPairingBridge(soradyneDir);
+      } catch (_) {
+        // Non-fatal: flow reads may fall back to wrong path, but sync will
+        // deliver ops once the bridge is initialized later in startSyncWhenReady.
+      }
+    }
 
     final deviceId = await _getOrCreateDeviceId(gianttDir.path);
     FlowRepository.initialize(deviceId);
@@ -109,19 +125,57 @@ class GianttService {
     flowsFile.writeAsStringSync(jsonEncode([_devDefaultFlowUuid]));
   }
 
-  /// Returns (and creates if absent) a stable device ID stored in app storage.
+  /// Returns the device ID to use for CRDT op authorship.
+  ///
+  /// Reads from soradyne's device_identity.json so the CRDT author UUID matches
+  /// the soradyne pairing identity — ensures journal files are named consistently
+  /// and that op authors are unambiguous across devices.
   Future<String> _getOrCreateDeviceId(String gianttDirPath) async {
+    final soradyneDir = _soradyneDataDir();
+    if (soradyneDir != null) {
+      final identityFile = File('$soradyneDir/device_identity.json');
+      if (identityFile.existsSync()) {
+        try {
+          final json = jsonDecode(identityFile.readAsStringSync()) as Map<String, dynamic>;
+          final id = json['device_id'] as String?;
+          if (id != null && id.isNotEmpty) return id;
+        } catch (_) {}
+      }
+    }
+    // Fallback: stable UUID in giantt app storage (generated once, then reused).
     final file = File('$gianttDirPath/device_id');
     if (file.existsSync()) return file.readAsStringSync().trim();
-    // Derive from platform — use a UUID-shaped hash of hostname + pid for dev.
-    final raw = '${Platform.localHostname}-${Platform.environment['USER'] ?? 'user'}';
-    final bytes = raw.codeUnits;
-    final hash = bytes.fold(0, (h, b) => (h * 31 + b) & 0xFFFFFFFF);
-    final id =
-        '00000000-0000-4000-8000-${hash.toRadixString(16).padLeft(12, '0')}';
-    file.writeAsStringSync(id);
-    return id;
+    // Last resort: generate a new UUID via Dart's UUID library if available,
+    // or use a time-based unique ID.
+    final id = DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0');
+    final uuid = '${id.substring(0,8)}-${id.substring(8,12)}-4${id.substring(13,16)}-8${id.substring(13,16)}-${id.padLeft(12,'0').substring(4,16)}';
+    file.writeAsStringSync(uuid);
+    return uuid;
   }
+
+  // ── Public accessors for home screen ────────────────────────────────────────
+
+  /// The soradyne data directory path, or null if not yet initialized.
+  String? get soradyneDataDir => _soradyneDataDir();
+
+  /// The local device ID used as CRDT op author, or null if not initialized.
+  Future<String?> get localDeviceId async {
+    if (!_initialized) return null;
+    final soradyneDir = _soradyneDataDir();
+    if (soradyneDir == null) return null;
+    try {
+      final f = File('$soradyneDir/device_identity.json');
+      if (!f.existsSync()) return null;
+      final json = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
+      return json['device_id'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The primary flow UUID (first in the configured list), or null.
+  String? get primaryFlowUuid =>
+      _initialized && _flowUuids.isNotEmpty ? _flowUuids.first : null;
 
   // ── Graph access ────────────────────────────────────────────────────────────
 
