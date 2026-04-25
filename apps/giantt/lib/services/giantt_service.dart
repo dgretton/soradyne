@@ -82,7 +82,10 @@ class GianttService {
       // _appSupportPath is populated during initialize() before _startSync().
       return _appSupportPath != null ? '$_appSupportPath/.soradyne' : null;
     }
-    return null; // FlowRepository falls back to $HOME/.soradyne on desktop
+    // Desktop: share $HOME/.soradyne with soradyne-cli so both see the same
+    // capsule store and flows.
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    return home != null ? '$home/.soradyne' : null;
   }
 
   String? _appSupportPath;
