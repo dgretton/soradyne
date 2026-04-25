@@ -1,0 +1,69 @@
+I'd like to get some conceptual categories straight. I
+originally had giantt in python, then ported it all over time to Dart so I could run it with
+flutter. during development of soradyne trying to use giantt as a demo example to make the
+implementation work concrete, at some point, the entire giantt schema including
+serialization/deserialization was re-implemented again, this time in rust, by an earlier
+instance of you. I didn't intend for this to happen and I was annoyed at the time, but I'm
+realizing now that this may have been the right move? I was annoyed because I was expecting
+ConvergentDocument to materialize giantt items files, or really, text in line-separated form
+ready to go directly into the Dart giantt parser which was already working well and debugged at
+that point, and for the synchronization of that file (really, not a file but an
+eventually-consistent synchronized data object, but really it acts like a text file) to be the
+whole sync procedure, a setup that would have backed both inventory and giantt with no
+specialization to either. I liked that modularity, cleanly breaking both before they got into
+Rust. Now it's all in Rust, or really double implemented in a confusing way in Dart and Rust,
+but it's possible that details of the different formats do belong inside the envelope of
+soradyne because CRDT ops can now exist that don't just replace a line or operate on text, but
+actually respect the structure (json-like or jsonl-like) of each. still, it bothers me that my
+very me-specific project giantt (or inv) would wind up somehow baked into soradyne. like I know
+there will be a lot of different flow types eventually, ranging from general-purpose to
+specific, and setting examples for how to make custom flows that run fast in Rust seems sort of
+good, but somehow this seems too specific. soradyne is supposed to be a platform technology that
+ can underly tons of future apps. these apps are being developed in the same monorepo so I can
+ground the development process and have something to test along the way. at the very least I
+will want to refactor any giantt- or inv-specific code into separate rust crates that depend on
+soradyne. But maybe the thing I really need, which would serve giantt and inventory, is a CRDT
+that does precisely the same functionality as jsonl, including lists and sets of different basic
+ data types & nested structs, possibly with schema functionality layered on so you can address
+updates to specific named fields for your project in a principled way without building it into
+the rust library directly? this feels like it would be a powerful thing to have anyway, and it
+would serve both giantt and inv, right? it's a bit of a side-track, but I don't want to
+accidentally accrue a bunch of technical debt by making a bad choice now, I just don't have a
+sense for how serious a misstep it would be vs how easy it is to port what exists now to a more
+general-purpose schematized jsonl sync flow type.
+
+flow IDs are derived from soradyne, i.e. it originates
+them upon request to make a new flow, but from that point forward, it's the pointer held by the
+app, and there shouldn't be a way for an app to interrogate soradyne for its flow ids and there
+shouldn't be a place on disk that anyone assumes is a stable reference point for flow ids.
+giantt and inv should keep their flows in their own app storage, and the fact that multiple
+devices running giantt have some of the same flow ids is the entire basis for their data
+sharing--if they don't happen to be in the same capsule, nothing happens (at the moment, since
+inter-capsule auth checking and flow sharing isn't defined yet). setup from the perspective of
+the app is: init soradyne generically; soradyne loads any app-agnostic config from its own
+private storage whose path might vary by device (including info about peers, everything about
+capsules); app pulls flow ids from app storage; app has a class or interface for the data it
+expects to be synchronized, so that is initialized with soradyne connected (implicitly/relying
+on global scope or explicitly at construction) and the flow id; by the time it gets through the
+app-level abstractions down to soradyne, it's only a ConvergentDocument, so soradyne takes in
+ops and materializes reads. For now, let's poke a couple flow IDs directly into app storage
+either at build time or (if that's not easy) have a function clearly labeled as a debug feature
+to be removed that pokes some default hard-coded or loaded-from-file-here-in-this-repo values
+into app storage on startup if they're missing; that way, all giantt software built from this
+monorepo has the same flow ids for now. I think the giantt standalone cli commands will need a
+way to name & dereference flow ids so it can be told which to mutate without passing gigantic
+flow ids every time, but it can just always load all present flows. there can also be a default
+flow to mutate if no flow is clearly implicated by the operation (e.g. editing a field for an
+item will naturally need to route operations to that item's flow of origin) and none is
+specified. as for the giantt app, one of the flows can be "the user's default flow," for the
+purpose of deciding which to mutate if that's ambiguous e.g. creating a new chart. flow ids will
+ never be surfaced to the user, nor will the word flow nor the name soradyne, but the effect of
+having multiple flows active will be juggled similarly to how dropbox lets you have multiple
+accounts and switch between them; you'd swap to a different giantt persona or whatever. such
+personas (not committed to the word) and flows will have a many-to-many relationship
+(unfortunately) because permissions & sharing may sometimes require splitting a flow (i.e.
+deleting a bunch of things from one flow, creating a new one, adding them all to that one) so
+you can share just a subset of the charts that were all in one flow before. that's a lot more
+than you asked but hopefully this context is helpful and your answers can be derived from it,
+but let me know
+
