@@ -20,6 +20,12 @@ void main() async {
   final settings = await SettingsService.loadSettings();
 
   runApp(GianttApp(gianttService: gianttService, settings: settings));
+
+  // Start sync after first frame — avoids blocking the splash screen on
+  // slow Rust runtime initialization (Tokio thread spawning on Android).
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    gianttService.startSyncWhenReady();
+  });
 }
 
 class GianttApp extends StatelessWidget {

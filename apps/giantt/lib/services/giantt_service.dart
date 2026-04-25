@@ -54,20 +54,31 @@ class GianttService {
     final deviceId = await _getOrCreateDeviceId(gianttDir.path);
     FlowRepository.initialize(deviceId);
 
-    _startSync();
-
     _initialized = true;
+  }
+
+  /// Start background sync. Call this after the UI has rendered — it makes
+  /// synchronous FFI calls into Rust that may take a moment on first run.
+  void startSyncWhenReady() {
+    debugPrint('[giantt] startSyncWhenReady: beginning sync init');
+    final sw = Stopwatch()..start();
+    _startSync();
+    debugPrint('[giantt] startSyncWhenReady: done in ${sw.elapsedMilliseconds}ms');
   }
 
   /// Start background sync for all flows. Non-fatal — if there's no capsule
   /// yet (device not paired) this is a no-op until pairing happens.
   void _startSync() {
     final dataDir = _soradyneDataDir();
+    debugPrint('[giantt] _startSync: dataDir=$dataDir flows=$_flowUuids');
     for (final uuid in _flowUuids) {
       try {
+        final sw = Stopwatch()..start();
+        debugPrint('[giantt] _startSync: enabling sync for $uuid');
         FlowRepository.enableSync(uuid, dataDir: dataDir);
+        debugPrint('[giantt] _startSync: $uuid done in ${sw.elapsedMilliseconds}ms');
       } catch (e) {
-        // Expected when no capsule exists yet; sync will remain off until paired.
+        debugPrint('[giantt] _startSync: $uuid failed: $e');
       }
     }
   }
