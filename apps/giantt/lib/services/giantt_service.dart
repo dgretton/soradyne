@@ -35,6 +35,9 @@ class GianttService {
   Future<void> initialize() async {
     if (_initialized) return;
 
+    final supportDir = await getApplicationSupportDirectory();
+    _appSupportPath = supportDir.path;
+
     final docsDir = await getApplicationDocumentsDirectory();
     final gianttDir = Directory('${docsDir.path}/giantt');
     if (!gianttDir.existsSync()) gianttDir.createSync(recursive: true);
@@ -51,8 +54,38 @@ class GianttService {
     final deviceId = await _getOrCreateDeviceId(gianttDir.path);
     FlowRepository.initialize(deviceId);
 
+    _startSync();
+
     _initialized = true;
   }
+
+  /// Start background sync for all flows. Non-fatal — if there's no capsule
+  /// yet (device not paired) this is a no-op until pairing happens.
+  void _startSync() {
+    final dataDir = _soradyneDataDir();
+    for (final uuid in _flowUuids) {
+      try {
+        FlowRepository.enableSync(uuid, dataDir: dataDir);
+      } catch (e) {
+        // Expected when no capsule exists yet; sync will remain off until paired.
+      }
+    }
+  }
+
+  /// Platform-appropriate base directory for soradyne's own storage.
+  ///
+  /// Desktop (macOS/Linux): `~/.soradyne` — matches the CLI so both share
+  /// the same capsule store and static peers config.
+  /// Mobile: app support dir + `/.soradyne` (sandboxed per app).
+  String? _soradyneDataDir() {
+    if (Platform.isAndroid || Platform.isIOS) {
+      // _appSupportPath is populated during initialize() before _startSync().
+      return _appSupportPath != null ? '$_appSupportPath/.soradyne' : null;
+    }
+    return null; // FlowRepository falls back to $HOME/.soradyne on desktop
+  }
+
+  String? _appSupportPath;
 
   /// Writes the dev-default flow UUID to app storage on first launch.
   ///
