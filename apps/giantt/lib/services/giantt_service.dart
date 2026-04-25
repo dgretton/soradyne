@@ -249,6 +249,10 @@ class GianttService {
     if (updatedItem.occlude != old.occlude) {
       ops.add(GianttOp.setOccluded(itemId, updatedItem.occlude));
     }
+    // userComment maps to the 'comment' CRDT field
+    if (updatedItem.userComment != old.userComment) {
+      ops.add(GianttOp.setComment(itemId, updatedItem.userComment));
+    }
     for (final tag in updatedItem.tags.where((t) => !old.tags.contains(t))) {
       ops.add(GianttOp.addTag(itemId, tag));
     }
@@ -268,6 +272,71 @@ class GianttService {
     if (item.occlude) return CommandResult.failure('Item "$itemId" is already occluded');
     FlowRepository.saveOperation(_flowFor(itemId), GianttOp.setOccluded(itemId, true));
     return CommandResult.success(itemId, 'Occluded item "$itemId"');
+  }
+
+  /// Permanently remove an item from the flow.
+  Future<CommandResult<String>> removeItem(String itemId) async {
+    await initialize();
+    final graph = await getGraph();
+    if (!graph.items.containsKey(itemId)) {
+      return CommandResult.failure('Item "$itemId" not found');
+    }
+    FlowRepository.saveOperation(_flowFor(itemId), GianttOp.removeItem(itemId));
+    _itemToFlow.remove(itemId);
+    return CommandResult.success(itemId, 'Removed item "$itemId"');
+  }
+
+  /// Add a relation between two items.
+  Future<CommandResult<String>> addRelation(
+      String fromId, String relationType, String toId) async {
+    await initialize();
+    final graph = await getGraph();
+    if (!graph.items.containsKey(fromId)) {
+      return CommandResult.failure('Item "$fromId" not found');
+    }
+    final setName = relationType.toLowerCase();
+    FlowRepository.saveOperation(
+        _flowFor(fromId), GianttOp.addToSet(fromId, setName, toId));
+    return CommandResult.success(fromId, 'Added $relationType relation');
+  }
+
+  /// Remove a relation between two items.
+  Future<CommandResult<String>> removeRelation(
+      String fromId, String relationType, String toId) async {
+    await initialize();
+    final setName = relationType.toLowerCase();
+    FlowRepository.saveOperation(
+        _flowFor(fromId),
+        GianttOp.removeFromSet(fromId, setName, toId, []));
+    return CommandResult.success(fromId, 'Removed $relationType relation');
+  }
+
+  /// Insert a new item between [beforeId] and [afterId] in the dependency chain.
+  Future<CommandResult<GianttItem>> insertBetween(
+      GianttItem newItem, String beforeId, String afterId) async {
+    await initialize();
+    final graph = await getGraph();
+    if (!graph.items.containsKey(beforeId)) {
+      return CommandResult.failure('Item "$beforeId" not found');
+    }
+    if (!graph.items.containsKey(afterId)) {
+      return CommandResult.failure('Item "$afterId" not found');
+    }
+
+    final flow = _defaultFlow;
+    final ops = <GianttOp>[
+      ...GianttOp.fromItem(newItem),
+      // new item REQUIRES before
+      GianttOp.addRequires(newItem.id, beforeId),
+      // new item is required by after (after REQUIRES new)
+      GianttOp.addToSet(afterId, 'requires', newItem.id),
+      // remove any direct before→after blocks/requires edges
+      GianttOp.removeFromSet(beforeId, 'blocks', afterId, []),
+      GianttOp.removeFromSet(afterId, 'requires', beforeId, []),
+    ];
+    FlowRepository.saveOperations(flow, ops);
+    _itemToFlow[newItem.id] = flow;
+    return CommandResult.success(newItem, 'Inserted "${newItem.id}"');
   }
 
   Future<CommandResult<String>> includeItem(String itemId) async {

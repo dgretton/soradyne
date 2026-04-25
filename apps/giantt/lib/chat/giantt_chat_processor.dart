@@ -283,6 +283,9 @@ class GianttChatProcessor implements ChatCommandProcessor {
     final item = graph.items[id];
     if (item == null) throw StateError('Item "$id" not found');
 
+    // 'comment' and 'description' both map to userComment (the CRDT 'comment' field).
+    final commentArg = args['comment'] as String? ?? args['description'] as String?;
+
     final updated = item.copyWith(
       title: args['title'] as String? ?? item.title,
       status: args['status'] != null
@@ -296,6 +299,7 @@ class GianttChatProcessor implements ChatCommandProcessor {
           : null,
       charts: args.containsKey('charts') ? _parseStringList(args['charts']) : null,
       tags: args.containsKey('tags') ? _parseStringList(args['tags']) : null,
+      userComment: commentArg ?? item.userComment,
     );
 
     final result = await _service.updateItem(id, updated);
@@ -304,12 +308,8 @@ class GianttChatProcessor implements ChatCommandProcessor {
 
   Future<void> _remove(Map<String, dynamic> args) async {
     final id = _requireArg<String>(args, 'id');
-    final graph = await _service.getGraph();
-    if (!graph.items.containsKey(id)) {
-      throw StateError('Item "$id" not found');
-    }
-    graph.removeItem(id);
-    await _service.saveGraph();
+    final result = await _service.removeItem(id);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _setStatus(Map<String, dynamic> args) async {
@@ -339,9 +339,8 @@ class GianttChatProcessor implements ChatCommandProcessor {
       priority: priorityName != null ? GianttPriority.fromName(priorityName) : GianttPriority.neutral,
     );
 
-    final graph = await _service.getGraph();
-    graph.insertBetween(newItem, before, after);
-    await _service.saveGraph();
+    final result = await _service.insertBetween(newItem, before, after);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _occlude(Map<String, dynamic> args) async {
@@ -360,20 +359,16 @@ class GianttChatProcessor implements ChatCommandProcessor {
     final from = _requireArg<String>(args, 'from');
     final typeName = _requireArg<String>(args, 'type');
     final to = _requireArg<String>(args, 'to');
-
-    final graph = await _service.getGraph();
-    graph.addRelation(from, RelationType.fromName(typeName), to);
-    await _service.saveGraph();
+    final result = await _service.addRelation(from, typeName, to);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _removeRelation(Map<String, dynamic> args) async {
     final from = _requireArg<String>(args, 'from');
     final typeName = _requireArg<String>(args, 'type');
     final to = _requireArg<String>(args, 'to');
-
-    final graph = await _service.getGraph();
-    graph.removeRelation(from, RelationType.fromName(typeName), to);
-    await _service.saveGraph();
+    final result = await _service.removeRelation(from, typeName, to);
+    if (!result.success) throw StateError(result.message ?? result.error ?? 'Unknown error');
   }
 
   Future<void> _log(Map<String, dynamic> args) async {
