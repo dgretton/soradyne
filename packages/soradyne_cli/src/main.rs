@@ -423,7 +423,7 @@ fn handle_flow(action: FlowAction, base: &PathBuf) {
     let identity = load_identity(base);
 
     match action {
-        FlowAction::Inspect { uuid, schema } => {
+        FlowAction::Inspect { uuid, schema: _ } => {
             let flow_dir = base.join("flows").join(&uuid);
             let flow_uuid = Uuid::parse_str(&uuid).unwrap_or_else(|_| {
                 eprintln!("warning: invalid UUID \"{}\", using random", uuid);
@@ -433,22 +433,12 @@ fn handle_flow(action: FlowAction, base: &PathBuf) {
             let device_id: soradyne::convergent::DeviceId =
                 identity.device_id().to_string().into();
 
-            match ConvergentFlow::new_persistent(&schema, device_id, flow_dir, flow_uuid) {
-                Some(flow) => {
-                    let state = flow.read_drip();
-                    if state.is_empty() {
-                        println!("(empty flow)");
-                    } else {
-                        println!("{}", state);
-                    }
-                }
-                None => {
-                    eprintln!(
-                        "Unknown schema: \"{}\". Use \"giantt\" or \"inventory\".",
-                        schema
-                    );
-                    std::process::exit(1);
-                }
+            let flow = ConvergentFlow::new_persistent(device_id, flow_dir, flow_uuid);
+            let state = flow.read_drip();
+            if state.trim() == r#"{"items":{}}"# || state.is_empty() {
+                println!("(empty flow)");
+            } else {
+                println!("{}", state);
             }
         }
 
@@ -473,13 +463,7 @@ fn handle_flow(action: FlowAction, base: &PathBuf) {
             // Initialize the flow so its journal directory exists
             let device_id: soradyne::convergent::DeviceId =
                 identity.device_id().to_string().into();
-            if ConvergentFlow::new_persistent(&schema, device_id, flow_dir, flow_uuid).is_none() {
-                eprintln!(
-                    "Unknown schema: \"{}\". Use \"giantt\" or \"inventory\".",
-                    schema
-                );
-                std::process::exit(1);
-            }
+            ConvergentFlow::new_persistent(device_id, flow_dir, flow_uuid);
 
             println!("{}", flow_uuid);
         }
@@ -501,19 +485,11 @@ fn handle_flow(action: FlowAction, base: &PathBuf) {
                 identity.device_id().to_string().into();
 
             let item_type = match schema.as_str() {
-                "giantt" => "GianttItem",
                 "inventory" => "InventoryItem",
-                _ => {
-                    eprintln!(
-                        "Unknown schema: \"{}\". Use \"giantt\" or \"inventory\".",
-                        schema
-                    );
-                    std::process::exit(1);
-                }
+                _ => "GianttItem",
             };
 
-            let mut flow = ConvergentFlow::new_persistent(&schema, device_id, flow_dir, flow_uuid)
-                .expect("failed to open flow");
+            let mut flow = ConvergentFlow::new_persistent(device_id, flow_dir, flow_uuid);
 
             flow.apply_operation(Operation::AddItem {
                 item_id: item_id.clone(),
@@ -712,18 +688,11 @@ fn handle_sync(base: &PathBuf) {
             }
         };
 
-        let mut flow = match ConvergentFlow::new_persistent(
-            schema,
+        let mut flow = ConvergentFlow::new_persistent(
             device_id_str.clone(),
             flow_path.clone(),
             *flow_uuid,
-        ) {
-            Some(f) => f,
-            None => {
-                eprintln!("Warning: failed to open flow {} (schema: {})", flow_uuid, schema);
-                continue;
-            }
-        };
+        );
 
         flow.set_ensemble(
             Arc::clone(manager.messenger()),
