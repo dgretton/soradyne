@@ -45,14 +45,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
+      final soradyneDir = _service.soradyneDataDir;
+      final localDeviceId = await _service.localDeviceId;
+
       final graph = await _service.getGraph();
       final available = GraphIntelligence.availableNow(graph);
       final inProgress = GraphIntelligence.inProgress(graph);
       final allCharts = GraphIntelligence.allCharts(graph);
-      final recentCharts = await ChartRecencyService.instance.ordered(allCharts);
-
-      final soradyneDir = _service.soradyneDataDir;
-      final localDeviceId = await _service.localDeviceId;
+      final recentCharts = await _chartsByActivity(
+          graph, allCharts, soradyneDir, _service.primaryFlowUuid);
       List<DeviceActivity> syncActivity = [];
       if (soradyneDir != null && localDeviceId != null) {
         final flowUuid = _service.primaryFlowUuid;
@@ -105,6 +106,86 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Order charts by the most recent op (any device) that touched an item
+  /// belonging to each chart. Falls back to alphabetical for charts with no
+  /// recent ops. Manual chip taps (ChartRecencyService) act as a tiebreaker.
+  static Future<List<String>> _chartsByActivity(
+    GianttGraph graph,
+    Set<String> allCharts,
+    String? soradyneDir,
+    String? flowUuid, {
+    int limit = 8,
+  }) async {
+    if (soradyneDir == null || flowUuid == null) {
+      return allCharts.toList()..sort();
+    }
+
+    final journalsDir = Directory('$soradyneDir/flows/$flowUuid/journals');
+    if (!journalsDir.existsSync()) return allCharts.toList()..sort();
+
+    // item_id → most recent timestamp across all journals
+    final itemLatest = <String, DateTime>{};
+    final cutoff = DateTime.now().subtract(const Duration(days: 90));
+
+    for (final file in journalsDir.listSync().whereType<File>()) {
+      if (!file.path.endsWith('.jsonl')) continue;
+      for (final line in file.readAsLinesSync().reversed) {
+        if (line.trim().isEmpty) continue;
+        try {
+          final json = jsonDecode(line) as Map<String, dynamic>;
+          final ts = DateTime.fromMillisecondsSinceEpoch(
+              (json['timestamp'] as num).toInt());
+          if (ts.isBefore(cutoff)) break;
+          final op = json['op'] as Map<String, dynamic>;
+          final itemId = SyncActivityService.extractItemId(op);
+          if (itemId == '?') continue;
+          if (!itemLatest.containsKey(itemId) ||
+              ts.isAfter(itemLatest[itemId]!)) {
+            itemLatest[itemId] = ts;
+          }
+        } catch (_) {}
+      }
+    }
+
+    // chart → most recent op timestamp for any item in that chart
+    final chartLatest = <String, DateTime>{};
+    for (final entry in itemLatest.entries) {
+      final item = graph.items[entry.key];
+      if (item == null) continue;
+      for (final chart in item.charts) {
+        if (!chartLatest.containsKey(chart) ||
+            entry.value.isAfter(chartLatest[chart]!)) {
+          chartLatest[chart] = entry.value;
+        }
+      }
+    }
+
+    // Blend with UI-interaction recency as tiebreaker.
+    final uiOrder = await ChartRecencyService.instance
+        .ordered(allCharts, limit: allCharts.length);
+    final uiRank = {for (var i = 0; i < uiOrder.length; i++) uiOrder[i]: i};
+
+    final sorted = allCharts.toList()
+      ..sort((a, b) {
+        final ta = chartLatest[a];
+        final tb = chartLatest[b];
+        if (ta != null && tb != null) {
+          final cmp = tb.compareTo(ta);
+          if (cmp != 0) return cmp;
+        } else if (ta != null) {
+          return -1;
+        } else if (tb != null) {
+          return 1;
+        }
+        final ra = uiRank[a] ?? 999;
+        final rb = uiRank[b] ?? 999;
+        if (ra != rb) return ra.compareTo(rb);
+        return a.compareTo(b);
+      });
+
+    return sorted.take(limit).toList();
   }
 
   @override

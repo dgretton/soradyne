@@ -122,7 +122,7 @@ class SyncActivityService {
               (json['timestamp'] as num).toInt());
           if (ts.isBefore(cutoff)) break; // journals are chronological
           final op = json['op'] as Map<String, dynamic>;
-          final itemId = _extractItemId(op);
+          final itemId = extractItemId(op);
           activityByDevice.putIfAbsent(deviceId, () => []).add(RemoteOp(
             deviceId: deviceId,
             timestamp: ts,
@@ -149,7 +149,7 @@ class SyncActivityService {
     return result;
   }
 
-  static String _extractItemId(Map<String, dynamic> op) {
+  static String extractItemId(Map<String, dynamic> op) {
     for (final v in op.values) {
       if (v is Map && v.containsKey('item_id')) return v['item_id'] as String;
     }
