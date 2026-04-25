@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:giantt_core/giantt_core.dart';
+import 'package:provider/provider.dart';
+import '../models/app_state.dart';
 import '../services/giantt_service.dart';
 
 class AddItemScreen extends StatefulWidget {
@@ -260,7 +262,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(result.message ?? 'Item added successfully')),
           );
-          Navigator.pop(context, true);
+          // Pop back to Items tab (Add Item is now reached from there).
+          // If pushed via Navigator from ItemsScreen this pops correctly;
+          // if somehow in the IndexedStack fallback, switch to Items tab.
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(true);
+          } else {
+            final appState = context.read<GianttAppState>();
+            appState.triggerGraphRefresh();
+            appState.selectTab(2);
+          }
         }
       } else {
         if (mounted) {

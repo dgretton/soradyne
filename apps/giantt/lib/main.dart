@@ -3,13 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:ai_chat_flutter/ai_chat_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/chart_view_screen.dart';
+import 'screens/items_screen.dart';
 import 'screens/item_detail_screen.dart';
-import 'screens/add_item_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/chat_screen.dart';
 import 'services/giantt_service.dart';
 import 'models/app_state.dart';
 import 'theme/app_theme.dart';
-import 'widgets/chat_fab.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,46 +77,50 @@ class GianttHomePage extends StatefulWidget {
 }
 
 class _GianttHomePageState extends State<GianttHomePage> {
-  int _selectedIndex = 0;
-
   static const List<Widget> _pages = <Widget>[
     HomeScreen(),
     ChartViewScreen(),
-    AddItemScreen(),
+    ItemsScreen(),
+    GianttChatScreen(),
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      floatingActionButton: const ChatFab(),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+    return Consumer<GianttAppState>(
+      builder: (context, appState, _) {
+        return Scaffold(
+          body: IndexedStack(
+            index: appState.selectedTabIndex,
+            children: _pages,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Charts',
+          bottomNavigationBar: BottomNavigationBar(
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.timeline_outlined),
+                activeIcon: Icon(Icons.timeline),
+                label: 'Charts',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.list_outlined),
+                activeIcon: Icon(Icons.list),
+                label: 'Items',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.chat_bubble_outline),
+                activeIcon: Icon(Icons.chat_bubble),
+                label: 'Chat',
+              ),
+            ],
+            currentIndex: appState.selectedTabIndex,
+            onTap: (i) => appState.selectTab(i),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Add Item',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
+        );
+      },
     );
   }
 }
