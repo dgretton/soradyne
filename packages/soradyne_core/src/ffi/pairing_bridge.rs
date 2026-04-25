@@ -419,6 +419,40 @@ pub extern "C" fn soradyne_pairing_list_capsules() -> *mut c_char {
     })
 }
 
+/// Delete a capsule by ID — removes from memory and from disk. Irreversible.
+///
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn soradyne_pairing_delete_capsule(capsule_id: *const c_char) -> i32 {
+    let id_str = match unsafe { cstr_to_str(capsule_id) } {
+        Some(s) => s,
+        None => return -1,
+    };
+    let uuid = match Uuid::parse_str(id_str) {
+        Ok(u) => u,
+        Err(_) => return -1,
+    };
+    let guard = match PAIRING_BRIDGE.read() {
+        Ok(g) => g,
+        Err(_) => return -1,
+    };
+    let bridge = match guard.as_ref() {
+        Some(b) => b,
+        None => return -1,
+    };
+    let capsule_store = Arc::clone(&bridge.capsule_store);
+    bridge.runtime.block_on(async move {
+        let mut store = capsule_store.lock().await;
+        match store.delete_capsule(&uuid) {
+            Ok(()) => 0,
+            Err(e) => {
+                eprintln!("soradyne_pairing_delete_capsule: {}", e);
+                -1
+            }
+        }
+    })
+}
+
 /// Get a single capsule by ID as JSON.
 ///
 /// Returns JSON capsule object or `{"error": "..."}`.

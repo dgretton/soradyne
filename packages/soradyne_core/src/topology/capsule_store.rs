@@ -145,6 +145,18 @@ impl CapsuleStore {
         self.capsules.values().collect()
     }
 
+    /// Delete a capsule from memory and from disk. Irreversible.
+    pub fn delete_capsule(&mut self, capsule_id: &Uuid) -> Result<(), TopologyError> {
+        if self.capsules.remove(capsule_id).is_none() {
+            return Err(TopologyError::NotFound(format!("capsule {}", capsule_id)));
+        }
+        let path = self.storage_path.join(format!("{}.json", capsule_id));
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| TopologyError::IoError(e.to_string()))?;
+        }
+        Ok(())
+    }
+
     /// Retire a capsule. Saves to disk.
     pub fn retire_capsule(&mut self, capsule_id: &Uuid) -> Result<(), TopologyError> {
         let capsule = self
