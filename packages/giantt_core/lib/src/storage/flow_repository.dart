@@ -15,6 +15,7 @@ import '../models/giantt_item.dart';
 import '../models/graph_exceptions.dart';
 import '../models/priority.dart';
 import '../models/status.dart';
+import '../models/time_constraint.dart';
 import '../operations/giantt_operations.dart';
 import '../parser/giantt_parser.dart';
 
@@ -437,6 +438,11 @@ class FlowRepository {
         if (targets.isNotEmpty) relations[rel] = targets;
       }
 
+      final timeConstraints = set('timeConstraints')
+          .map((s) => TimeConstraint.parse(s))
+          .whereType<TimeConstraint>()
+          .toList();
+
       final item = GianttItem(
         id: id,
         title: str('title'),
@@ -446,6 +452,7 @@ class FlowRepository {
         charts: set('charts'),
         tags: set('tags'),
         relations: relations,
+        timeConstraints: timeConstraints,
         userComment: fields['comment'] as String?,
         occlude: isOccluded,
       );
