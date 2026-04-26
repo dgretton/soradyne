@@ -112,6 +112,13 @@ dart run giantt_core:giantt
 # System-wide `giantt` command: /usr/local/bin/giantt is a shell wrapper that
 # calls `dart run` directly — source changes take effect immediately, no compile needed.
 
+# IMPORTANT: The live Giantt graph is stored and synced via Soradyne/RIM protocol,
+# NOT in .giantt files on disk. Always use the `giantt` CLI to read or modify items.
+# Pre-RIM .giantt files have been archived to:
+#   ~/Dropbox/Personal Projects/rim/soradyne/packages/giantt_core/.giantt-archive/
+# (gitignored; three files: giantt_core.giantt, giantt-use.giantt, home.giantt)
+# This directory is Dropbox-synced to Mac as disaster-recovery backup.
+
 # System-wide `soradyne-cli` command: /usr/local/bin/soradyne-cli is a symlink to
 # packages/soradyne_cli/target/release/soradyne-cli — updated automatically by
 # any `cargo build --release` in that package.

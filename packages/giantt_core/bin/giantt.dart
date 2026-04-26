@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:args/args.dart';
 import 'package:giantt_core/giantt_core.dart';
 
@@ -50,36 +51,61 @@ void _tryInitFlow() {
   }
 }
 
-/// Enable peer-to-peer sync for the current flow.
+/// Path to the giantt flow config file: ~/.config/giantt/flows.json
+String _gianttConfigPath() {
+  final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.';
+  return '$home/.config/giantt/flows.json';
+}
+
+/// Read all configured flow UUIDs from ~/.config/giantt/flows.json.
 ///
-/// Called once at startup after the flow system is initialized. Starts an
-/// EnsembleManager with TCP static peer connections so that every subsequent
-/// apply_edit broadcasts immediately to connected peers.
-void _tryEnableSync() {
-  if (!_flowAvailable) return;
-  final flowId = _getFlowId();
-  if (flowId == null) return;
+/// Returns an empty list if the file doesn't exist, the flow system is
+/// unavailable, or the file cannot be parsed.
+List<String> _getFlowIds() {
+  if (!_flowAvailable) return [];
   try {
-    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    FlowRepository.enableSync(flowId, dataDir: home != null ? '$home/.soradyne' : null);
-    _syncEnabled = true;
+    final file = File(_gianttConfigPath());
+    if (!file.existsSync()) return [];
+    final list = jsonDecode(file.readAsStringSync()) as List<dynamic>;
+    return list.map((e) => e.toString()).toList();
   } catch (e) {
-    // Non-fatal: sync is optional, flow operations still work locally
-    stderr.writeln('[soradyne] Sync not available: $e');
+    stderr.writeln('[soradyne] Could not read flow config: $e');
+    return [];
   }
 }
 
-/// Return the flow UUID for the current workspace, or null if flow is
-/// unavailable or not yet initialised for this workspace.
+/// Return the primary (first) flow UUID, or null if none are configured.
 String? _getFlowId() {
-  if (!_flowAvailable) return null;
-  try {
-    final ws = FlowRepository.getDefaultWorkspacePath();
-    return FlowRepository.getOrCreateFlowId(ws);
-  } catch (e) {
-    stderr.writeln('[soradyne] Could not get flow ID: $e');
-    return null;
+  final ids = _getFlowIds();
+  return ids.isEmpty ? null : ids.first;
+}
+
+/// Enable peer-to-peer sync for all configured flows.
+void _tryEnableSync() {
+  if (!_flowAvailable) return;
+  final flowIds = _getFlowIds();
+  if (flowIds.isEmpty) return;
+  final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  for (final flowId in flowIds) {
+    try {
+      FlowRepository.enableSync(flowId, dataDir: home != null ? '$home/.soradyne' : null);
+    } catch (e) {
+      stderr.writeln('[soradyne] Sync not available for $flowId: $e');
+    }
   }
+  _syncEnabled = true;
+}
+
+/// Generate a random UUID v4.
+String _generateUuid() {
+  final rng = math.Random.secure();
+  final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+      '${hex.substring(20, 32)}';
 }
 
 void main(List<String> arguments) async {
@@ -491,60 +517,28 @@ Future<void> _executeCommand(ArgResults command) async {
   }
 }
 
-// Command implementations - these will be filled in with actual logic
 Future<void> _executeInit(ArgResults args) async {
-  final dev = args['dev'] as bool;
-  final dataDir = args['data-dir'] as String?;
-  
   try {
-    // Determine base directory
-    late Directory baseDir;
-    if (dataDir != null) {
-      baseDir = Directory(dataDir);
-    } else if (dev) {
-      baseDir = Directory('.giantt');
-    } else {
-      final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-      if (homeDir == null) {
-        stderr.writeln('Error: Unable to determine home directory');
-        exit(1);
-      }
-      baseDir = Directory('$homeDir/.giantt');
+    final configFile = File(_gianttConfigPath());
+    if (configFile.existsSync()) {
+      final ids = _getFlowIds();
+      print('Giantt already configured at ${configFile.path}');
+      if (ids.isNotEmpty) print('Flows: ${ids.join(', ')}');
+      return;
     }
-    
-    // Create directory structure
-    final includeDir = Directory('${baseDir.path}/include');
-    final occludeDir = Directory('${baseDir.path}/occlude');
-    
-    await includeDir.create(recursive: true);
-    await occludeDir.create(recursive: true);
-    
-    // Create initial files if they don't exist
-    final files = {
-      '${includeDir.path}/items.txt': _createItemsBanner(),
-      '${includeDir.path}/metadata.json': '{}',
-      '${includeDir.path}/logs.jsonl': '',
-      '${occludeDir.path}/items.txt': _createOccludeItemsBanner(),
-      '${occludeDir.path}/metadata.json': '{}',
-      '${occludeDir.path}/logs.jsonl': '',
-    };
-    
-    final alreadyExists = <String>[];
-    
-    for (final entry in files.entries) {
-      final file = File(entry.key);
-      if (await file.exists()) {
-        alreadyExists.add(entry.key);
-      } else {
-        await file.writeAsString(entry.value);
-      }
+
+    configFile.parent.createSync(recursive: true);
+    final uuid = _generateUuid();
+    configFile.writeAsStringSync(jsonEncode([uuid]));
+
+    // Touch the flow so soradyne initialises its storage directory.
+    if (_flowAvailable) {
+      try { FlowRepository.loadGraph(uuid); } catch (_) {}
     }
-    
-    if (alreadyExists.length == files.length) {
-      print('Giantt is already initialized at ${baseDir.path}. Enjoy!');
-    } else {
-      print('Initialized Giantt at ${baseDir.path}');
-    }
+
+    print('Initialized Giantt.');
+    print('Flow UUID: $uuid');
+    print('Config:    ${configFile.path}');
   } catch (e) {
     stderr.writeln('Error initializing Giantt: $e');
     exit(1);
@@ -2446,9 +2440,9 @@ void _executeSummary(ArgResults args) {
   final todayStr = args['today'] as String?;
   final today = todayStr != null ? DateTime.parse(todayStr) : null;
 
-  // Prefer flow CRDT; fall back to file
-  final flowId = _getFlowId();
-  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+  // Prefer flow CRDT (merged across all configured flows); fall back to file
+  final flowIds = _getFlowIds();
+  final graph = flowIds.isNotEmpty ? FlowRepository.loadMergedGraph(flowIds).graph : null;
 
   executeSummaryCommand(
     itemsPath: itemsPath,
@@ -2478,9 +2472,9 @@ void _executeLoad(ArgResults args) {
       ? _parseLoadDate(rest[1], todayDate)
       : todayDate.add(const Duration(days: 30));
 
-  // Prefer flow CRDT; fall back to file
-  final flowId = _getFlowId();
-  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+  // Prefer flow CRDT (merged across all configured flows); fall back to file
+  final flowIds = _getFlowIds();
+  final graph = flowIds.isNotEmpty ? FlowRepository.loadMergedGraph(flowIds).graph : null;
 
   executeLoadCommand(
     itemsPath: itemsPath,
@@ -2508,9 +2502,9 @@ void _executeDeps(ArgResults args) {
   final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
   final depth = int.tryParse(args['depth'] as String? ?? '20') ?? 20;
 
-  // Prefer flow CRDT; fall back to file
-  final flowId = _getFlowId();
-  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+  // Prefer flow CRDT (merged across all configured flows); fall back to file
+  final flowIds = _getFlowIds();
+  final graph = flowIds.isNotEmpty ? FlowRepository.loadMergedGraph(flowIds).graph : null;
 
   executeDepsCommand(
     itemsPath: itemsPath,
@@ -2530,9 +2524,9 @@ void _executeBlocked(ArgResults args) {
   final itemsPath = file ?? _getDefaultGianttPath('items.txt');
   final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
 
-  // Prefer flow CRDT; fall back to file
-  final flowId = _getFlowId();
-  final graph = flowId != null ? FlowRepository.loadGraph(flowId) : null;
+  // Prefer flow CRDT (merged across all configured flows); fall back to file
+  final flowIds = _getFlowIds();
+  final graph = flowIds.isNotEmpty ? FlowRepository.loadMergedGraph(flowIds).graph : null;
 
   executeBlockedCommand(
     itemsPath: itemsPath,
