@@ -137,6 +137,7 @@ void main(List<String> arguments) async {
   parser.addCommand('load', _createLoadCommand());
   parser.addCommand('deps', _createDepsCommand());
   parser.addCommand('blocked', _createBlockedCommand());
+  parser.addCommand('list', _createListCommand());
 
   try {
     final results = parser.parse(arguments);
@@ -202,6 +203,7 @@ void _printUsage(ArgParser parser) {
   print('  add-include Add an include directive to a Giantt items file');
   print('');
   print('Query commands (supports --json):');
+  print('  list        Filter and enumerate items (all items including occluded by default)');
   print('  summary     Per-chart project overview');
   print('  load        Temporal load analysis in a date window');
   print('  deps        Dependency chain for an item');
@@ -511,6 +513,9 @@ Future<void> _executeCommand(ArgResults command) async {
       break;
     case 'blocked':
       _executeBlocked(command);
+      break;
+    case 'list':
+      _executeList(command);
       break;
     default:
       throw ArgumentError('Unknown command: ${command.name}');
@@ -2401,6 +2406,20 @@ ArgParser _createBlockedCommand() {
     ..addOption('min-priority', help: 'Minimum priority (e.g. MEDIUM, HIGH)');
 }
 
+ArgParser _createListCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addFlag('json', abbr: 'j', help: 'Output result as JSON', negatable: false)
+    ..addFlag('exclude-occluded', help: 'Exclude occluded items (default: include all)', negatable: false)
+    ..addOption('file', abbr: 'f', help: 'Giantt items file to use')
+    ..addOption('occlude-file', abbr: 'a', help: 'Giantt occluded items file to use')
+    ..addOption('charts', help: 'Include only these charts (comma-separated)')
+    ..addOption('exclude-charts', help: 'Exclude these charts (comma-separated)')
+    ..addOption('min-priority', help: 'Minimum priority (e.g. MEDIUM, HIGH)')
+    ..addOption('status', help: 'Comma-separated statuses to include (e.g. NOT_STARTED,IN_PROGRESS)')
+    ..addOption('tags', help: 'Comma-separated tags; items must have at least one');
+}
+
 // ---------------------------------------------------------------------------
 // Query command execute functions
 // ---------------------------------------------------------------------------
@@ -2559,4 +2578,44 @@ String _getDefaultGianttPath(String filename, {bool occlude = false}) {
   
   // If neither exists, return local path for creation
   return '.giantt${Platform.pathSeparator}$filepath';
+}
+
+void _executeList(ArgResults args) {
+  final file = args['file'] as String?;
+  final occludeFile = args['occlude-file'] as String?;
+  final itemsPath = file ?? _getDefaultGianttPath('items.txt');
+  final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
+  final excludeOccluded = args['exclude-occluded'] as bool;
+
+  // Parse optional status filter.
+  final statusStr = args['status'] as String?;
+  final statuses = statusStr != null
+      ? statusStr.split(',').map((s) {
+          try { return GianttStatus.fromName(s.trim()); }
+          catch (_) { return null; }
+        }).whereType<GianttStatus>().toList()
+      : null;
+
+  // Parse optional tags filter.
+  final tagsStr = args['tags'] as String?;
+  final tags = tagsStr != null
+      ? tagsStr.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList()
+      : null;
+
+  // Prefer flow CRDT (merged across all configured flows); fall back to file.
+  final flowIds = _getFlowIds();
+  final graph = flowIds.isNotEmpty ? FlowRepository.loadMergedGraph(flowIds).graph : null;
+
+  executeListCommand(
+    itemsPath: itemsPath,
+    occludeItemsPath: occludeItemsPath,
+    graph: graph,
+    charts: _parseCommaList(args['charts'] as String?),
+    excludeCharts: _parseCommaList(args['exclude-charts'] as String?),
+    minPriority: _parsePriority(args['min-priority'] as String?),
+    statuses: statuses,
+    tags: tags,
+    excludeOccluded: excludeOccluded,
+    jsonOutput: args['json'] as bool,
+  );
 }

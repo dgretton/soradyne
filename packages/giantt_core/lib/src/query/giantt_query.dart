@@ -389,6 +389,62 @@ class BlockedResult {
 }
 
 // ---------------------------------------------------------------------------
+// List result types
+// ---------------------------------------------------------------------------
+
+/// A single item as returned by [GianttQuery.list].
+class ListItem {
+  const ListItem({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.priority,
+    required this.durationSeconds,
+    required this.charts,
+    required this.tags,
+    required this.occluded,
+  });
+
+  final String id;
+  final String title;
+
+  /// Status name (e.g. "NOT_STARTED").
+  final String status;
+
+  /// Priority name (e.g. "HIGH").
+  final String priority;
+
+  final double durationSeconds;
+  final List<String> charts;
+  final List<String> tags;
+  final bool occluded;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'status': status,
+        'priority': priority,
+        'duration_seconds': durationSeconds,
+        'charts': charts,
+        'tags': tags,
+        'occluded': occluded,
+      };
+}
+
+/// Top-level result from [GianttQuery.list].
+class ListResult {
+  const ListResult({required this.totalItems, required this.items});
+
+  final int totalItems;
+  final List<ListItem> items;
+
+  Map<String, dynamic> toJson() => {
+        'total_items': totalItems,
+        'items': items.map((i) => i.toJson()).toList(),
+      };
+}
+
+// ---------------------------------------------------------------------------
 // GianttQuery
 // ---------------------------------------------------------------------------
 
@@ -984,5 +1040,52 @@ class GianttQuery {
       impliedCount: blockedItems.length - explicitCount,
       items: blockedItems,
     );
+  }
+
+  // ---- list ----
+
+  /// Returns items matching the given filters, sorted by priority descending.
+  ///
+  /// Unlike [summary], [blocked], and [load] — which operate only on
+  /// [GianttGraph.includedItems] — this method includes occluded items by
+  /// default, since a targeted filter query should return complete results.
+  /// Pass [excludeOccluded] = true to restrict to non-occluded items.
+  ListResult list({
+    QueryFilter filter = const QueryFilter(),
+    List<GianttStatus>? statuses,
+    List<String>? tags,
+    bool excludeOccluded = false,
+  }) {
+    final source = excludeOccluded ? graph.includedItems : graph.items;
+
+    final items = source.values.where((item) {
+      if (!_passesChartFilter(item, filter)) return false;
+      if (!_passesPriorityFilter(item, filter)) return false;
+      if (statuses != null && !statuses.contains(item.status)) return false;
+      if (tags != null && !tags.any((t) => item.tags.contains(t))) return false;
+      return true;
+    }).toList();
+
+    // Sort by priority descending (critical first).
+    items.sort((a, b) {
+      return GianttPriority.values
+          .indexOf(b.priority)
+          .compareTo(GianttPriority.values.indexOf(a.priority));
+    });
+
+    final listItems = items
+        .map((item) => ListItem(
+              id: item.id,
+              title: item.title,
+              status: item.status.name,
+              priority: item.priority.name,
+              durationSeconds: item.duration.totalSeconds,
+              charts: List<String>.from(item.charts),
+              tags: List<String>.from(item.tags),
+              occluded: item.occlude,
+            ))
+        .toList();
+
+    return ListResult(totalItems: listItems.length, items: listItems);
   }
 }

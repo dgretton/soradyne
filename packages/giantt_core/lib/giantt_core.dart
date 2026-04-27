@@ -45,6 +45,7 @@ export 'src/commands/summary_command.dart';
 export 'src/commands/blocked_command.dart';
 export 'src/commands/deps_command.dart';
 export 'src/commands/load_command.dart';
+export 'src/commands/list_command.dart';
 
 // Flow-based CRDT storage (Soradyne-backed)
 export 'src/storage/flow_repository.dart';
