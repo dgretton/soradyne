@@ -25,10 +25,11 @@ enum GianttStatus {
     throw ArgumentError('Invalid status symbol: $symbol');
   }
 
-  /// Create a GianttStatus from its name
+  /// Create a GianttStatus from its name (case-insensitive).
   static GianttStatus fromName(String name) {
+    final upper = name.toUpperCase().replaceAll(' ', '_');
     for (final status in GianttStatus.values) {
-      if (status.name == name) {
+      if (status.name == upper) {
         return status;
       }
     }

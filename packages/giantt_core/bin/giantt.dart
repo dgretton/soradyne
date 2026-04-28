@@ -2587,13 +2587,17 @@ void _executeList(ArgResults args) {
   final occludeItemsPath = occludeFile ?? _getDefaultGianttPath('items.txt', occlude: true);
   final excludeOccluded = args['exclude-occluded'] as bool;
 
-  // Parse optional status filter.
+  // Parse optional status filter. Unknown values are ignored; if all values
+  // fail to parse the filter is treated as absent (not "filter everything out").
   final statusStr = args['status'] as String?;
-  final statuses = statusStr != null
+  final parsedStatuses = statusStr != null
       ? statusStr.split(',').map((s) {
           try { return GianttStatus.fromName(s.trim()); }
           catch (_) { return null; }
         }).whereType<GianttStatus>().toList()
+      : null;
+  final statuses = (parsedStatuses != null && parsedStatuses.isNotEmpty)
+      ? parsedStatuses
       : null;
 
   // Parse optional tags filter.
