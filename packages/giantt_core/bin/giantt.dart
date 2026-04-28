@@ -138,6 +138,7 @@ void main(List<String> arguments) async {
   parser.addCommand('deps', _createDepsCommand());
   parser.addCommand('blocked', _createBlockedCommand());
   parser.addCommand('list', _createListCommand());
+  parser.addCommand('pdf', _createPdfCommand());
 
   try {
     final results = parser.parse(arguments);
@@ -208,6 +209,9 @@ void _printUsage(ArgParser parser) {
   print('  load        Temporal load analysis in a date window');
   print('  deps        Dependency chain for an item');
   print('  blocked     All currently blocked items');
+  print('');
+  print('Output commands:');
+  print('  pdf         Render a printable PDF review of the synced graph');
   print('');
   print('Run "giantt <command> --help" for more information on a command.');
 }
@@ -516,6 +520,9 @@ Future<void> _executeCommand(ArgResults command) async {
       break;
     case 'list':
       _executeList(command);
+      break;
+    case 'pdf':
+      await _executePdf(command);
       break;
     default:
       throw ArgumentError('Unknown command: ${command.name}');
@@ -2556,6 +2563,126 @@ void _executeBlocked(ArgResults args) {
     minPriority: _parsePriority(args['min-priority'] as String?),
     jsonOutput: args['json'] as bool,
   );
+}
+
+// ---------------------------------------------------------------------------
+// pdf subcommand
+// ---------------------------------------------------------------------------
+
+ArgParser _createPdfCommand() {
+  return ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show help for this command', negatable: false)
+    ..addOption('output', abbr: 'o', help: 'Output PDF path (default: ~/.giantt/review.pdf)')
+    ..addOption('config', abbr: 'c', help: 'Path to charts.yaml (default: ~/.giantt/charts.yaml if present)')
+    ..addMultiOption('page',
+        help: 'One page = comma-separated chart names (repeatable). Overrides charts.yaml if both present.')
+    ..addOption('from', help: 'Default left edge of time axis (YYYY-MM-DD). Defaults to one week ago.')
+    ..addOption('window', defaultsTo: '8w', help: 'Default window length (e.g. 8w, 60d, 3mo)')
+    ..addOption('to', help: 'Default right edge (YYYY-MM-DD). Overrides --window.');
+}
+
+Future<void> _executePdf(ArgResults args) async {
+  // Resolve output path.
+  final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (homeDir == null) {
+    stderr.writeln('Error: cannot find HOME directory.');
+    exit(1);
+  }
+  final defaultOut = '$homeDir${Platform.pathSeparator}.giantt${Platform.pathSeparator}review.pdf';
+  final outPath = (args['output'] as String?) ?? defaultOut;
+
+  // Load graph (prefer flow).
+  final flowId = _getFlowId();
+  final GianttGraph graph;
+  if (flowId != null) {
+    graph = FlowRepository.loadGraph(flowId);
+  } else {
+    final itemsPath = _getDefaultGianttPath('items.txt');
+    final occludeItemsPath = _getDefaultGianttPath('items.txt', occlude: true);
+    graph = FileRepository.loadGraph(itemsPath, occludeItemsPath);
+  }
+
+  // Decide pages: CLI --page wins, then sidecar yaml, then default per-chart.
+  final cliPages = (args['page'] as List<dynamic>? ?? const <dynamic>[])
+      .map((s) => s.toString())
+      .where((s) => s.trim().isNotEmpty)
+      .toList();
+  final List<PageSpec> pages;
+  if (cliPages.isNotEmpty) {
+    pages = cliPages
+        .map((p) => PageSpec(
+              charts: p.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+            ))
+        .where((p) => p.charts.isNotEmpty)
+        .toList();
+  } else {
+    final cfgPath = (args['config'] as String?) ??
+        '$homeDir${Platform.pathSeparator}.giantt${Platform.pathSeparator}charts.yaml';
+    final fromYaml = loadChartsYaml(cfgPath);
+    pages = fromYaml ?? defaultPagesFromGraph(graph);
+  }
+
+  if (pages.isEmpty) {
+    stderr.writeln('No charts to render. Add items with chart names, '
+        'pass --page <chart>, or create ~/.giantt/charts.yaml.');
+    exit(1);
+  }
+
+  // Resolve time defaults.
+  final now = DateTime.now();
+  final fromArg = args['from'] as String?;
+  final toArg = args['to'] as String?;
+  final windowArg = args['window'] as String? ?? '8w';
+  final defaultFrom = fromArg != null
+      ? DateTime.parse(fromArg)
+      : now.subtract(const Duration(days: 7));
+  final defaultWindowDays = _parseWindowDays(windowArg) ?? 56;
+  // If --to given, override the window for default pages by injecting it.
+  final effectivePages = toArg != null
+      ? pages
+          .map((p) => PageSpec(
+                charts: p.charts,
+                from: p.from,
+                to: p.to ?? DateTime.parse(toArg),
+                window: p.window,
+                title: p.title,
+              ))
+          .toList()
+      : pages;
+
+  final options = PdfReviewOptions(
+    pages: effectivePages,
+    defaultFrom: defaultFrom,
+    defaultWindowDays: defaultWindowDays,
+    now: now,
+  );
+
+  // Render and write.
+  final bytes = await renderReview(graph: graph, options: options);
+  final outFile = File(outPath);
+  outFile.parent.createSync(recursive: true);
+  outFile.writeAsBytesSync(bytes);
+  stderr.writeln('Wrote $outPath  (${effectivePages.length} page(s), ${graph.includedItems.length} items in graph)');
+}
+
+int? _parseWindowDays(String s) {
+  final m = RegExp(r'^(\d+)\s*([dwmy]|mo)?$', caseSensitive: false).firstMatch(s.trim());
+  if (m == null) return null;
+  final n = int.parse(m.group(1)!);
+  final unit = (m.group(2) ?? 'd').toLowerCase();
+  switch (unit) {
+    case 'd':
+      return n;
+    case 'w':
+      return n * 7;
+    case 'mo':
+    case 'm':
+      return n * 30;
+    case 'y':
+      return n * 365;
+    default:
+      return n;
+  }
 }
 
 String _getDefaultGianttPath(String filename, {bool occlude = false}) {

@@ -59,7 +59,7 @@ post_install do |installer|
     # SRCROOT for the Runner target is the macos/ directory.
     # The plugin source lives two directories up: ../../packages/soradyne_flutter/macos/
     phase.shell_script = <<~'SH'
-      DYLIB="${SRCROOT}/../../../../packages/soradyne_flutter/macos/libsoradyne.dylib"
+      DYLIB="${SRCROOT}/../../../packages/soradyne_flutter/macos/libsoradyne.dylib"
       DEST="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Frameworks/libsoradyne.dylib"
       mkdir -p "$(dirname "$DEST")"
       if [ -f "$DYLIB" ]; then

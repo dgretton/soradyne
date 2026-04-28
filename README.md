@@ -140,7 +140,7 @@ cargo build --release --features ble-central --no-default-features
 melos bootstrap
 
 # Run the demo app
-cd apps/soradyne_demo/flutter_app && flutter run -d macos
+cd apps/soradyne_demo && flutter run -d macos
 ```
 
 ### Initialize rimsd Devices

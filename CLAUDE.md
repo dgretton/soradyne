@@ -103,8 +103,8 @@ cd apps/giantt && flutter test
 melos run analyze
 
 # Run demo app
-cd apps/soradyne_demo/flutter_app && flutter run -d macos
-cd apps/soradyne_demo/flutter_app && flutter run -d <android-device-id>
+cd apps/soradyne_demo && flutter run -d macos
+cd apps/soradyne_demo && flutter run -d <android-device-id>
 
 # Run Giantt CLI
 dart run giantt_core:giantt

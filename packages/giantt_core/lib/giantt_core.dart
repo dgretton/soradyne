@@ -52,3 +52,6 @@ export 'src/storage/flow_repository.dart';
 export 'src/operations/giantt_operations.dart';
 export 'src/ffi/flow_client.dart';
 export 'src/ffi/soradyne_ffi.dart';
+
+// PDF review rendering
+export 'src/pdf/pdf.dart';

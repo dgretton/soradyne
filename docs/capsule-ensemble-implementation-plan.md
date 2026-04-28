@@ -1170,7 +1170,7 @@ impl PairingVerifier for NumericPinVerifier {
 
 ### 4.3 Flutter UI for Pairing
 
-**Files**: `apps/soradyne_demo/flutter_app/lib/screens/pairing/`
+**Files**: `apps/soradyne_demo/lib/screens/pairing/`
 
 New screens in the demo app:
 
@@ -2072,7 +2072,7 @@ packages/soradyne_core/src/
 ### New Flutter files:
 
 ```
-apps/soradyne_demo/flutter_app/lib/
+apps/soradyne_demo/lib/
 ├── screens/
 │   ├── capsule/                  # NEW
 │   │   ├── capsule_list_screen.dart

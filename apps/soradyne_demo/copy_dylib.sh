@@ -4,7 +4,7 @@
 echo "Starting copy_dylib.sh script..."
 
 # Source path for the dylib
-DYLIB_SOURCE="../../../packages/soradyne_core/target/release/libsoradyne.dylib"
+DYLIB_SOURCE="../../packages/soradyne_core/target/release/libsoradyne.dylib"
 
 # Destination paths for both Debug and Release builds
 DEBUG_APP_BUNDLE="build/macos/Build/Products/Debug/soradyne_app.app/Contents/MacOS/"
@@ -60,5 +60,5 @@ else
     echo "Make sure to build the Rust library first with: cargo build --release"
     echo "Current directory: $(pwd)"
     echo "Listing parent directories:"
-    ls -la ../../../packages/soradyne_core/target/release/ || echo "Release directory doesn't exist"
+    ls -la ../../packages/soradyne_core/target/release/ || echo "Release directory doesn't exist"
 fi

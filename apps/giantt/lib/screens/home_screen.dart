@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -31,10 +32,32 @@ class _HomeScreenState extends State<HomeScreen> {
   int _localRecentOpCount = 0;
   DateTime? _localLatestOpTime;
 
+  // Live activity watcher — polls journal file sizes once per second and
+  // flashes _liveBlip whenever a journal grows (incoming or outgoing op).
+  Timer? _liveTimer;
+  Timer? _blipTimer;
+  final Map<String, int> _journalSizes = {};
+  bool _liveBlip = false;
+
+  // Clock tick — recomputes time-dependent scoring (chain-overdue) once a
+  // minute against the cached graph, with no file I/O.
+  Timer? _clockTimer;
+
   @override
   void initState() {
     super.initState();
-    _load();
+    _load().then((_) {
+      _startLiveWatcher();
+      _startClockTick();
+    });
+  }
+
+  @override
+  void dispose() {
+    _liveTimer?.cancel();
+    _blipTimer?.cancel();
+    _clockTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -44,8 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // (GianttAppState.triggerGraphRefresh → HomeScreen.didChangeDependencies via Consumer above.)
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _load({bool showLoading = true}) async {
+    if (showLoading && mounted) setState(() => _loading = true);
     try {
       final soradyneDir = _service.soradyneDataDir;
       final localDeviceId = await _service.localDeviceId;
@@ -64,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
           syncActivity = await SyncActivityService.recentActivity(
             journalsDir: journalsDir,
             localDeviceId: localDeviceId,
+            since: const Duration(days: 7),
           );
         }
       }
@@ -77,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final localJournal = File(
               '$soradyneDir/flows/$flowUuid/journals/$localDeviceId.jsonl');
           if (localJournal.existsSync()) {
-            final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+            final cutoff = DateTime.now().subtract(const Duration(days: 7));
             for (final line in localJournal.readAsLinesSync().reversed) {
               if (line.trim().isEmpty) continue;
               try {
@@ -108,6 +132,51 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Start a 1-second poller that watches journal file sizes and flashes the
+  /// live-blip dot whenever any file grows. Cheap (one stat per file per
+  /// second) and works without any FFI callback wiring.
+  void _startLiveWatcher() {
+    _liveTimer?.cancel();
+    _liveTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (!mounted) return;
+      final soradyneDir = _service.soradyneDataDir;
+      final flowUuid = _service.primaryFlowUuid;
+      if (soradyneDir == null || flowUuid == null) return;
+      final journalsDir = Directory('$soradyneDir/flows/$flowUuid/journals');
+      if (!journalsDir.existsSync()) return;
+
+      bool changed = false;
+      bool firstScan = _journalSizes.isEmpty;
+      for (final f in journalsDir.listSync().whereType<File>()) {
+        if (!f.path.endsWith('.jsonl')) continue;
+        final size = f.lengthSync();
+        final prev = _journalSizes[f.path];
+        if (!firstScan && prev != null && size != prev) changed = true;
+        _journalSizes[f.path] = size;
+      }
+      if (changed) {
+        if (mounted) setState(() => _liveBlip = true);
+        _blipTimer?.cancel();
+        _blipTimer = Timer(const Duration(milliseconds: 800), () {
+          if (mounted) setState(() => _liveBlip = false);
+        });
+        // Refresh sync counts so the strip text updates promptly.
+        _load(showLoading: false);
+      }
+    });
+  }
+
+  /// Re-score availability against the cached graph once a minute so that
+  /// items become "chain-overdue" without waiting for a sync event.
+  void _startClockTick() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted || _graph == null) return;
+      final available = GraphIntelligence.availableNow(_graph!);
+      setState(() => _availableNow = available);
+    });
   }
 
   /// Order charts by the most recent op (any device) that touched an item
@@ -215,8 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 32),
                 children: [
-                  if (_syncActivity.isNotEmpty || _localRecentOpCount > 0)
-                    _buildSyncStrip(),
+                  _buildSyncStrip(),
                   _buildAvailableNow(),
                   if (_inProgress.isNotEmpty) _buildInProgress(),
                   if (_recentCharts.isNotEmpty) _buildChartStrip(),
@@ -242,16 +310,17 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  _PulseDot(color: cs.primary),
+                  _LiveBlipDot(active: _liveBlip),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildSyncSummaryText(),
                   ),
-                  Icon(
-                    _syncExpanded ? Icons.expand_less : Icons.expand_more,
-                    size: 18,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  if (_syncActivity.isNotEmpty)
+                    Icon(
+                      _syncExpanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
                 ],
               ),
             ),
@@ -282,7 +351,16 @@ class _HomeScreenState extends State<HomeScreen> {
           '${SyncActivityService.timeAgo(_localLatestOpTime!)}');
     }
 
-    if (parts.isEmpty) return const SizedBox.shrink();
+    if (parts.isEmpty) {
+      return Text(
+        _service.primaryFlowUuid == null
+            ? 'No flow configured'
+            : 'No sync activity in the last 7 days',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+      );
+    }
     return Text(
       parts.join('   '),
       style: Theme.of(context).textTheme.bodySmall,
@@ -748,43 +826,32 @@ class _PriorityBadge extends StatelessWidget {
       };
 }
 
-class _PulseDot extends StatefulWidget {
-  final Color color;
-  const _PulseDot({required this.color});
-
-  @override
-  State<_PulseDot> createState() => _PulseDotState();
-}
-
-class _PulseDotState extends State<_PulseDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
-      ..repeat(reverse: true);
-    _anim = Tween(begin: 0.4, end: 1.0).animate(_ctrl);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+/// Dim grey idle; briefly grows + glows green when [active] is true.
+/// Driven by the home screen's journal-size watcher.
+class _LiveBlipDot extends StatelessWidget {
+  final bool active;
+  const _LiveBlipDot({required this.active});
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _anim,
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration:
-            BoxDecoration(color: widget.color, shape: BoxShape.circle),
+    final cs = Theme.of(context).colorScheme;
+    const liveColor = Color(0xFF66BB6A); // green
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: active ? 11 : 8,
+      height: active ? 11 : 8,
+      decoration: BoxDecoration(
+        color: active ? liveColor : cs.outlineVariant,
+        shape: BoxShape.circle,
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: liveColor.withOpacity(0.6),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
     );
   }

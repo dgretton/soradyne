@@ -31,4 +31,4 @@ scripts:
     run: flutter build
     exec:
       packageFilters:
-        scope: ['soradyne_demo', 'giantt', 'inventory']
+        scope: ['soradyne_app', 'giantt', 'inventory']

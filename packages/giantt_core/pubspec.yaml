@@ -11,6 +11,8 @@ dependencies:
   args: ^2.4.2
   ffi: ^2.1.0
   path: ^1.8.3
+  pdf: ^3.11.0
+  yaml: ^3.1.2
 
 dev_dependencies:
   test: ^1.24.0

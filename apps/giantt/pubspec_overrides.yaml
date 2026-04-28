@@ -4,3 +4,5 @@ dependency_overrides:
     path: ../../packages/giantt_core
   ai_chat_flutter:
     path: ../../packages/ai_chat_flutter
+  soradyne_flutter:
+    path: ../../packages/soradyne_flutter
