@@ -68,6 +68,18 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **What it is**: Raw design notes from Dana articulating the transport architecture principles: TCP backing BLE transparently, the embedded engine model, per-process soradyne instances, TCP multiplexing challenges, event-driven design, and the relationship between the CLI daemon and app-embedded soradyne. Stream-of-consciousness format.
 - **Status**: **Superseded by `transport_architecture.md`**, which distills and contextualizes the same ideas. Retained as the original articulation.
 
+### `20260729_flow_sharing_granularity_conversation.md`
+- **Written**: Jul 29, 2026
+- **Last modified**: Jul 29, 2026
+- **What it is**: Verbatim transcript of a high-level design conversation between Dana and Claude working through how selective sharing *between people* interacts with the flow abstraction. Starts from the inventory-sharing problem (some items mine-only, some shared with Jaguar at the rim workshop, moving items without destroying their continuity) and derives a general model. Key threads: logical atomization vs. physical aggregation of flows, the item-is-the-flow continuity model, collection flows (the generalized photo-album pattern), extrinsic-only giantt relations (edges live on charts, not items), access transitivity across the flow mesh, and a bookmarked coherence/synchronization primitive. Companion analysis: `20260729_flow_sharing_granularity_takeaways.md`.
+- **Status**: **Currency medium-high, settled-ness low.** Grounded in the current protocol spec (`rim-self-data-flows.tex`) and `authorization-model.md`, and consistent with the Flow Boundary / Flow Mesh sections. But this is an in-progress design dialogue, not a spec: two decisions were taken provisionally (bless the collection flow type; giantt relations extrinsic-only), several conclusions depend on **inter-capsule auth, which is still undesigned**, and nothing here has been written into the spec or the code. Read as a snapshot of live thinking, not settled architecture.
+
+### `20260729_flow_sharing_granularity_takeaways.md`
+- **Written**: Jul 29, 2026
+- **Last modified**: Jul 29, 2026
+- **What it is**: Structured distillation of the conversation transcript above: decisions taken (collection flow blessed as first-class; giantt relations extrinsic-only; coherence primitive bookmarked to the collection type), the core conceptual model (logical atomization / physical aggregation, item-is-the-flow continuity, graduated disclosure via cached hints, the two-axis split rule), seven known issues to design around (convergence≠validity, chart-relative derived state, cache discipline for hints, partial aggregate queries, structured CRDT set elements, migration, access transitivity), and five open questions (collection flow type definition, inter-capsule auth, coherence groups, auto-grant-vs-prompt, parked intrinsic relations).
+- **Status**: **Currency medium-high, settled-ness low.** A working note, not a spec. Explicitly records that `rim-self-data-flows.tex` is unmodified, no code has changed, and inter-capsule auth remains undesigned. The proposed next work item is drafting the blessed collection flow's type definition.
+
 ---
 
 ## Reference Code
