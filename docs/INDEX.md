@@ -118,6 +118,29 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 
 ---
 
+## Formal Models (`models/`)
+
+### `models/README.md`
+- **Written**: Sep 6, 2026
+- **Last modified**: Sep 6, 2026
+- **What it is**: The guide to the formal models directory: what formal methods are for in this project (catching concept contradictions cheaply, not proving code), the three-small-models scope rule, how to read and extend the Alloy invariants model, requirements for writing a TLA+ module here (one mechanism, under 200 lines, properties first, fairness justified by the implementation, failures as ordinary actions, action names shared with code), the spec for the next model (log replay with horizons), and four methods for keeping code and models in sync: invariants transliterated into proptest predicates over an abstraction function, shared vocabulary, trace validation for the lease and the log, and optional model-based test generation. Ends with where verification does not go (CRDT: proptest; crypto: adopt Noise/MLS and Tamarin only the bespoke remainder) and a checklist for agents adding a mechanism.
+- **Status**: **Binding for grants, custody, leases, logs, replay.** Written without a local Java install; the first `check.sh` run on the development machine is its acceptance test.
+
+### `models/invariants.als`
+- **Written**: Sep 6, 2026
+- **What it is**: Alloy 6 model of the consolidated model (`20260906_fable_soradyne_cascade.md` §3): capsules, pieces, flows with acyclic references, raw/derived/summary streams, records with citations, roles, capsule and role grants, introductions, custody, and a `revoke` transition. Checks C1 (origin custody survives revocation), C2 (replicas discarded on revocation, including all inputs of a dropped role), C3 (no replica without a grant; outsiders read derived streams only, raw only via roles), C5 (no citation cycles), delegation eligibility, and that revocation preserves well-formedness. Runs witness a nested shared scope, an opaque reference, and an effective revocation. Two rules sharpened while writing it: role holders are not parties, and losing a role discards all of its inputs.
+- **Status**: **Unrun as of writing** (no Java on the authoring machine). Must pass on first run; a failing check is to be read as a likely hole in §3 prose before a modelling slip.
+
+### `models/Lease.tla`, `models/Lease.cfg`
+- **Written**: Sep 6, 2026
+- **What it is**: TLA+ seed model of the exclusive-role lease: claim with monotonic terms, lapse, term-stamped writes delivered to a role-written register that rejects stale or non-holder writes, revocation of eligibility. Invariants: single holder, holder eligible, one writer per term, no stale accept. Liveness: an unheld lease is eventually held unless everyone is revoked or the term bound is exhausted, under weak fairness on claiming. Three nodes, MaxTerm 3.
+- **Status**: **Unrun as of writing.** Seed for cascade §5 step 4; to be kept in sync by trace validation per `models/README.md` §4.3.
+
+### `models/check.sh`
+- **What it is**: Runner for both models (downloads jars into gitignored `models/.tools/`); exit 0 pass, 1 counterexample, 2 tooling unavailable. Invoked by `packages/soradyne_core/tests/formal_models.rs` under `cargo test`.
+
+---
+
 ## Reference Code
 
 ### `port_reference/giantt_core.py`

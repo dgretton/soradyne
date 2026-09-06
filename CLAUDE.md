@@ -134,6 +134,25 @@ soradyne-cli flow add-item <FLOW_UUID> <ITEM_ID> <TITLE>
 soradyne-cli flow inspect <FLOW_UUID>
 ```
 
+### Formal models (Alloy + TLA+)
+
+```bash
+# Executable form of the consolidated model's invariants (docs/20260906_fable_soradyne_cascade.md §3.2)
+# and the exclusive-role lease. Requires Java; downloads Alloy and TLC jars on first run.
+docs/models/check.sh            # all: Alloy invariants.als + TLC Lease.tla
+docs/models/check.sh alloy      # invariants only
+docs/models/check.sh tla        # lease only
+
+# Same thing under cargo test (loud skip without Java; SORADYNE_REQUIRE_FORMAL=1 makes the skip a failure)
+cd packages/soradyne_core && cargo test --test formal_models --no-default-features
+```
+
+**Before implementing grants, custody, leases, log streams, or replay, read
+`docs/models/README.md`.** It says which mechanism gets which model, how to write a
+TLA+ module here, and how code is kept in sync with models (invariants as proptest
+predicates over an abstraction function; trace validation for the lease and the log).
+A change to spec, model, or code that does not touch the other two must say why.
+
 ## Architecture: soradyne_core (Rust)
 
 ### Layer overview (bottom to top)
