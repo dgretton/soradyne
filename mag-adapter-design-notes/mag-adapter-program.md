@@ -108,10 +108,19 @@ separately and are NOT duplicated here:
 
 - **Fashion show / artist-showcase** (Armory vs Crystal Ballroom venue; long twisty catwalk;
   pillars-as-feedback entry; "tacking"/tactile-comm demo; ≤12 models; bring-your-own-pillow):
-  already currency-checked against Dana's `rim-obsidian` vault — the venue move (Crystal
-  Ballroom → Arts at the Armory) is already homed and more current in her own vault; the
-  "colors vs pillars / count" question is held for Dana. This mag-adapter note does not touch
-  the rim vault.
+  **CORRECTED 2026-09-02:** the earlier claim here — that this half was "already homed and
+  more current in her own vault" — was WRONG. Only the *venue candidate* was homed (the
+  `Arts at the Armory Outreach` logistics doc); the event-format material was not in the vault
+  at all, and this 2026-06-21 recording is NEWER than every dated fashion-show note there
+  (index 2026-05-15, Jaguar's raw notes 2026-05-20) and answers three of the index's own open
+  questions (venue confirm, "what shifted after the CB show", mobile-vs-seated runway). It has
+  now been distilled into a new, deliberately un-merged vault note:
+  `rim-obsidian/Jaguar/fashion/2026-06-21 Dana + Jaguar session — event format, venue lean,
+  and tech messaging.md`. ⚠ **It also carries a dependency ONTO this document:** what the show
+  is allowed to claim about dissolution/crystallization is conditional on which adapter (dumb
+  vs smart) exists by showtime — see §6 of that note. The "colors vs pillars / count"
+  question remains held for Dana. This mag-adapter note still makes no edit to the rim vault's
+  existing files.
 - **Short-term soradyne software priorities** (prioritize the microcontrollers / ESP32 boards;
   get reliable read/write to large-capacity SD cards past the FAT32 / small-capacity ceiling;
   write the storage layer **modularly** — abstract read/write/file interfaces, dummy fast
