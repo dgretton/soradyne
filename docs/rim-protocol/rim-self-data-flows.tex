@@ -400,7 +400,10 @@ Streams have:
   \item A \textbf{name}, unique within the flow, given in the schema
   \item A \textbf{cardinality}: singleton (one per flow), per-party (one per participant),
     or unbounded (created as needed, e.g., threads or topics)
-  \item A \textbf{category hint}: drip, jet, or unspecified
+  \item A \textbf{category hint}: drip, jet, log, query-response, or unspecified. A
+    \emph{log} is a per-party, append-only, sequenced stream that is replayed rather
+    than merged (the ``edit streams'' of the examples below); a \emph{query-response}
+    stream is served by a role and answers requests rather than holding state
   \item An \textbf{interface}: read, write, subscribe
 \end{itemize}
 
@@ -425,7 +428,7 @@ Examples of drips:
 \begin{itemize}[leftmargin=2em]
   \item The current merged state of a task graph (Giantt)
   \item The current structure of a photo album (order, crops, annotations)
-  \item The current consensus alignment of a coordinate system network (Nestbox)
+  \item The current consensus alignment of a coordinate system network (multi-sensor alignment)
   \item The current merged state of a personal inventory
 \end{itemize}
 
@@ -801,6 +804,15 @@ Who performs transmissions and transformations? Delegation policies specify:
   \item Whether responsibility can be transferred
   \item How new parties are assigned roles when they join
   \item How roles are redistributed when parties leave
+  \item \textbf{Eligibility} for roles that compute from other parties' streams:
+    capability (the party can run the computation), standing (always-on parties
+    preferred where consumers act on the result), authorization coverage (the party is
+    authorized to read every input stream---in a multi-capsule flow this means every
+    contributor has consented to that party), and completeness (the most complete
+    horizon of the inputs)
+  \item \textbf{Lease semantics} for exclusive roles: the role is held under a
+    renewable, time-bounded lease; writes to role-gated streams carry the lease and are
+    rejected when it is not current; standbys are notified when a lease lapses
 \end{itemize}
 
 \subsection{Discovery Policies}
@@ -839,6 +851,20 @@ Provenance & Track origin device and timestamp, or not \\
 \bottomrule
 \end{tabularx}
 \end{center}
+
+Memorization policy is stated \textbf{per stream}, not per flow: the streams of one
+flow routinely differ in sensitivity and lifetime (a party's raw observations versus
+the aggregate estimate computed from them). Two distinctions apply to every stream:
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Origin custody is the author's.} The party that produced a record keeps
+    it under its own policy. A flow's memorization policy governs \emph{replicas} only,
+    and revocation never reaches origin custody.
+  \item \textbf{Replica custodians that leave must discard.} Losing a role, losing
+    authorization, or retiring from the flow obliges a party to discard its replicas of
+    the affected streams per policy. The protocol performs the discard; the application
+    is told it happened.
+\end{itemize}
 
 \subsection{Retirement and Refresh}
 
@@ -1039,7 +1065,7 @@ special-casing simple scenarios and immediately generalizes.
 \label{sec:ex-spatial}
 
 Spatial measurement flows support the distributed, multi-device, multi-coordinate-system
-alignment problem. This is the domain of Nestbox, where devices with different sensors
+alignment problem. This is the domain of multi-sensor coordinate alignment systems, where devices with different sensors
 (cameras, IMUs, LIDAR, robot encoders) observe shared features in a physical space and
 must agree on how their coordinate systems relate.
 
@@ -1072,18 +1098,35 @@ transform from a drip to convert commands in one coordinate system to its local 
 
 \subsubsection{Streams}
 
-This flow type has an unusually large number of streams:
+This flow type has an unusually large number of streams. One flow corresponds to one
+\emph{estimation scope} (a room, a workshop, a site); scopes nest as separate flows
+in the mesh (\S\ref{sec:boundaries}).
 
 \begin{itemize}[leftmargin=2em]
-  \item \textbf{Drips}:
-    \begin{itemize}
-      \item Per-aligner: current best-effort alignment (all should converge)
-      \item Curated measurements: the denoised, pruned measurement set
-    \end{itemize}
-  \item \textbf{Jets}: Raw measurements from each device, streamed to aligners/curators
-  \item \textbf{Historical streams}: Measurement histories, alignment state histories,
-    for new aligners catching up
+  \item \textbf{Per-party observation logs}: Each party's measurements that the
+    estimate must be able to reproduce (survey-grade observations, calibrations,
+    rigidity constraints). Append-only, sequenced per writer, replayable from any
+    point; never merged, only consumed.
+  \item \textbf{Per-party observation jets}: Frame-rate detections and tracker output.
+    Lossy, windowed; a missed sample is superseded by the next.
+  \item \textbf{Per-party declarations (drip)}: Which frames and landmarks each party
+    owns, with their motion class.
+  \item \textbf{Estimate (drip, written by the aligner role)}: The current consensus
+    alignment: transforms with covariance and validity epochs. Each entry cites the
+    horizon of the observation logs it was computed from, so a standby aligner can
+    reproduce it and a consumer can audit it.
+  \item \textbf{Summary (drip, written by the aligner role)}: The joint relation of this
+    scope's boundary frames, for a parent scope. The only stream of a child scope that a
+    parent is authorized to read.
+  \item \textbf{Query (query-response, served by the aligner role)}: ``Relation between
+    $A$ and $B$ at time $t$, with joint uncertainty and the chain used.''
+  \item \textbf{Diagnostics (drip)}: Unobservability reports, epoch changes,
+    check-standard series.
 \end{itemize}
+
+Long-lived instruments (a tag plate, a camera rig, a robot base) are separate flows:
+a declaration, a frozen geometry with survey uncertainty, and a reference to an
+appearance model. Scope flows reference them rather than re-surveying them.
 
 \subsubsection{Flow Roles}
 \begin{itemize}[leftmargin=2em]
@@ -1096,6 +1139,16 @@ This flow type has an unusually large number of streams:
   \item \textbf{Consumer}: Reads alignment drips to get transforms. May be a robot arm
     that just needs to know how to convert coordinates.
 \end{itemize}
+
+The aligner role is held by one party at a time under a lease, with standbys holding
+replicas of the observation logs (\S\ref{sec:policies}, delegation). In a scope with
+parties from several capsules, the aligner is the one party that reads everyone's raw
+observations; eligibility therefore requires that every contributor has authorized it.
+A person's own sensors (a headset, a wearable tracker, cameras in their home) form a
+private scope inside their own capsule and contribute to any shared scope only through
+the summary stream. This is both the correctness rule (a parent never double-counts a
+child's observations) and the disclosure rule (nobody outside the person's devices ever
+holds their observations).
 
 \subsubsection{Flow Boundaries}
 \label{sec:ex-spatial-boundaries}
@@ -1112,19 +1165,19 @@ Should the alignment session be one big flow or many small ones? Key considerati
 
 See Section~\ref{sec:boundaries} for general principles.
 
-\subsubsection{Relationship to Nestbox Twigs}
+\subsubsection{Relationship to Prior Bespoke Routing Systems}
 
-The existing Nestbox Twig system (Protocol Buffers, \texttt{SampleRouter}, dimension
-enums) implements exactly the sensor-to-aligner path described above, but with bespoke
-plumbing per use case. The Twig's \texttt{stream\_id} and \texttt{coord\_sys\_id} map
-to stream identity within a flow. The \texttt{MeasurementSet} with its dimensions,
+A prior bespoke sensor-routing system (Protocol Buffers, a \texttt{SampleRouter},
+dimension enums) implements exactly the sensor-to-aligner path described above, but
+with bespoke plumbing per use case. Its \texttt{stream\_id} and \texttt{coord\_sys\_id}
+map to stream identity within a flow. The \texttt{MeasurementSet} with its dimensions,
 covariance, transforms, and homogeneity flags maps to the data geometry vocabulary
 defined in Section~\ref{sec:geometry}. The \texttt{SampleRouter} is a fitting.
 
-What Twigs lack is the flow-level abstraction: no UUID bundling streams, no policies
-for memorization/discovery/error, no schema declaring what streams exist. Every new
-device type requires new bespoke routing configuration. Self-data flows generalize
-the pattern.
+What such systems lack is the flow-level abstraction: no UUID bundling streams, no
+policies for memorization/discovery/error, no schema declaring what streams exist.
+Every new device type requires new bespoke routing configuration. Self-data flows
+generalize the pattern.
 
 % -----------------------------------------------------------
 \subsection{Photo Albums}
@@ -1494,8 +1547,17 @@ and retirable, but linked by references.
 
 The mesh is not a protocol-level construct---it emerges from applications storing
 references to other flows' UUIDs in their data. But the protocol should make this
-easy by ensuring that UUIDs are stable, discoverable, and sufficient to bootstrap
-access.
+easy by ensuring that UUIDs are stable, discoverable, and sufficient to \emph{request}
+access. Access itself is governed per stream (\S\ref{sec:security}): a reference whose
+target stream the holder is not authorized to read is an \textbf{opaque reference},
+which an application can display but not open, and which the mesh must tolerate.
+
+\textbf{Nesting as disclosure.} When a flow is a summary of another (a room's
+alignment contributing to a building's; a person's own sensor scope contributing to a
+shared workshop), the referencing flow is authorized to read the referenced flow's
+\emph{summary} stream only, never its raw streams. The summary is a derived,
+resampled record appropriate to the receiver---what leaves a person's devices is a
+projection they chose, not the observations behind it.
 
 
 % ============================================================
@@ -1633,6 +1695,15 @@ Ensembles have the following properties:
     ensembles simultaneously, but each ensemble draws its membership from a single
     capsule's authorization list.
 \end{itemize}
+
+\begin{designnote}[Flow Ensembles]
+A flow whose parties span several capsules (a shared album, a shared estimation scope)
+needs a live set of its own: the \emph{flow ensemble}, the reachable parties of one
+flow across capsules, layered over the capsule ensembles that each party belongs to.
+Presence, lease-lapse notification, and routing for shared flows operate at this level.
+This is a topology-layer requirement distinct from inter-capsule authorization
+(\S\ref{sec:security}); the two must be designed together. Not yet designed.
+\end{designnote}
 
 \subsection{Parures}
 
@@ -1908,16 +1979,16 @@ arrives at its destination; the hops in between are invisible.
 
 % ============================================================
 \newpage
-\section{Appendix: Comparison with Nestbox Twigs}
+\section{Appendix: Comparison with a Prior Bespoke Routing System}
 \label{sec:appendix-twigs}
 
-The Nestbox project's Twig system provides a useful point of comparison, as it
+A prior bespoke sensor-routing system provides a useful point of comparison, as it
 implements a subset of what self-data flows generalize.
 
 \begin{center}
 \begin{tabularx}{\textwidth}{l X X}
 \toprule
-\textbf{Concept} & \textbf{Twig} & \textbf{Self-Data Flow} \\
+\textbf{Concept} & \textbf{Prior System} & \textbf{Self-Data Flow} \\
 \midrule
 Identity & \texttt{stream\_id} + \texttt{coord\_sys\_id} & Flow UUID \\
 Schema & Protobuf message definition & Flow type (design document, content-hashed) \\
@@ -1933,7 +2004,7 @@ Multi-device & TCP + protobuf, per-connection & Flow bundles all streams, multi-
 \end{tabularx}
 \end{center}
 
-The Twig system does its job well for the specific Nestbox use case. Self-data flows
+That system does its job well for its specific use case. Self-data flows
 generalize the pattern so that each new device type or application does not require
 new bespoke plumbing.
 
