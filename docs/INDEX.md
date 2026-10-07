@@ -4,6 +4,16 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 
 ## Current architecture (2026-09-11)
 
+### Information lifecycle investigation (2026-10-07)
+- **Location:** [research plan](../research/information_lifecycle/PLAN.md),
+  [status](../research/information_lifecycle/STATUS.md), and
+  [methods](../research/information_lifecycle/METHODS.md).
+- **Status:** isolated research on `research/information-lifecycle`, based on
+  `shared-flow-demo-contracts`; not production behavior or a revised protocol spec.
+- **Scope:** freezing/replacing evidence, permission transitions, retained-state
+  recovery, and consumer stability. Results, failed candidates and design tensions
+  are recorded per cycle; coverage claims are limited to the experiments run.
+
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.
 - **Content:** one shared concept per flow, independent ownership/roles, plural

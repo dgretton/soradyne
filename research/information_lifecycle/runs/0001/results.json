@@ -1,0 +1,154 @@
+{
+  "cycle": "0001",
+  "design_base": "9cbba49",
+  "python": "3.13.4",
+  "results": {
+    "correlation": {
+      "relative_variance": {
+        "exact": "2/3",
+        "float": 0.6666666666666666
+      },
+      "relative_variance_if_independent": {
+        "exact": "4/3",
+        "float": 1.3333333333333333
+      },
+      "sum_variance": {
+        "exact": "2",
+        "float": 2.0
+      },
+      "sum_variance_if_independent": {
+        "exact": "4/3",
+        "float": 1.3333333333333333
+      }
+    },
+    "freeze": {
+      "mean": {
+        "exact": "10/3",
+        "float": 3.3333333333333335
+      },
+      "variance": {
+        "exact": "2/3",
+        "float": 0.6666666666666666
+      }
+    },
+    "irreversible_reduction_witness": {
+      "after_same_withdrawal_in_model_a": {
+        "mean": {
+          "exact": "0",
+          "float": 0.0
+        },
+        "variance": {
+          "exact": "1",
+          "float": 1.0
+        }
+      },
+      "after_same_withdrawal_in_model_b": {
+        "mean": {
+          "exact": "0",
+          "float": 0.0
+        },
+        "variance": {
+          "exact": "4/3",
+          "float": 1.3333333333333333
+        }
+      },
+      "same_frozen_marginal": {
+        "mean": {
+          "exact": "0",
+          "float": 0.0
+        },
+        "variance": {
+          "exact": "2/3",
+          "float": 0.6666666666666666
+        }
+      }
+    },
+    "joint": {
+      "covariance_xx_xy_yy": [
+        {
+          "exact": "2/3",
+          "float": 0.6666666666666666
+        },
+        {
+          "exact": "1/3",
+          "float": 0.3333333333333333
+        },
+        {
+          "exact": "2/3",
+          "float": 0.6666666666666666
+        }
+      ],
+      "mean": [
+        {
+          "exact": "10/3",
+          "float": 3.3333333333333335
+        },
+        {
+          "exact": "-10/3",
+          "float": -3.3333333333333335
+        }
+      ]
+    },
+    "policy_for_withdrawal": "P3: removed observation must not inform future inference",
+    "revision_replay": {
+      "active_records_after_tombstone_and_late_replay": 0,
+      "correct_after_ten_identical_exports": {
+        "mean": {
+          "exact": "2",
+          "float": 2.0
+        },
+        "variance": {
+          "exact": "1",
+          "float": 1.0
+        }
+      },
+      "incorrect_independent_exports": {
+        "mean": {
+          "exact": "2",
+          "float": 2.0
+        },
+        "variance": {
+          "exact": "1/10",
+          "float": 0.1
+        }
+      }
+    },
+    "scope": "Exact linear Gaussian witnesses only; no dynamic or distributed validation",
+    "withdrawal": {
+      "authorized_only_rebuild": {
+        "mean": {
+          "exact": "0",
+          "float": 0.0
+        },
+        "variance": {
+          "exact": "1",
+          "float": 1.0
+        }
+      },
+      "incorrect_keep_frozen": {
+        "mean": {
+          "exact": "10/3",
+          "float": 3.3333333333333335
+        },
+        "variance": {
+          "exact": "2/3",
+          "float": 0.6666666666666666
+        }
+      },
+      "incorrect_subtract_raw_x_block_after_freeze": {
+        "mean": {
+          "exact": "-10",
+          "float": -10.0
+        },
+        "variance": {
+          "exact": "2",
+          "float": 2.0
+        }
+      }
+    }
+  },
+  "source_sha256": {
+    "baseline.py": "6886880e0ea61bc1ad89cd9383975c8c3bf1286616241c71d26cd285441bb540",
+    "test_baseline.py": "91f3f4564976e34d8c6953bf3608ba06c56381f9823f3ac19cea91e19a8dd1d1"
+  }
+}
