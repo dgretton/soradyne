@@ -5,27 +5,30 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0004: scoped entitlement/replay slice completed. Six fixtures, six initial arrival
-orders, five candidates: 180 traces / 2,850 event-query checks. The scoped candidate
-matches all 570 of its checks exactly; every negative control is detected. 57 total
-tests passed, including a regression for a corrected grant-container mutability bug.
-P2 derivative retention, P3 invalidation, surviving grant paths and explicit replay
-gaps have limited exact-scalar evidence. No whole family or production mechanism is
-declared proven. Publication is verified against the remote tip at cycle close.
+0005: shared evidence/calibration slice completed. 24 configurations, five event
+states, six methods: 720 exact outcomes. Atomic conditional joint composition with one
+shared prior matches all 120 references. Compressed joint composition is exact in 80
+states and explicitly unavailable in 40; raw rebuild is exact in its 96 archive-backed
+states. All negative controls are detected. 85 total tests pass. Two exact witnesses
+separate unknown dependence, lost overlap statistics and honest reduced information.
+No complete family or production mechanism is declared proven. Publication is verified
+against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0005: I03 shared evidence and shared calibration in tiny exact linear examples.
-Compare source-ID deduplication, a retained shared latent/joint representation and
-authorized raw rebuild with an independent batch oracle. Include a diamond with
-duplicated evidence, and disjoint observation IDs sharing an uncertain calibration.
-Measure mean, joint/query uncertainty, lineage and supported/unsupported behavior;
-do not infer independence solely from disjoint IDs. Keep feedback policy (I04), broader
-gauge tests (I05) and nonlinear work queued rather than expanding this cycle.
+0006: I04 feedback/repeated influence in a tiny exact scalar or two-variable message
+sequence. Compare a restrictive supported message flow, explicit original-evidence
+accounting, and a negative control that feeds a parent posterior back as independent
+evidence under new revisions/paths. Use an oracle that counts original observations
+once; an acyclic container graph does not establish information independence. Include
+repetition without new observations, a withdrawal and stale returned state. Measure
+mean, covariance, lineage, availability and jumps. Keep broader I05 gauge tests,
+nonlinear models and recovery expansion queued.
 
-Reason for this priority: 0004 handles disjoint independent evidence and explicitly
-rejects partial summary overlap. Test the next information-preservation assumption
-before attempting general nesting or promoting this permission prototype.
+Reason for this priority: 0005 assumes the returned joint blocks are conditional
+likelihoods, with the shared prior applied once and independently. It rejects wrong
+payload types but cannot certify that semantic assertion. Test returned parent influence
+before interpreting the passing two-level composition as general nested inference.
 
 ## Coverage
 
@@ -39,9 +42,11 @@ before attempting general nesting or promoting this permission prototype.
 - R01/R02/R04/R08: partial exact scalar event evidence in 0004. Specific source-
   sequence cutoff, explicit artifact permissions, grant unions and re-grant history
   ranges; trusted atomic local policies only. General enforcement remains open.
-- I03: only a preliminary unsupported-overlap guard in 0004; shared correlation and
-  nested/diamond composition are next. I04-I08, R05-R07, R09-R10, F01-F06, S02 and
-  S04-S08: planned, no scenario-level test evidence yet.
+- I03: partial exact evidence in 0005 for shared calibration, duplicate observations,
+  a two-level diamond, prior updates and withdrawal/rebuild. Known lineage and a
+  shared latent do not reconstruct lost overlap values. General nesting and feedback
+  remain open; I04-I08, R05-R07, R09-R10, F01-F06, S02 and S04-S08 have no dedicated
+  scenario-level coverage yet. A missing-prior guard is not full I05 coverage.
 - Mandatory compound scenarios: planned, none executed.
 - Production changes: none. Distributed, nonlinear and hardware claims: none.
 
@@ -53,6 +58,8 @@ before attempting general nesting or promoting this permission prototype.
   physical response delay; retained counterexamples and parameter-bound sensitivity.
 - [0004](cycles/0004.md): scoped grant/retention unions, retained derivatives, strict
   withdrawal, stale tokens/results and re-grant replay gaps with exact scalar inference.
+- [0005](cycles/0005.md): shared calibration and evidence, joint composition,
+  overlap insufficiency, honest reduced covariance and strict withdrawal/rebuild.
 
 ## Scheduling
 

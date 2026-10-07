@@ -13,11 +13,12 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0004](../research/information_lifecycle/cycles/0004.md)
-  adds exact scalar entitlement/replay fixtures: surviving grant paths, explicit
-  derivative permissions, stale-token rejection and missing-history recovery. Trusted
-  atomic local policies are assumed; shared evidence/calibration is next. Earlier
-  finite-jerk stopping counterexamples remain limited to synthetic dynamics.
+- **Latest evidence:** [cycle 0005](../research/information_lifecycle/cycles/0005.md)
+  distinguishes duplicate evidence from shared calibration and lost overlap statistics.
+  Conditional joint composition is exact within its declared retention/model envelope;
+  compressed overlap can require replay or an explicit unavailable answer. Feedback
+  accounting is next. Earlier entitlement and finite-jerk results retain their stated
+  local-policy and synthetic-dynamics limits.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

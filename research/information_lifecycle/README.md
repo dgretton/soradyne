@@ -80,6 +80,19 @@ See the [protocol](cycles/0004-protocol.md) and [findings](cycles/0004.md). Auth
 identities and local atomic policy installation are assumptions, not implemented
 distributed guarantees. Use a fresh directory for changed methods/configurations.
 
+## Reproduce cycle 0005
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+python3 -B research/information_lifecycle/shared_information.py --output-dir /tmp/information-lifecycle-cycle-0005
+```
+
+This writes 720 exact shared-calibration/lineage outcomes in one JSONL file, aggregate
+metrics, two insufficiency witnesses and source hashes. See the [protocol](cycles/0005-protocol.md)
+and [findings](cycles/0005.md). Atomic blocks are raw-equivalent in this model; passing
+composition does not establish privacy, general feedback handling or hardware safety.
+Use a fresh directory for changed methods/configurations.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

@@ -25,6 +25,17 @@ fixture, not a general result about richer or nonlinear summaries. Translating a
 withdrawal intent into all affected artifact rights remains an application/contract
 obligation; the experiment receives that complete policy snapshot as an input.
 
+[Cycle 0005](cycles/0005.md) adds a distinct exact overlap witness: two worlds have
+identical child lineage and aggregated conditional joint factors on (x,b), yet require
+different full unique-data answers. Keeping the shared calibration variable addresses
+correlation but does not recreate the overlap's numerical contribution. Known cross-
+covariance can produce an honest reduced-information answer (variance 3/8 in the
+witness without calibration uncertainty), while full raw data has variance 1/3; it does not recover the discarded statistic. Possible
+choices remain finer decomposition, an adequate overlap statistic, authorized replay,
+or explicit reduced/unavailable answers. Atomic blocks work in this fixture but are
+raw-equivalent information and need corresponding retention/use authorization. This
+strengthens T01 without establishing a new architectural contradiction.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).
@@ -51,8 +62,8 @@ smoothness or prompt invalidation alone cannot supply missing space. The planner
 the experiment does not enforce such a pre-event margin. A production consumer needs
 an explicit local-state/response/operating-envelope contract, still to be designed.
 Do not infer a general safe-stop policy or decide permission semantics from this
-witness. Future physical coverage stays in the broader S03/compound work; next return
-to entitlement/replay semantics.
+witness. Future physical coverage stays in the broader S03/compound work; subsequent
+cycles investigate information and permission semantics.
 
 ## New tensions
 

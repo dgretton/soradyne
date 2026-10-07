@@ -1,0 +1,189 @@
+{
+  "cycle": "0005",
+  "metrics": {
+    "atomic_joint": {
+      "authorization_violations": 0,
+      "available": 120,
+      "coverage_violations": 0,
+      "max_absolute_consecutive_mean_jump": "2",
+      "numerically_wrong": 0,
+      "outcomes": 120,
+      "unavailable": 0,
+      "unavailable_reasons": {}
+    },
+    "compressed_joint": {
+      "authorization_violations": 0,
+      "available": 80,
+      "coverage_violations": 0,
+      "max_absolute_consecutive_mean_jump": "2",
+      "numerically_wrong": 0,
+      "outcomes": 120,
+      "unavailable": 40,
+      "unavailable_reasons": {
+        "missing_coverage": 16,
+        "unsupported_partial_overlap": 24
+      }
+    },
+    "keep_frozen_on_withdrawal": {
+      "authorization_violations": 24,
+      "available": 120,
+      "coverage_violations": 24,
+      "max_absolute_consecutive_mean_jump": "2",
+      "numerically_wrong": 24,
+      "outcomes": 120,
+      "unavailable": 0,
+      "unavailable_reasons": {}
+    },
+    "raw_rebuild": {
+      "authorization_violations": 0,
+      "available": 96,
+      "coverage_violations": 0,
+      "max_absolute_consecutive_mean_jump": "2",
+      "numerically_wrong": 0,
+      "outcomes": 120,
+      "unavailable": 24,
+      "unavailable_reasons": {
+        "archive_unavailable": 24
+      }
+    },
+    "repeat_calibration_prior": {
+      "authorization_violations": 0,
+      "available": 120,
+      "coverage_violations": 0,
+      "max_absolute_consecutive_mean_jump": "2",
+      "numerically_wrong": 120,
+      "outcomes": 120,
+      "unavailable": 0,
+      "unavailable_reasons": {}
+    },
+    "scalar_ids_only": {
+      "authorization_violations": 0,
+      "available": 56,
+      "coverage_violations": 0,
+      "max_absolute_consecutive_mean_jump": "0",
+      "numerically_wrong": 56,
+      "outcomes": 120,
+      "unavailable": 64,
+      "unavailable_reasons": {
+        "missing_coverage": 16,
+        "stale_calibration": 24,
+        "unsupported_partial_overlap": 24
+      }
+    }
+  },
+  "outcomes": 720,
+  "outcomes_sha256": "069f53209ae1d5bcf491444edf8ec50a3677b007d094d1bfd8f9411288ecc345",
+  "parent_commit": "8cecff0e1ea1f3d71e9b628b68cb9dc04aa13bd7",
+  "python": "3.13.4",
+  "randomness": "none",
+  "reverse_delivery_equal": true,
+  "scope": "Exact linear shared-latent and lineage models; no statistical coverage, distributed enforcement or hardware claim",
+  "source_sha256": {
+    "baseline.py": "6886880e0ea61bc1ad89cd9383975c8c3bf1286616241c71d26cd285441bb540",
+    "cycles/0005-protocol.md": "0474c66478bfc5ac89f770135f3f0737de24fbbfbfac2e485ae142391576ff4c",
+    "shared_information.py": "2bd5c168745494e4c886dba7b993134a8c7018703feab02c941a736071b24845",
+    "test_shared_information.py": "0b73603698e266081ac0af140eebbe0cdb099448ae8c26925de4a9b724b59584"
+  },
+  "witnesses": {
+    "overlap": {
+      "full_unique_variance_without_calibration": "1/3",
+      "honest_reduced_answer_without_calibration": {
+        "mean": "3",
+        "variance": "3/8"
+      },
+      "identical_conditional_packets": [
+        {
+          "blocks": [
+            {
+              "boundary": "linear-x-shared-b/v1",
+              "payload": {
+                "eta0": "2",
+                "eta1": "2",
+                "h00": "2",
+                "h01": "2",
+                "h11": "2"
+              },
+              "prior_version": null,
+              "sources": [
+                "r1",
+                "r2"
+              ]
+            }
+          ],
+          "child": "child-0",
+          "revision": 1
+        },
+        {
+          "blocks": [
+            {
+              "boundary": "linear-x-shared-b/v1",
+              "payload": {
+                "eta0": "10",
+                "eta1": "10",
+                "h00": "2",
+                "h01": "2",
+                "h11": "2"
+              },
+              "prior_version": null,
+              "sources": [
+                "r2",
+                "r3"
+              ]
+            }
+          ],
+          "child": "child-1",
+          "revision": 1
+        }
+      ],
+      "incorrect_independent_answer_without_calibration": {
+        "mean": "3",
+        "variance": "1/4"
+      },
+      "retained_averages": [
+        "1",
+        "5"
+      ],
+      "retained_covariance": [
+        "1/2",
+        "1/4",
+        "1/2"
+      ],
+      "unique_mean_a": "10/3",
+      "unique_mean_b": "4",
+      "world_a": {
+        "r1": "0",
+        "r2": "2",
+        "r3": "8"
+      },
+      "world_b": {
+        "r1": "2",
+        "r2": "0",
+        "r3": "10"
+      }
+    },
+    "scalar_dependence": {
+      "disjoint_source_ids": [
+        "left",
+        "right"
+      ],
+      "identical_child_marginals": [
+        {
+          "mean": "0",
+          "variance": "5"
+        },
+        {
+          "mean": "8",
+          "variance": "5"
+        }
+      ],
+      "independent_biases_combined": {
+        "mean": "4",
+        "variance": "5/2"
+      },
+      "shared_bias_combined": {
+        "mean": "4",
+        "variance": "9/2"
+      }
+    }
+  }
+}
