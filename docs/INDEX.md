@@ -13,6 +13,10 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
+- **Latest evidence:** [cycle 0002](../research/information_lifecycle/cycles/0002.md)
+  adds deterministic scalar consumer simulations: delayed corrections can cross a
+  boundary despite smoother references; strict withdrawal bypasses transition delays.
+  Stopping feasibility with finite jerk/reaction delay remains untested.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

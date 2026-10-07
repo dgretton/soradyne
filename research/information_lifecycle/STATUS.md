@@ -5,31 +5,39 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0001: exact scalar/two-variable baselines for I01, I02 and R03. Completed;
-9 tests passed, lint and whitespace checks passed. See the cycle report and source-
-hashed results. Publication is verified against the remote tip at cycle close.
-This is partial evidence only, not completion of those scenario families.
+0002: scalar dynamic slice of S01/S03 completed. 18 primary simulations and 36
+timestep refinements; 23 total tests passed. Coalescing and blind slow transitions
+have preserved failure cases. Strict withdrawal bypasses transitions and clears
+alignment state; local braking is conditional on ideal independent state and dynamics.
+See the report for limits. No complete scenario family or production algorithm is
+declared proven. Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0002: implement S01's minimal one-dimensional consumer simulation, with a fixed
-controller, measurement cadence, clearance and bounded duration. Compare direct
-application of oscillating revisions, coalescing/hysteresis, and a permitted bounded
-transition. Include a strict-withdrawal invalidation/controlled-braking case (S03)
-and a real-correction counterexample where blindly smoothing fails. Record policy
-variant and all dynamics; do not claim physical safety from the toy simulation.
+0003: bound the stopping fallback's feasibility under finite jerk and reaction delay
+in the same scalar S03/necessary-correction setting. Declare a small speed/clearance/
+delay grid first and compare with an independently computed stopping envelope.
+Keep invalidation immediate; distinguish unavoidable physical continuation from
+continued use of a forbidden alignment. Preserve any crossing counterexamples.
+
+Reason for this priority: gated braking avoided the boundary in 0002 but used the
+largest command jerk, an unmodeled actuator limitation. Do this one bounded extension
+before the planned R01/R02/R04/R08 entitlement/replay ledger, which remains next in queue.
 
 ## Coverage
 
 - I01, I02, R03: initial exact witnesses established in 0001, including an
   insufficiency counterexample for selective withdrawal from collapsed state.
-- I03-I08, R01-R02, R04-R10, F01-F06, S01-S08: planned, no test evidence yet.
+- S01/S03: partial deterministic scalar dynamic evidence in 0002; prescribed
+  estimator traces, ideal local sensing, no actuator jerk/delay limits yet.
+- I03-I08, R01-R02, R04-R10, F01-F06, S02, S04-S08: planned, no test evidence yet.
 - Mandatory compound scenarios: planned, none executed.
 - Production changes: none. Distributed, nonlinear and hardware claims: none.
 
 ## Durable history
 
 - [0001](cycles/0001.md): plan and exact-arithmetic baseline.
+- [0002](cycles/0002.md): reference transitions, delayed corrections and P3 withdrawal.
 
 ## Scheduling
 
