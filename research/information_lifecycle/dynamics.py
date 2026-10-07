@@ -368,7 +368,9 @@ def main():
             with (args.output_dir / f"{case.name}--{mode}.csv").open(
                 "w", newline=""
             ) as handle:
-                writer = csv.DictWriter(handle, fieldnames=list(trace[0]))
+                writer = csv.DictWriter(
+                    handle, fieldnames=list(trace[0]), lineterminator="\n"
+                )
                 writer.writeheader()
                 writer.writerows(trace)
             for dt in (0.005, 0.0025):
