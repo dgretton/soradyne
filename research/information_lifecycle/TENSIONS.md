@@ -32,8 +32,18 @@ and preserve clearance in one ideal scalar case. It also falsifies unconditional
 coalescing/smoothing: delaying a needed correction can cross the boundary despite
 less reference/command variation. Gated braking is not a complete resolution; its
 largest command jerk (400 m/s^3 at dt=0.01) is unconstrained by this plant model.
-Next: finite jerk/reaction-delay stopping envelope in 0003. Do not infer a general
-safe-stop policy or decide permission semantics from this witness.
+[Cycle 0003](cycles/0003.md) adds that finite-jerk/response-delay envelope. Seven of
+nine variants of the same necessary-correction event have insufficient clearance even
+under a necessary lower bound on stopping excursion. Immediate invalidation and zero
+reference reuse still hold. A separate candidate crossing remains inconclusive against
+the lower bound; its failure is not labeled unavoidable. This makes the fallback's
+required operating margin concrete. It must be established before information loss;
+smoothness or prompt invalidation alone cannot supply missing space. The planner in
+the experiment does not enforce such a pre-event margin. A production consumer needs
+an explicit local-state/response/operating-envelope contract, still to be designed.
+Do not infer a general safe-stop policy or decide permission semantics from this
+witness. Future physical coverage stays in the broader S03/compound work; next return
+to entitlement/replay semantics.
 
 ## New tensions
 

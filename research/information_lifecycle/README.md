@@ -55,6 +55,18 @@ and all response policies; finer timesteps are summarized in JSON. See the
 Use a fresh output directory for new experiments; do not overwrite a committed run
 after changing its method or configuration.
 
+## Reproduce cycle 0003
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -v
+python3 -B research/information_lifecycle/stopping.py --output-dir /tmp/information-lifecycle-cycle-0003
+```
+
+This writes finite-jerk stopping metrics, independent distance bounds, timestep and
+parameter checks, and twelve representative traces. See the [protocol](cycles/0003-protocol.md)
+and [findings](cycles/0003.md). All models are synthetic; no physical actuation occurs.
+Use a fresh output directory when changing configurations or methods.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and
