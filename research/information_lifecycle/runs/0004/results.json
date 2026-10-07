@@ -1,0 +1,3214 @@
+{
+  "cycle": "0004",
+  "metrics": [
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "scoped",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "scoped",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "scoped",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "scoped",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "scoped",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "scoped",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "purge_on_revoke",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 5,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "purge_on_revoke",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 5,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "purge_on_revoke",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 5,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "purge_on_revoke",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 5,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "purge_on_revoke",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 5,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "purge_on_revoke",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 5,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "ignore_scope",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "ignore_scope",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "ignore_scope",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "ignore_scope",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "ignore_scope",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "ignore_scope",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 11,
+      "max_retained_objects": 5,
+      "max_same_view_mean_jump": "4",
+      "mode": "trust_historical_grant",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 11,
+      "max_retained_objects": 5,
+      "max_same_view_mean_jump": "5",
+      "mode": "trust_historical_grant",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 11,
+      "max_retained_objects": 5,
+      "max_same_view_mean_jump": "4",
+      "mode": "trust_historical_grant",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 11,
+      "max_retained_objects": 5,
+      "max_same_view_mean_jump": "7",
+      "mode": "trust_historical_grant",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 11,
+      "max_retained_objects": 5,
+      "max_same_view_mean_jump": "5",
+      "mode": "trust_historical_grant",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 11,
+      "max_retained_objects": 5,
+      "max_same_view_mean_jump": "7",
+      "mode": "trust_historical_grant",
+      "scenario": "future_cutoff",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": 13,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "mean": 3,
+        "represented": 3,
+        "retained_summaries": 1,
+        "variance": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": 13,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "mean": 3,
+        "represented": 3,
+        "retained_summaries": 1,
+        "variance": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": 13,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "mean": 3,
+        "represented": 3,
+        "retained_summaries": 1,
+        "variance": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": 13,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "mean": 3,
+        "represented": 3,
+        "retained_summaries": 1,
+        "variance": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": 13,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "mean": 3,
+        "represented": 3,
+        "retained_summaries": 1,
+        "variance": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": 13,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 3,
+      "violations_by_field": {
+        "mean": 3,
+        "represented": 3,
+        "retained_summaries": 1,
+        "variance": 3
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 16,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 16,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 16,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "derivative_retention",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_raw": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": 12,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 4,
+      "violating_events": 7,
+      "violations_by_field": {
+        "decision": 2,
+        "mean": 5,
+        "represented": 5,
+        "retained_raw": 7,
+        "status": 3,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": 12,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 4,
+      "violating_events": 7,
+      "violations_by_field": {
+        "decision": 2,
+        "mean": 5,
+        "represented": 5,
+        "retained_raw": 7,
+        "status": 3,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": 12,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 4,
+      "violating_events": 7,
+      "violations_by_field": {
+        "decision": 2,
+        "mean": 5,
+        "represented": 5,
+        "retained_raw": 7,
+        "status": 3,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": 12,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 4,
+      "violating_events": 7,
+      "violations_by_field": {
+        "decision": 2,
+        "mean": 5,
+        "represented": 5,
+        "retained_raw": 7,
+        "status": 3,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": 12,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 4,
+      "violating_events": 7,
+      "violations_by_field": {
+        "decision": 2,
+        "mean": 5,
+        "represented": 5,
+        "retained_raw": 7,
+        "status": 3,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": 12,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 4,
+      "violating_events": 7,
+      "violations_by_field": {
+        "decision": 2,
+        "mean": 5,
+        "represented": 5,
+        "retained_raw": 7,
+        "status": 3,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": 8,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "4",
+      "mode": "ignore_scope",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 9,
+      "violations_by_field": {
+        "mean": 9,
+        "represented": 9,
+        "variance": 9
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": 8,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "5",
+      "mode": "ignore_scope",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 9,
+      "violations_by_field": {
+        "mean": 9,
+        "represented": 9,
+        "variance": 9
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": 8,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "4",
+      "mode": "ignore_scope",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 9,
+      "violations_by_field": {
+        "mean": 9,
+        "represented": 9,
+        "variance": 9
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": 8,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "7",
+      "mode": "ignore_scope",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 9,
+      "violations_by_field": {
+        "mean": 9,
+        "represented": 9,
+        "variance": 9
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": 8,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "5",
+      "mode": "ignore_scope",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 9,
+      "violations_by_field": {
+        "mean": 9,
+        "represented": 9,
+        "variance": 9
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": 8,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "7",
+      "mode": "ignore_scope",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 9,
+      "violations_by_field": {
+        "mean": 9,
+        "represented": 9,
+        "variance": 9
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "sticky_summary",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "sticky_summary",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "sticky_summary",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "sticky_summary",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "sticky_summary",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "sticky_summary",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "overlapping_grants",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "scoped",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "purge_on_revoke",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "ignore_scope",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "represented": 4,
+        "retained_summaries": 4,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "represented": 4,
+        "retained_summaries": 4,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "represented": 4,
+        "retained_summaries": 4,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "represented": 4,
+        "retained_summaries": 4,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "represented": 4,
+        "retained_summaries": 4,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": 9,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "represented": 4,
+        "retained_summaries": 4,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 2,
+        "retained_raw": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 2,
+        "retained_raw": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 13,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 2,
+        "retained_raw": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 2,
+        "retained_raw": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 13,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 2,
+        "retained_raw": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 13,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "8",
+      "mode": "trust_historical_grant",
+      "scenario": "strict_mixed_withdrawal",
+      "unavailable_queries": 1,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 2,
+        "retained_raw": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "scoped",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "scoped",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "scoped",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "scoped",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "scoped",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "scoped",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "purge_on_revoke",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "purge_on_revoke",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "purge_on_revoke",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "purge_on_revoke",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "purge_on_revoke",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "purge_on_revoke",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "ignore_scope",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "ignore_scope",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "ignore_scope",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "ignore_scope",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "ignore_scope",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": null,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "ignore_scope",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 10,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "missing": 3,
+        "represented": 4,
+        "retained_summaries": 4,
+        "status": 3,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 10,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "missing": 3,
+        "represented": 4,
+        "retained_summaries": 4,
+        "status": 3,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 10,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "sticky_summary",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "missing": 3,
+        "represented": 4,
+        "retained_summaries": 4,
+        "status": 3,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 10,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "missing": 3,
+        "represented": 4,
+        "retained_summaries": 4,
+        "status": 3,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 10,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "sticky_summary",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "missing": 3,
+        "represented": 4,
+        "retained_summaries": 4,
+        "status": 3,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 10,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "sticky_summary",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 1,
+      "violating_events": 4,
+      "violations_by_field": {
+        "mean": 4,
+        "missing": 3,
+        "represented": 4,
+        "retained_summaries": 4,
+        "status": 3,
+        "variance": 4
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 12,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "trust_historical_grant",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 12,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "trust_historical_grant",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 14,
+      "first_violation": 12,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "4",
+      "mode": "trust_historical_grant",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 12,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "trust_historical_grant",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 14,
+      "first_violation": 12,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "5",
+      "mode": "trust_historical_grant",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 14,
+      "first_violation": 12,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "7",
+      "mode": "trust_historical_grant",
+      "scenario": "mixed_without_replay",
+      "unavailable_queries": 4,
+      "violating_events": 2,
+      "violations_by_field": {
+        "decision": 1,
+        "retained_summaries": 2
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "scoped",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "scoped",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "scoped",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "scoped",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "scoped",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "scoped",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "purge_on_revoke",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "purge_on_revoke",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "purge_on_revoke",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "purge_on_revoke",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "purge_on_revoke",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "purge_on_revoke",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "ignore_scope",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "ignore_scope",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "ignore_scope",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "ignore_scope",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "ignore_scope",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "ignore_scope",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "sticky_summary",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "sticky_summary",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "sticky_summary",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "sticky_summary",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "sticky_summary",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": null,
+      "max_retained_objects": 3,
+      "max_same_view_mean_jump": "91/3",
+      "mode": "sticky_summary",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 2,
+      "violating_events": 0,
+      "violations_by_field": {}
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "a2",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "50",
+      "mode": "trust_historical_grant",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 1,
+      "violating_events": 8,
+      "violations_by_field": {
+        "decision": 3,
+        "mean": 5,
+        "missing": 5,
+        "represented": 5,
+        "retained_raw": 8,
+        "status": 1,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a1",
+        "b1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "50",
+      "mode": "trust_historical_grant",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 1,
+      "violating_events": 8,
+      "violations_by_field": {
+        "decision": 3,
+        "mean": 5,
+        "missing": 5,
+        "represented": 5,
+        "retained_raw": 8,
+        "status": 1,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "a1",
+        "b1"
+      ],
+      "events": 19,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "50",
+      "mode": "trust_historical_grant",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 1,
+      "violating_events": 8,
+      "violations_by_field": {
+        "decision": 3,
+        "mean": 5,
+        "missing": 5,
+        "represented": 5,
+        "retained_raw": 8,
+        "status": 1,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "a2",
+        "b1",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "50",
+      "mode": "trust_historical_grant",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 1,
+      "violating_events": 8,
+      "violations_by_field": {
+        "decision": 3,
+        "mean": 5,
+        "missing": 5,
+        "represented": 5,
+        "retained_raw": 8,
+        "status": 1,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a1",
+        "a2"
+      ],
+      "events": 19,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "50",
+      "mode": "trust_historical_grant",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 1,
+      "violating_events": 8,
+      "violations_by_field": {
+        "decision": 3,
+        "mean": 5,
+        "missing": 5,
+        "represented": 5,
+        "retained_raw": 8,
+        "status": 1,
+        "variance": 5
+      }
+    },
+    {
+      "arrival_order": [
+        "b1",
+        "a2",
+        "a1"
+      ],
+      "events": 19,
+      "first_violation": 11,
+      "max_retained_objects": 4,
+      "max_same_view_mean_jump": "50",
+      "mode": "trust_historical_grant",
+      "scenario": "regrant_gap",
+      "unavailable_queries": 1,
+      "violating_events": 8,
+      "violations_by_field": {
+        "decision": 3,
+        "mean": 5,
+        "missing": 5,
+        "represented": 5,
+        "retained_raw": 8,
+        "status": 1,
+        "variance": 5
+      }
+    }
+  ],
+  "noise_variance": "1",
+  "parent_commit": "a563f1c8b0c3ffeed22087a8d3a89393f4b52b4d",
+  "python": "3.13.4",
+  "scope": "Exact scalar inference with trusted synchronous policy events; no distributed or hardware validation",
+  "source_sha256": {
+    "cycles/0004-protocol.md": "f46425cda04bd8da526cd9baf6870d6a8184816d9d7331f390ed82b4c8a030cf",
+    "entitlement_scenarios.py": "ac1a85a69d6672433e4c6f07e020a8d78488ac9716919cdc6f450969def1bcf2",
+    "entitlements.py": "d1f24a2efa71dab0c5678152982606d5c35c3263ddf4358442cb462ff9919d1e",
+    "test_entitlements.py": "6616e02525b6529283bf1c6acc362b86a932a4320cb3142df5e1016000d9a8e1"
+  },
+  "values": {
+    "a1": 10,
+    "a2": 14,
+    "a3": 100,
+    "a4": 18,
+    "b1": 0
+  }
+}

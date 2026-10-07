@@ -16,6 +16,15 @@ Affected layer: application representation
 and provider retention contract. Candidate decision: rebuild from still-authorized
 data when available; otherwise identify unsupported withdrawal or invalidate.
 
+[Cycle 0004](cycles/0004.md) exercises this choice with explicit permissions. A
+specifically authorized derivative remains usable after raw deletion under P2. Under
+P3 the mixed artifact becomes unusable; without the surviving component's raw value,
+the ledger reports unavailable until authorized replay. A surviving entitlement alone
+does not reconstruct missing numerical state. This is a small independent-scalar
+fixture, not a general result about richer or nonlinear summaries. Translating a
+withdrawal intent into all affected artifact rights remains an application/contract
+obligation; the experiment receives that complete policy snapshot as an input.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).

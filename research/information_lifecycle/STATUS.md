@@ -5,37 +5,43 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0003: finite-jerk/response-delay extension of S03 completed. 54 nominal profiles,
-108 refinements and 54 parameter-bound profiles; 39 total tests passed. At the 0002
-necessary-correction event, seven of nine jerk/delay variants cannot avoid the boundary
-under this scalar model's necessary lower bound. Immediate invalidation still holds.
-A separate candidate failure remains explicitly inconclusive against that lower bound.
-See the report for limits. No complete scenario family, production algorithm or
-hardware safety is declared proven. Publication is verified at cycle close.
+0004: scoped entitlement/replay slice completed. Six fixtures, six initial arrival
+orders, five candidates: 180 traces / 2,850 event-query checks. The scoped candidate
+matches all 570 of its checks exactly; every negative control is detected. 57 total
+tests passed, including a regression for a corrected grant-container mutability bug.
+P2 derivative retention, P3 invalidation, surviving grant paths and explicit replay
+gaps have limited exact-scalar evidence. No whole family or production mechanism is
+declared proven. Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0004: begin the queued R01/R02/R04/R08 entitlement/replay ledger. Use the same exact
-scalar evidence under P1 future-only cutoff, P2 explicit derivative retention, P3
-withdrawn contribution, and overlapping grants scoped to separate audiences/purposes.
-Compare numerical mean/uncertainty and retained/usable records with an independent
-authorized-only oracle. Include loss of one grant with another surviving, re-grant
-generations, a stale cache delivery and an explicit history gap. Keep it an in-process
-bounded event fixture; distributed enforcement and cryptography are not this slice.
+0005: I03 shared evidence and shared calibration in tiny exact linear examples.
+Compare source-ID deduplication, a retained shared latent/joint representation and
+authorized raw rebuild with an independent batch oracle. Include a diamond with
+duplicated evidence, and disjoint observation IDs sharing an uncertain calibration.
+Measure mean, joint/query uncertainty, lineage and supported/unsupported behavior;
+do not infer independence solely from disjoint IDs. Keep feedback policy (I04), broader
+gauge tests (I05) and nonlinear work queued rather than expanding this cycle.
 
-Reason for this priority: 0003 answered the bounded stopping question and exposed
-the need for a conditional consumer operating envelope. Return to information and
-permission semantics now; do not expand into open-ended controller research.
+Reason for this priority: 0004 handles disjoint independent evidence and explicitly
+rejects partial summary overlap. Test the next information-preservation assumption
+before attempting general nesting or promoting this permission prototype.
 
 ## Coverage
 
 - I01, I02, R03: initial exact witnesses established in 0001, including an
-  insufficiency counterexample for selective withdrawal from collapsed state.
+  insufficiency counterexample for selective withdrawal from collapsed state. 0004
+  adds a policy-driven mixed-summary invalidation/missing-component replay witness.
 - S01/S03: partial deterministic scalar evidence in 0002-0003; prescribed estimator
   traces and ideal local sensing. 0003 adds finite jerk, fixed physical response delay
   and a necessary stopping-distance lower bound for nonnegative initial acceleration.
   General consumer stability and realistic actuator/network behavior remain open.
-- I03-I08, R01-R02, R04-R10, F01-F06, S02, S04-S08: planned, no test evidence yet.
+- R01/R02/R04/R08: partial exact scalar event evidence in 0004. Specific source-
+  sequence cutoff, explicit artifact permissions, grant unions and re-grant history
+  ranges; trusted atomic local policies only. General enforcement remains open.
+- I03: only a preliminary unsupported-overlap guard in 0004; shared correlation and
+  nested/diamond composition are next. I04-I08, R05-R07, R09-R10, F01-F06, S02 and
+  S04-S08: planned, no scenario-level test evidence yet.
 - Mandatory compound scenarios: planned, none executed.
 - Production changes: none. Distributed, nonlinear and hardware claims: none.
 
@@ -45,6 +51,8 @@ permission semantics now; do not expand into open-ended controller research.
 - [0002](cycles/0002.md): reference transitions, delayed corrections and P3 withdrawal.
 - [0003](cycles/0003.md): finite jerk, stopping margin, immediate invalidation and
   physical response delay; retained counterexamples and parameter-bound sensitivity.
+- [0004](cycles/0004.md): scoped grant/retention unions, retained derivatives, strict
+  withdrawal, stale tokens/results and re-grant replay gaps with exact scalar inference.
 
 ## Scheduling
 

@@ -13,10 +13,11 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0003](../research/information_lifecycle/cycles/0003.md)
-  adds finite-jerk/response-delay stopping bounds: immediate invalidation can coexist
-  with insufficient physical stopping margin. Retained scalar counterexamples do not
-  establish hardware safety. Scoped entitlement/replay semantics are next.
+- **Latest evidence:** [cycle 0004](../research/information_lifecycle/cycles/0004.md)
+  adds exact scalar entitlement/replay fixtures: surviving grant paths, explicit
+  derivative permissions, stale-token rejection and missing-history recovery. Trusted
+  atomic local policies are assumed; shared evidence/calibration is next. Earlier
+  finite-jerk stopping counterexamples remain limited to synthetic dynamics.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

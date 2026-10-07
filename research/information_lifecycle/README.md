@@ -67,6 +67,19 @@ parameter checks, and twelve representative traces. See the [protocol](cycles/00
 and [findings](cycles/0003.md). All models are synthetic; no physical actuation occurs.
 Use a fresh output directory when changing configurations or methods.
 
+## Reproduce cycle 0004
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -v
+python3 -B research/information_lifecycle/entitlement_scenarios.py --output-dir /tmp/information-lifecycle-cycle-0004
+```
+
+This writes 180 scoped-entitlement scenario metrics and six JSONL files containing
+canonical event traces for the admissible candidate and four negative controls.
+See the [protocol](cycles/0004-protocol.md) and [findings](cycles/0004.md). Authority,
+identities and local atomic policy installation are assumptions, not implemented
+distributed guarantees. Use a fresh directory for changed methods/configurations.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

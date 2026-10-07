@@ -1,0 +1,130 @@
+# Cycle 0004 protocol — scoped entitlements and numerical replay
+
+Declared 2026-10-07 before implementing/running candidates. Parent: `a563f1c`.
+Scope: small in-process R01/R02/R04/R08 fixtures, with a mixed-summary loss/replay
+witness related to R03. No distributed enforcement, cryptography or production changes.
+
+## Model and explicit policy choices
+
+One trusted local materializer holds synthetic scalar observations with independent
+unit Gaussian noise about one fixed scalar. There is no informative prior. For n
+distinct observations, the oracle mean is their arithmetic average and variance 1/n;
+with none, no proper estimate is returned. Exact Fraction arithmetic is required.
+The fixture values are a1=10, a2=14, a3=100, a4=18 and b1=0. Source sequence numbers
+1..4 distinguish A's revisions; values are deliberately unequal to expose illicit use.
+Measurement times equal these sequence numbers; local event/receipt times are separate.
+There is no covariance calibration or physical dynamics claim from these fixed values.
+
+Scopes have flow, audience and purpose. Grants name an immutable generation, a scope,
+raw-record or summary identities, and independent retain/infer operations. Losing one
+grant removes only its rights. Physical raw storage survives while ANY scoped grant
+permits retention; inference still checks the exact requested scope and operation.
+Explicit summary grants can authorize a particular immutable summary even when none
+of its raw records may be retained or used in that scope. This is the chosen P2 policy,
+not an implication of the label "derived". Publishing/output disclosure is out of scope.
+
+Policy snapshots have strictly increasing per-scope revisions. Grant content changes
+and re-grants after removal require a newer generation; unchanged grants preserve
+their generation. A delivered record carries a current grant token for that scope,
+generation and identity. This fixture chooses to reject stale delivery tokens even
+when the same bytes could be admitted under a fresh grant. Current identity/range checks
+remain necessary: a fresh token does not authorize all history. The model trusts the
+policy issuer and authentication of these objects; it does not implement either.
+
+P1 is an explicit source-sequence cutoff permitting a1/a2 and the existing summary,
+excluding a3/a4. It does not use receipt time or infer consent from measurement time.
+P2 removes raw rights but preserves a specifically granted summary. P3 removes every
+applicable raw/summary inference path for A in the affected scope; an independent
+grant in another scope or a surviving grant in the same scope remains a different
+right. No deny-overrides rule or global erasure is silently introduced.
+
+Policy application, invalidating old result stamps and retention cleanup are atomic
+within a single event. Effective, learned and enforced times are equal here and are
+recorded with issuer and revision. Queries cannot return an old policy-stamped cached
+answer, even if its numerical value happens still to be correct. A fresh solve may
+reuse still-authorized inputs/derivatives. This is conservative local invalidation,
+not a design for multi-party snapshots or an enforced network deadline.
+
+## Representation and simplest candidate
+
+Raw observations have stable identity and immutable payload. Duplicate delivery under
+one or several grants adds no precision; conflicting same-identity content is rejected.
+An immutable summary stores precision, information vector (scalar here) and dependency
+IDs, but NOT individual observation values. `a12` summarizes {a1,a2}; `ab12` summarizes
+{a1,a2,b1}. Summary retention and inference each need an explicit grant. The local
+summary constructor requires authorized raw inputs; the tests do not trust a forged
+summary. Dependency metadata is internal diagnostic state, not a public disclosure API.
+
+The candidate composes nonoverlapping permitted summaries and remaining permitted raw
+observations, counting each identity once. It fails closed on partial overlap between
+summaries rather than pretending independence. General correlated/nested composition
+is deferred to I03/I04. It never subtracts an unknown contribution from a collapsed
+summary; if that summary becomes unusable, rebuild from lawful raw evidence or expose
+an unavailable/partial answer and explicit gaps. Required-coverage queries become
+unavailable whenever an identity is absent; best-effort queries expose their actual
+represented set and missing requested identities.
+
+## Fixed scenarios and independent expectations
+
+Each scenario starts with a1,a2,b1 under A/B raw grants; after initial delivery, the
+independent expected mean/variance is (8,1/3). Use six permutations of those three
+initial deliveries, each with a duplicate replay. Freeze only after initial delivery.
+Expected represented/retained identities and admission decisions are written explicitly
+in fixtures, not generated by calling the candidate's permission helpers. The numerical
+oracle reads evaluator-only original values for the expected represented identities.
+
+1. **Future cutoff:** freeze a12; narrow A to a1/a2; reject a3 both with the old token
+   and with a current out-of-range token; replay a1 without adding precision. Keep (8,1/3).
+2. **Derivative retention:** freeze a12; remove raw A rights, keep a12 retention/use;
+   delete raw A and retain (8,1/3). Remove only summary inference while retaining its
+   bytes: return b1 alone (0,1), then remove the summary retention right too.
+3. **Overlapping grants/scopes:** grant A twice in the alignment scope and retain it
+   independently for private archive and another purpose. Remove the first alignment
+   grant with no information loss; remove the second and return b1 alone. Other scoped
+   uses still return (12,1/2); their cached answers remain valid. Physical A survives.
+4. **Strict mixed withdrawal:** freeze ab12, revoke all A-dependent rights in alignment,
+   reject its old cached answer/summary, immediately rebuild b1 as (0,1).
+5. **Mixed summary without raw replay:** freeze ab12, delete all raw copies while its
+   explicit summary grant remains. Later remove that grant and re-grant b1; expose no
+   estimate and missing b1 until lawful b1 replay, then recover (0,1). No invented precision.
+6. **Re-grant with a gap:** remove A, then re-grant only a3/a4 under generation 2.
+   Reject stale a1/a3 envelopes and old cached output; accept a4 once. Best effort is
+   (9,1/2), explicitly missing a3; required coverage is unavailable. Current-generation
+   a1 is still outside scope. Explicit a3 replay under generation 2 restores (118/3,1/3),
+   while a1/a2 remain excluded. Old policy delivery must not resurrect removed rights.
+
+Negative controls, run through the same fixtures:
+
+- Purge raw data when ANY supporting grant is lost, ignoring remaining entitlements.
+- Ignore the scope when checking otherwise valid inference grants.
+- Treat a retained summary as permanently entitled to inference/retention.
+- Admit records using a historical revoked grant token instead of its current generation.
+
+At least one fixture must reject each negative control; don't weaken requirements if
+the scoped candidate fails. Preserve every failing event and wrong mean/variance,
+retention or admission result. A numerical match does not excuse unauthorized admission.
+
+## Measurements, bounds and checks
+
+Run 6 scenarios x 6 initial arrival orders x 5 candidates = 180 bounded traces, each
+at most 80 events, 32 retained raw/summary objects and 16 active grants per scope.
+No random seed, fuzzing, parameter search or real network. Record full canonical-order
+event traces for each scenario/candidate and compact metrics for the other orders.
+
+Check exact mean AND variance, represented identities, required-coverage availability,
+retained raw/summary identities, per-scope authorization, duplicate/stale decisions,
+same-event invalidation, result policy stamp, legitimate re-grant replay and history gaps.
+Record numerical jumps and unavailable query counts alongside authority violations;
+do not smooth the result or call a small jump safe. Record input counts, object counts,
+event times and policy revisions. The candidate gets no oracle values after deletion.
+Local synchronous enforcement has zero modeled event delay; no real-time bound follows.
+
+Independent unit checks cover the (12,1/2), (8,1/3), (0,1), (9,1/2) and (118/3,1/3)
+answers, same-value precision changes, immutable IDs, generation rollback/conflicts,
+operation separation, partial-summary-overlap rejection and resource bounds. Exact
+candidate/oracle equality is required, with no floating tolerance. Distinguish allowed
+partial information from authorization failures and from unavailable required coverage.
+
+No new architectural tension is presumed. Record any actual tension separately from
+these explicit policy choices. After this slice, the next planned family is shared
+lineage/correlation (I03/I04/I05), unless the experiment exposes a blocking gap first.
