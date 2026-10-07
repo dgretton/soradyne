@@ -1,5 +1,13 @@
 # Flows for Distributed Estimation — Protocol Requirements
 
+> **Architecture revision, 2026-09-11:** read
+> [shared-flow demo contracts](20260911_shared_flow_demo_contracts.md) first.
+> It supersedes conflicting assumptions here about flow-owner authorship,
+> cross-capsule disclosure, producer-local storage, unconditional discard,
+> single-capsule-first sequencing, and assignment guarantees. This document
+> remains historical rationale where it conflicts; no implementation is implied.
+
+
 **Date**: 2026-09-06
 **Author**: Claude (Fable 5.1, Claude Code), at Dana's request
 **Status**: Requirements and design note. Currency **high**; settled-ness **low** (nothing

@@ -20,12 +20,16 @@
  *   Progress (liveness) if some node stays eligible and keeps claiming, the lease is
  *                       eventually held (under weak fairness on Claim)
  *
- * This is the seed model described in docs/models/README.md §3. Keep it small.
+ * This is the seed model described in docs/models/README.md. Keep it small.
  * When the implementation exists, keep it in sync by trace validation (README §4),
  * not by growing this file to mirror the code.
  *
  * Status: written 2026-09-06 without a local TLC. First run must confirm that all
  * invariants hold and that Progress holds with the fairness in Spec.
+ *)
+(* Scope clarification, 2026-09-11: one abstract holder is assumed here.
+ * This does not model distributed agreement, partitions, membership changes,
+ * physical clock bounds, or safety of direct query responses. See README.md.
  *)
 EXTENDS Naturals, FiniteSets, Sequences
 

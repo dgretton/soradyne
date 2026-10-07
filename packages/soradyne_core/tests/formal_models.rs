@@ -1,13 +1,8 @@
-//! Runs the formal models in `docs/models/` (Alloy invariants, TLA+ lease) as part
-//! of `cargo test`, when Java is available.
+//! Runs retained TLA+ mechanism sketches when their tooling is available.
 //!
-//! The models are the executable form of the consolidated model's invariants
-//! (`docs/20260906_fable_soradyne_cascade.md` §3.2). They must pass on the
-//! development machine. On a machine without Java the test prints a loud skip and
-//! passes, so that `cargo test` stays usable everywhere; set
-//! `SORADYNE_REQUIRE_FORMAL=1` to turn the skip into a failure (do this in CI).
-//!
-//! Run directly with `docs/models/check.sh`; see `docs/models/README.md`.
+//! This is not verification of the complete shared-flow architecture or network
+//! partition safety. See docs/models/README.md for scope and assumptions.
+//! SORADYNE_REQUIRE_FORMAL=1 turns unavailable tooling from a loud skip into failure.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -33,7 +28,8 @@ fn formal_models_hold() {
     match status.code() {
         Some(0) => {}
         Some(2) => {
-            let msg = "formal models SKIPPED: Java or network unavailable (docs/models/check.sh exit 2)";
+            let msg =
+                "formal models SKIPPED: Java or network unavailable (docs/models/check.sh exit 2)";
             if std::env::var("SORADYNE_REQUIRE_FORMAL").is_ok() {
                 panic!("{msg}, and SORADYNE_REQUIRE_FORMAL is set");
             }

@@ -1,5 +1,13 @@
 # rim Authorization Model
 
+> **Architecture revision, 2026-09-11:** read
+> [shared-flow demo contracts](20260911_shared_flow_demo_contracts.md) first.
+> It supersedes conflicting assumptions here about flow-owner authorship,
+> cross-capsule disclosure, producer-local storage, unconditional discard,
+> single-capsule-first sequencing, and assignment guarantees. This document
+> remains historical rationale where it conflicts; no implementation is implied.
+
+
 Two separate authorization domains govern access to flows. They operate
 at different layers and solve different problems.
 

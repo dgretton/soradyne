@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current architectural direction
+
+Read `docs/20260911_shared_flow_demo_contracts.md` before shared-flow work. It
+supersedes conflicting September 6 assumptions; its demos are proposed, not passing.
+Keep application schemas and vocabulary out of soradyne. The Alloy structural model
+has been removed. The remaining TLA+ lease sketch is not a distributed safety proof.
+
 ## Project Overview
 
 Soradyne is a proof-of-concept protocol for secure, peer-to-peer Self-Data Flows with CRDT-based synchronization. The monorepo also contains Giantt, a task dependency management system being ported from Python to Dart to use Soradyne as its sync backend.
@@ -134,24 +141,19 @@ soradyne-cli flow add-item <FLOW_UUID> <ITEM_ID> <TITLE>
 soradyne-cli flow inspect <FLOW_UUID>
 ```
 
-### Formal models (Alloy + TLA+)
+### Formal models (TLA+ mechanism sketch)
 
 ```bash
-# Executable form of the consolidated model's invariants (docs/20260906_fable_soradyne_cascade.md §3.2)
-# and the exclusive-role lease. Requires Java; downloads Alloy and TLC jars on first run.
-docs/models/check.sh            # all: Alloy invariants.als + TLC Lease.tla
-docs/models/check.sh alloy      # invariants only
-docs/models/check.sh tla        # lease only
-
-# Same thing under cargo test (loud skip without Java; SORADYNE_REQUIRE_FORMAL=1 makes the skip a failure)
+docs/models/check.sh            # retained TLA+ sketches only
+docs/models/check.sh tla
 cd packages/soradyne_core && cargo test --test formal_models --no-default-features
 ```
 
-**Before implementing grants, custody, leases, log streams, or replay, read
-`docs/models/README.md`.** It says which mechanism gets which model, how to write a
-TLA+ module here, and how code is kept in sync with models (invariants as proptest
-predicates over an abstraction function; trace validation for the lease and the log).
-A change to spec, model, or code that does not touch the other two must say why.
+Read `docs/models/README.md` for scope. Java/TLC are required; unavailable tooling
+is a loud skip unless `SORADYNE_REQUIRE_FORMAL=1`. The old Alloy model was deleted
+because it encoded superseded architecture. A passing sketch does not establish
+implementation correctness or network partition safety.
+
 
 ## Architecture: soradyne_core (Rust)
 
