@@ -13,12 +13,12 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0008](../research/information_lifecycle/cycles/0008.md)
-  tests recovery after unequal live delivery: matching log horizons do not identify
-  consumed inputs. Bound scalar checkpoints and authorized replay work within explicit
-  coverage limits; mixed-checkpoint withdrawal can require missing reconstruction state.
-  Replaying inputs over an old output can invent precision. Retention expiry is next;
-  earlier results retain their stated mathematical and synthetic-dynamics limits.
+- **Latest evidence:** [cycle 0009](../research/information_lifecycle/cycles/0009.md)
+  tests withdrawal after retention expiry: source-level aggregates cannot always support
+  record-level removal. Replay must complete before raw expiry under the tested policy;
+  explicitly reduced answers preserve usable subsets without claiming full recovery.
+  Admission and rejected-input state regressions were fixed. A first nonlinear freeze
+  slice is next; all results retain their stated mathematical and synthetic-dynamics limits.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

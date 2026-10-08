@@ -132,6 +132,19 @@ and [findings](cycles/0008.md). Matching durable horizons do not identify unequa
 input histories. A sufficient checkpoint needs explicit coverage and permissions;
 missing lawful state causes unavailability. Use a fresh directory for changed runs.
 
+## Reproduce cycle 0009
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+python3 -B research/information_lifecycle/expiry.py --output-dir /tmp/information-lifecycle-cycle-0009
+```
+
+This writes 1,152 retention/withdrawal run metrics (14,976 query checks), 24 complete
+representative traces, an aggregate-insufficiency witness and source hashes. See the
+[protocol](cycles/0009-protocol.md) and [findings](cycles/0009.md). Summary granularity,
+raw/derivative deadlines and explicit reduced coverage determine what remains usable.
+No-pin/no-renewal rules are fixture policies. Use a fresh directory for changed runs.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

@@ -61,6 +61,15 @@ as sufficient restart state when explicitly bound to its full input/model contra
 publication alone does not supply that contract. This strengthens the known retention
 question without establishing a new architectural contradiction.
 
+[Cycle 0009](cycles/0009.md) adds a bounded R03+F03 witness after raw expiry. Source-level
+summaries support whole-source removal but can lose the information needed for one-record
+removal. Two worlds with identical stored aggregates and identity-only manifests need
+different remaining answers. Per-record sufficient statistics avoid that loss in the
+independent scalar model, with explicit raw-equivalent retention rights. Replay must
+finish before raw expiry under this fixture's no-pin policy. An explicitly reduced subset
+answer is another supported contract; it must not be labeled full-history recovery.
+This makes T01's representation/retention choices more precise, not a new contradiction.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).
@@ -113,6 +122,13 @@ the old answer is perfectly steady but becomes stale or forbidden. Matching a du
 log horizon also fails to identify unequal live histories, so claimed continuity needs
 the actual consumed-input contract. These are inference/availability witnesses; no
 physical consumer response or new physical-safety conclusion is established.
+
+[Cycle 0009](cycles/0009.md) records coverage changes at withdrawal and artifact expiry
+alongside mean, variance and new-data response. A reduced answer may remain useful while
+full-history recovery is unavailable, but its changed uncertainty/coverage must reach the
+consumer. Silent coarsening and retaining a revoked mixed summary both fail, even when
+their arithmetic or mean continuity looks correct. No reduced-result acceptance threshold
+or physical continuation policy is established by this static experiment.
 
 ## New tensions
 

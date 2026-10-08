@@ -5,30 +5,32 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0008: unequal-input failover/recovery slice completed. 192 configurations, five methods:
-960 runs / 11,520 event-query outcomes. Manifest-bound scalar checkpoints and raw replay
-match all 4,608 of their checks when available, with no forbidden processing. Equal log
-horizons can conceal different live histories; output-seeded replay double counts even
-with replay deduplication. Mixed-checkpoint revocation exposes missing reconstruction
-state and can interrupt service when retained raw components would remain usable.
-Both supported methods recover by the stipulated custodian return. 145 total tests
-pass; all eight cycles' source hashes are verified.
+0009: bounded R03+F03 retention-expiry/withdrawal slice completed. 192 configurations,
+six methods: 1,152 runs / 14,976 query outcomes. Three strict methods pass all 7,488
+combined checks, reporting unavailable when full requested history is irrecoverable.
+Per-record versus per-source decomposition supports different withdrawal units; a
+two-world witness proves the stored aggregate/ID manifest insufficient for finer removal.
+Explicit reduced answers preserve lawful subset information with honest coverage and
+uncertainty. Replay must finish before raw expiry under the declared no-pin policy.
+Admission regressions (deadline relabeling, future artifacts and mutation before rejecting
+over-capacity input) were fixed; all grid metrics are unchanged. 166 tests pass; all nine
+cycles' source hashes are verified.
 No complete family or production mechanism is declared proven. Publication is verified
 against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0009: bounded R03+F03, fixed-lag/checkpoint retention expiry followed by selective
-withdrawal. Compare retained independent contributions, a mixed summary plus authorized
-replay, and explicit unsupported/unavailable recovery after needed state expires.
-Predeclare a finite retention/time budget and measure retained information, uncertainty,
-authorization and recovery availability together. Keep atomic-write crashes, fencing,
-floating-point/nonlinear geometry and consumer dynamics in their later slices.
+0010: I06's first nonlinear freeze slice. Use a small SE(2) pose/landmark model, a frozen
+linearization, controlled angular displacement from it and a full-data batch reference.
+Predeclare geometry/noise, a bounded sweep and independent residual/error/uncertainty
+checks. Separate approximation error from information loss or permission changes. Start
+with deterministic geometry; add fixed-seed coverage only after validating the independent
+reference and within the cycle budget. Keep broader SE(3), timing faults and physical
+consumers queued.
 
-Reason for this priority: 0008's missing records eventually return by assumption. Test
-the harder information boundary when a lawful replay component has actually expired,
-and whether modest decomposable retained state avoids an otherwise unnecessary outage.
-This follows the existing F01/F02/F03 recovery sequence.
+Reason for this priority: the exact information, permissions and initial recovery cases
+now expose what retained state can and cannot support. Follow the existing sequence into
+nonlinear approximation, where exact scalar successes cannot justify a frozen pose prior.
 
 ## Coverage
 
@@ -60,9 +62,13 @@ This follows the existing F01/F02/F03 recovery sequence.
   disappearance, duplicate/reordered replay and P3 during recovery. A surviving custodian
   supplies authorized original records; loss of reachability is bounded by the fixture.
   General restart state, atomic persistence, distributed authority and latency remain open.
-- I06-I08, R05/R07, R09-R10, F03-F06, S02 and S04-S08 have no dedicated scenario-level
-  coverage yet. The next slice addresses bounded R03+F03 retention expiry.
-- Mandatory compound scenarios: planned, none executed.
+- R03+F03: first bounded compound evidence in 0009. Static scalar summaries, per-record
+  versus per-source withdrawal, half-open raw/derivative expiry, replay completion deadline,
+  explicit reduced coverage and a retained-state insufficiency witness. Moving-state lag
+  elimination, alternate retention policies, nonlinear state and real latency remain open.
+- I06-I08, R05/R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
+  coverage yet. R05 has an adjacent single-record example in 0009, not its full scope.
+- Mandatory compounds: R03+F03 has the limited 0009 witness; other compounds remain planned.
 - Production changes: none. Distributed, nonlinear and hardware claims: none.
 
 ## Durable history
@@ -81,6 +87,8 @@ This follows the existing F01/F02/F03 recovery sequence.
   retained independent summaries, covariance, coordinate changes and false gauge precision.
 - [0008](cycles/0008.md): actual-input manifests, unequal live-history failover,
   custody/replay gaps, checkpoint withdrawal and output-seeded double counting.
+- [0009](cycles/0009.md): withdrawal granularity versus summary decomposition,
+  raw/derivative expiry, bounded replay and explicit reduced-information answers.
 
 ## Scheduling
 
