@@ -160,6 +160,21 @@ Gaussian uncertainty still needs qualification; no Monte Carlo or general survey
 claim follows. The output directory must not already exist. Use a fresh directory for
 changed methods/configurations. Dependencies: NumPy and SciPy, not GTSAM.
 
+## Reproduce cycle 0011
+
+```sh
+/Users/rim/Dev/.venv-nestbox/bin/python -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+/Users/rim/Dev/.venv-nestbox/bin/python -B research/information_lifecycle/angular_coverage.py --phase all --output-dir /tmp/information-lifecycle-cycle-0011
+```
+
+This regenerates 131,072 seeded datasets, 786,432 interval evaluations, per-cell exact
+confidence intervals, 92 selected trials and a numerical-CDF comparison. See the
+[protocol](cycles/0011-protocol.md) and [report](cycles/0011.md) for the original separate
+primary/held-out execution, seeds, model-specific coverage derivation and limitations.
+The full circular interval is calibrated in this restricted angular model; broad
+uncertainty does not establish usable precision or consumer safety. NumPy/SciPy required;
+the output directory must not exist. Previous cycle files remain unchanged.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

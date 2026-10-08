@@ -5,32 +5,31 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0010: first bounded nonlinear I06 slice completed. 128 deterministic SE(2)
-configurations, four methods, 512 outputs / 1,536 synthetic event records. A compact
-nonlinear likelihood matches an independent raw SVD solve and observed Hessian;
-the frozen first-order quadratic can require large rebuild corrections without new
-observations. Recentering that quadratic does not repair it. Two-world witnesses expose
-information missing from this representation. Even the exact likelihood's local Gaussian
-interval can contain only 86.58% angular posterior mass in a weak fixture; no frequentist
-coverage claim follows. Serialization regression fixed. 184 tests pass; both new artifacts
-reproduce byte for byte and all ten cycles' source hashes are verified.
+0011: bounded I06 Monte Carlo angular calibration completed. 131,072 independent
+four-observation datasets, six methods, 786,432 interval evaluations. Full circular
+intervals are compatible with 95% coverage in all 32 phase/configuration cells under
+the predeclared simultaneous test, with an exact conditional-coverage derivation for
+this restricted model. Local Gaussian intervals under-cover in all eight weakest cells;
+held-out coverage is about 89–90%. Correct full intervals there are typically about
++/-115 degrees, so calibration does not imply useful precision. Frozen-anchor dependence
+also survives held-out testing. A library-CDF accuracy limit was caught and corrected
+before formal primary/held-out runs; no statistical threshold or seed changed. 200 tests
+pass. Both new artifacts reproduce byte for byte; all eleven source manifests match.
 No complete family or production mechanism is declared proven. Publication is verified
 against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0011: fixed-seed Monte Carlo uncertainty calibration in the same known-landmark SE(2)
-model. Predeclare strong/weak geometry, trial counts, seeds, held-out checks and statistical
-confidence intervals. Compare local observed-Hessian/Gauss–Newton intervals with intervals
-from the full angular likelihood. Fix anchors before sampling; keep truth out of candidate
-solves. Measure error/coverage and rebuild corrections on common inputs under explicit P0.
+0012: freeze a converged first measurement batch, then add an independent batch of the
+same static pose. Compare a retained first-order quadratic, exact nonlinear moments and
+all-raw recomputation as the optimum moves. Predeclare both batches' geometry/noise,
+information ratios and bounded perturbations. Separate valid new-data response from
+approximation error; retain input identity and covariance checks.
 
-Reason: the independent reference now passes deterministic checks, but conditional
-posterior mass is not repeated-sample coverage. Establish that distinction before promoting
-an uncertainty contract. Following that, test a converged freeze followed by new independent
-constraints and elimination of uncertain landmarks/calibration. The known-landmark moment
-formula is not assumed sufficient there. Broader SE(3), timing faults and physical consumers
-remain queued.
+Reason: 0010–0011 used predetermined anchors. A converged freeze followed by new evidence
+is the next prerequisite before testing uncertain-landmark/calibration elimination.
+The known-landmark moment formula cannot be assumed sufficient for that broader graph.
+Broader SE(3), timing faults and physical consumers remain queued.
 
 ## Coverage
 
@@ -69,13 +68,16 @@ remain queued.
 - I06: first deterministic SE(2) witness in 0010 with exact known landmarks, isotropic
   independent noise, a prescribed displaced linearization and full raw reference.
   Nonlinear moment sufficiency, quadratic insufficiency and local-Gaussian limitations
-  are scoped to this model. Monte Carlo, converged-survey freeze followed by new evidence,
-  uncertain-landmark/calibration elimination, SE(3) and production behavior remain open.
+  are scoped to this model. 0011 adds primary/held-out angular coverage and a conditional
+  calibration derivation in the same model; weak-geometry Gaussian undercoverage and
+  anchor-dependent frozen failures are reproduced. Joint pose/point coverage, converged
+  freeze followed by new evidence, uncertain-landmark/calibration elimination, SE(3) and
+  production behavior remain open.
 - I07-I08, R05/R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
   coverage yet. R05 has an adjacent single-record example in 0009, not its full scope.
 - Mandatory compounds: R03+F03 has the limited 0009 witness; other compounds remain planned.
 - Production changes: none. Distributed and hardware claims: none. Nonlinear evidence
-  is limited to the explicit 0010 planar model.
+  is limited to the explicit planar model in 0010–0011.
 
 ## Durable history
 
@@ -97,6 +99,8 @@ remain queued.
   raw/derivative expiry, bounded replay and explicit reduced-information answers.
 - [0010](cycles/0010.md): nonlinear likelihood versus frozen quadratic, independent
   pose/uncertainty checks, insufficient summaries and no-data rebuild corrections.
+- [0011](cycles/0011.md): repeated-sample angular coverage, full circular intervals,
+  weak-geometry Gaussian undercoverage, anchor dependence and numerical-reference checks.
 
 ## Scheduling
 

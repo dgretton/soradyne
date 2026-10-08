@@ -104,6 +104,23 @@ local Gaussian covariance, full conditional posterior mass and repeated-sample c
 Agreement of means/covariances alone does not establish equivalence of nonlinear
 likelihoods. Preserve uncertainty qualifications in any later application contract.
 
+Cycle 0011 calibrates only the angular marginal in the same restricted model, with
+primary/held-out seeds and exact binomial confidence intervals. Its family comparison
+count and Bonferroni confidence level were declared before execution. Compatibility
+with nominal coverage is not a proof of equality; a model-specific conditional-coverage
+derivation is stated separately. The full-likelihood and local-Gaussian candidates share
+point estimates, so improved interval calibration must not be called improved accuracy.
+Independent raw integration caught a library-CDF approximation that inverse/CDF agreement
+alone missed. Preserve both the numerical counterexample and the declared tolerances.
+
+Additional primary APIs consulted in 0011:
+
+- https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.vonmises.html
+- https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats._result_classes.BinomTestResult.proportion_ci.html
+- https://numpy.org/doc/1.26/reference/random/bit_generators/pcg64.html
+- https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.i0e.html
+- Installed NumPy 1.26.4 `numpy.polynomial.legendre.leggauss` documentation.
+
 These sources motivate candidates; they do not certify our wrappers, privacy policy
 or consumer stability. Consult current primary papers/documentation before adding a
 specialized algorithm and record exactly which assumptions apply.

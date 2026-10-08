@@ -79,6 +79,13 @@ its sufficiency for general survey marginalization or selective withdrawal. Loca
 Hessian covariance can also misdescribe broad uncertainty even when the retained likelihood
 is exact; retaining more faithful state does not itself justify a Gaussian output contract.
 
+[Cycle 0011](cycles/0011.md) tests that distinction with independent noisy datasets.
+Local observed-Hessian/Gauss–Newton angular intervals under-cover in weak geometry;
+full circular intervals have a model-specific calibration justification and pass the
+declared primary/held-out checks. Their typical weak-case width is about +/-115 degrees.
+Keeping the nonlinear sufficient statistic permits honest angular uncertainty here,
+but does not establish an adequate consumer query or a general marginalized-state contract.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).
@@ -146,6 +153,13 @@ representation avoids that approximation jump in this limited planar model. Quer
 geometry matters even at small angular displacement. No plant is modeled, and the fixture
 does not establish what happens after a converged survey with uncertain landmarks is frozen.
 The existing inference/consumer distinction remains; no new physical-safety claim follows.
+
+[Cycle 0011](cycles/0011.md) also shows that a frozen method can appear calibrated when
+truth equals its anchor and fail badly elsewhere. Validation must cover the intended
+geometry/orientation range. Correct circular intervals can expose inadequate precision
+while retaining lawful information; the consumer's acceptance response remains an open
+contract. No dynamics/controller or physical continuation policy is established by
+these static repeated-sample and no-data rebuild tests.
 
 ## New tensions
 

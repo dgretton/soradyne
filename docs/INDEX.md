@@ -13,12 +13,13 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0010](../research/information_lifecycle/cycles/0010.md)
-  tests a first bounded nonlinear freeze case. Compact planar point-registration moments
-  preserve the likelihood; a frozen first-order quadratic can lose nonlinear information
-  and produce large rebuild corrections without new measurements. Even an exact likelihood's
-  local Gaussian interval can misstate broad angular uncertainty. Monte Carlo calibration
-  is next; general survey marginalization and consumer safety remain unproven.
+- **Latest evidence:** [cycle 0011](../research/information_lifecycle/cycles/0011.md)
+  tests repeated-sample angular coverage on 131,072 seeded datasets. Local Gaussian
+  intervals under-cover in weak geometry; full circular intervals pass the declared
+  primary/held-out checks with a model-specific justification, but remain broad.
+  Frozen-anchor dependence and a numerical-CDF limitation are documented. A converged
+  freeze followed by new independent evidence is next; general survey marginalization
+  and consumer safety remain unproven.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.
