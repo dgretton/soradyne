@@ -119,6 +119,19 @@ and [findings](cycles/0007.md). Relative queries can survive absolute-anchor wit
 coordinate pinning supplies no absolute evidence. Exact fractions do not validate
 floating-point rank decisions or consumer safety. Use a fresh directory for changed runs.
 
+## Reproduce cycle 0008
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+python3 -B research/information_lifecycle/recovery.py --output-dir /tmp/information-lifecycle-cycle-0008
+```
+
+This writes metrics for 960 recovery runs (11,520 event-query checks), 25 complete
+representative traces and source hashes. See the [protocol](cycles/0008-protocol.md)
+and [findings](cycles/0008.md). Matching durable horizons do not identify unequal live
+input histories. A sufficient checkpoint needs explicit coverage and permissions;
+missing lawful state causes unavailability. Use a fresh directory for changed runs.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

@@ -13,11 +13,11 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0007](../research/information_lifecycle/cycles/0007.md)
-  tests query-specific observability: relative precision survives absolute-anchor loss
-  in a small exact model, while treating a numerical gauge as evidence invents certainty.
-  Separate permitted summaries preserve the useful component; global invalidation can
-  discard it unnecessarily. Unequal-input failover and retained-state recovery are next;
+- **Latest evidence:** [cycle 0008](../research/information_lifecycle/cycles/0008.md)
+  tests recovery after unequal live delivery: matching log horizons do not identify
+  consumed inputs. Bound scalar checkpoints and authorized replay work within explicit
+  coverage limits; mixed-checkpoint withdrawal can require missing reconstruction state.
+  Replaying inputs over an old output can invent precision. Retention expiry is next;
   earlier results retain their stated mathematical and synthetic-dynamics limits.
 
 ### `20260911_shared_flow_demo_contracts.md`

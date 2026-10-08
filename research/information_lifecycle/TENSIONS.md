@@ -52,6 +52,15 @@ query. This decomposition is supplied before freezing, not recovered from an arb
 collapsed posterior. It supports keeping separable lawful information where practical
 without weakening the earlier insufficiency witnesses or deciding general derivative rights.
 
+[Cycle 0008](cycles/0008.md) makes the recovery tradeoff explicit. A permitted scalar
+checkpoint can bridge a missing raw component. Once another contribution in the mixed
+checkpoint is withdrawn, its input manifest cannot supply the absent surviving value.
+Even complete archive retention may require another replay step, while already-retained
+independent components stay usable. A published scalar mean/variance can itself serve
+as sufficient restart state when explicitly bound to its full input/model contract;
+publication alone does not supply that contract. This strengthens the known retention
+question without establishing a new architectural contradiction.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).
@@ -96,6 +105,14 @@ Lawful relative answers can persist while global answers are unavailable, but th
 not establish that a moving consumer can safely continue. Reacquisition follows an explicit
 validity gap, not a blend with the withdrawn anchor. These results refine the existing
 query/consumer contract question; they do not introduce another physical-safety conclusion.
+
+[Cycle 0008](cycles/0008.md) finds the same false-precision mechanism during recovery:
+seeding from the old output and replaying its inputs double counts despite replay
+deduplication. A later real observation then produces too small a correction. Holding
+the old answer is perfectly steady but becomes stale or forbidden. Matching a durable
+log horizon also fails to identify unequal live histories, so claimed continuity needs
+the actual consumed-input contract. These are inference/availability witnesses; no
+physical consumer response or new physical-safety conclusion is established.
 
 ## New tensions
 

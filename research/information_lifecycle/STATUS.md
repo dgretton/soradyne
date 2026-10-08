@@ -5,30 +5,30 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0007: exact anchor-loss/observability slice completed. 24 configurations, five methods:
-120 runs / 4,800 event-query outcomes. Per-query rank checks and separate permitted
-summaries match all 1,920 of their checks, preserving relative precision through anchor
-withdrawal. Blanket joint invalidation needlessly withholds 168 answers; treating a
-gauge as absolute evidence invents 432 finite answers. Deliberate anchor retention causes
-480 forbidden-processing queries, sometimes despite a numerically correct relative
-answer. Coordinate expression changes, input corrections and query validity are recorded
-separately. 124 total tests pass; all seven cycles' source hashes are verified.
+0008: unequal-input failover/recovery slice completed. 192 configurations, five methods:
+960 runs / 11,520 event-query outcomes. Manifest-bound scalar checkpoints and raw replay
+match all 4,608 of their checks when available, with no forbidden processing. Equal log
+horizons can conceal different live histories; output-seeded replay double counts even
+with replay deduplication. Mixed-checkpoint revocation exposes missing reconstruction
+state and can interrupt service when retained raw components would remain usable.
+Both supported methods recover by the stipulated custodian return. 145 total tests
+pass; all eight cycles' source hashes are verified.
 No complete family or production mechanism is declared proven. Publication is verified
 against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0008: F01 with a narrow F02 replay case. Give two producers unequal lossy deliveries
-before failover. Compare a durable horizon alone, a checkpoint bound to its actual input
-manifest plus authorized replay, and explicit unavailability when retained evidence is
-missing. Check exact mean/uncertainty, input identity, duplicates and current permissions;
-distinguish published output from restart state. Include an authorized custodian that
-survives a producer and a missing component. Keep crash-at-every-write, fencing,
-floating-point/nonlinear geometry and consumer dynamics in their planned later slices.
+0009: bounded R03+F03, fixed-lag/checkpoint retention expiry followed by selective
+withdrawal. Compare retained independent contributions, a mixed summary plus authorized
+replay, and explicit unsupported/unavailable recovery after needed state expires.
+Predeclare a finite retention/time budget and measure retained information, uncertainty,
+authorization and recovery availability together. Keep atomic-write crashes, fencing,
+floating-point/nonlinear geometry and consumer dynamics in their later slices.
 
-Reason for this priority: the initial I03/I04/I05 witnesses now show what information
-must remain separable and queryable. Follow the existing plan into retained-state recovery
-and test whether a replacement worker can know and reconstruct what was actually used.
+Reason for this priority: 0008's missing records eventually return by assumption. Test
+the harder information boundary when a lawful replay component has actually expired,
+and whether modest decomposable retained state avoids an otherwise unnecessary outage.
+This follows the existing F01/F02/F03 recovery sequence.
 
 ## Coverage
 
@@ -55,8 +55,13 @@ and test whether a replacement worker can know and reconstruct what was actually
   gauge-induced false certainty and reanchoring. Per-query validity preserves lawful
   observables. Floating-point rank thresholds, nonlinear/scale/connectivity cases and
   physical consumer response remain open.
-- I06-I08, R05/R07, R09-R10, F01-F06, S02 and S04-S08 have no dedicated scenario-level
-  coverage yet. The next slice addresses bounded F01/F02 recovery.
+- F01/F02: partial exact scalar evidence in 0008 for unequal live delivery at matching
+  durable horizons, manifest-bound checkpoint/replay, missing custody coverage, producer
+  disappearance, duplicate/reordered replay and P3 during recovery. A surviving custodian
+  supplies authorized original records; loss of reachability is bounded by the fixture.
+  General restart state, atomic persistence, distributed authority and latency remain open.
+- I06-I08, R05/R07, R09-R10, F03-F06, S02 and S04-S08 have no dedicated scenario-level
+  coverage yet. The next slice addresses bounded R03+F03 retention expiry.
 - Mandatory compound scenarios: planned, none executed.
 - Production changes: none. Distributed, nonlinear and hardware claims: none.
 
@@ -74,6 +79,8 @@ and test whether a replacement worker can know and reconstruct what was actually
   binding, transitive withdrawal, false precision and delayed correction response.
 - [0007](cycles/0007.md): query-specific observability after anchor/constraint loss,
   retained independent summaries, covariance, coordinate changes and false gauge precision.
+- [0008](cycles/0008.md): actual-input manifests, unequal live-history failover,
+  custody/replay gaps, checkpoint withdrawal and output-seeded double counting.
 
 ## Scheduling
 
