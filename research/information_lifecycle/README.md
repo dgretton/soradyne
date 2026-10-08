@@ -93,6 +93,19 @@ and [findings](cycles/0005.md). Atomic blocks are raw-equivalent in this model; 
 composition does not establish privacy, general feedback handling or hardware safety.
 Use a fresh directory for changed methods/configurations.
 
+## Reproduce cycle 0006
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+python3 -B research/information_lifecycle/feedback.py --output-dir /tmp/information-lifecycle-cycle-0006
+```
+
+This writes metrics for 240 feedback runs (3,040 event-query checks), ten representative
+complete traces and artifact graphs, and wrong-base/damped-feedback witnesses. See the
+[protocol](cycles/0006-protocol.md) and [findings](cycles/0006.md). Residual subtraction
+is justified only for the declared exact additive model and matching retained base;
+its derivative rights are explicit assumptions. Use a fresh directory for changed runs.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

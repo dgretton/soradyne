@@ -30,11 +30,20 @@ identical child lineage and aggregated conditional joint factors on (x,b), yet r
 different full unique-data answers. Keeping the shared calibration variable addresses
 correlation but does not recreate the overlap's numerical contribution. Known cross-
 covariance can produce an honest reduced-information answer (variance 3/8 in the
-witness without calibration uncertainty), while full raw data has variance 1/3; it does not recover the discarded statistic. Possible
-choices remain finer decomposition, an adequate overlap statistic, authorized replay,
-or explicit reduced/unavailable answers. Atomic blocks work in this fixture but are
+witness without calibration uncertainty), while full raw data has variance 1/3; it does
+not recover the discarded statistic. Possible choices remain finer decomposition, an
+adequate overlap statistic, authorized replay, or explicit reduced/unavailable answers. Atomic blocks work in this fixture but are
 raw-equivalent information and need corresponding retention/use authorization. This
 strengthens T01 without establishing a new architectural contradiction.
+
+[Cycle 0006](cycles/0006.md) shows why preserving an independently reusable local
+contribution can avoid an outage when a returned mixed posterior becomes forbidden.
+A matched additive residual recovers that contribution in the exact scalar fixture;
+using the wrong parent revision can instead cancel new lawful evidence. The clean
+residual's retention/use rights are explicitly assumed, not granted by mathematical
+cancellation or inferred from historical causal ancestry. This adds a limited sufficient
+case alongside the earlier insufficiency witnesses, without resolving general derivative
+policy or subtraction after elimination.
 
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
@@ -64,6 +73,14 @@ an explicit local-state/response/operating-envelope contract, still to be design
 Do not infer a general safe-stop policy or decide permission semantics from this
 witness. Future physical coverage stays in the broader S03/compound work; subsequent
 cycles investigate information and permission semantics.
+
+[Cycle 0006](cycles/0006.md) also isolates a precursor to poor correction response:
+recycling a parent's posterior can leave the mean steady while inventing precision.
+After twelve no-data rounds, a new observation produces only about 8.6% of the required
+mean correction in one exact fixture. A separately tested damped iteration converges
+to the wrong answer. These are inference failures before any controller is modeled;
+small jumps or convergence alone do not establish a valid response. No additional
+physical-safety conclusion or new architectural contradiction follows.
 
 ## New tensions
 
