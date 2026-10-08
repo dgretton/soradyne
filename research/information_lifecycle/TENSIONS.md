@@ -70,6 +70,15 @@ finish before raw expiry under this fixture's no-pin policy. An explicitly reduc
 answer is another supported contract; it must not be labeled full-history recovery.
 This makes T01's representation/retention choices more precise, not a new contradiction.
 
+[Cycle 0010](cycles/0010.md) separates nonlinear approximation from permission loss.
+Two raw planar point-registration likelihoods can give the same complete first-order
+quadratic and identity-only metadata but need different nonlinear uncertainty or modes.
+A small nonlinear moment representation preserves the full likelihood in this restricted
+known-landmark model. This extends the irreversible-reduction concern without establishing
+its sufficiency for general survey marginalization or selective withdrawal. Local inverse-
+Hessian covariance can also misdescribe broad uncertainty even when the retained likelihood
+is exact; retaining more faithful state does not itself justify a Gaussian output contract.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).
@@ -129,6 +138,14 @@ full-history recovery is unavailable, but its changed uncertainty/coverage must 
 consumer. Silent coarsening and retaining a revoked mixed summary both fail, even when
 their arithmetic or mean continuity looks correct. No reduced-result acceptance threshold
 or physical continuation policy is established by this static experiment.
+
+[Cycle 0010](cycles/0010.md) adds no-data rebuild corrections from a prescribed displaced
+linearization. The frozen quadratic can remain steady and precise-looking before a large
+correction; shifting its chart does not restore the nonlinear likelihood. A compact exact
+representation avoids that approximation jump in this limited planar model. Query-point
+geometry matters even at small angular displacement. No plant is modeled, and the fixture
+does not establish what happens after a converged survey with uncertain landmarks is frozen.
+The existing inference/consumer distinction remains; no new physical-safety claim follows.
 
 ## New tensions
 

@@ -92,6 +92,17 @@ validity or uncertainty claims by quietly weakening a requirement.
   https://gtsam.org/doxygen/4.0.0/a03643.html
 - Bounded-window candidate background:
   https://borglab.github.io/gtsam/fixedlagsmoother/
+- Cycle 0010 proper-rotation batch reference, algebraic justification of Kabsch–Umeyama:
+  https://math.nist.gov/~JBernal/kujustf.pdf
+- NumPy SVD implementation surface used by that reference:
+  https://numpy.org/doc/1.26/reference/generated/numpy.linalg.svd.html
+- Bounded quadrature for raw nonlinear angular posterior mass:
+  https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.quad.html
+
+Cycle 0010 deliberately distinguishes observed Hessian, Gauss–Newton information,
+local Gaussian covariance, full conditional posterior mass and repeated-sample coverage.
+Agreement of means/covariances alone does not establish equivalence of nonlinear
+likelihoods. Preserve uncertainty qualifications in any later application contract.
 
 These sources motivate candidates; they do not certify our wrappers, privacy policy
 or consumer stability. Consult current primary papers/documentation before adding a

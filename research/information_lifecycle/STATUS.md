@@ -5,32 +5,32 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0009: bounded R03+F03 retention-expiry/withdrawal slice completed. 192 configurations,
-six methods: 1,152 runs / 14,976 query outcomes. Three strict methods pass all 7,488
-combined checks, reporting unavailable when full requested history is irrecoverable.
-Per-record versus per-source decomposition supports different withdrawal units; a
-two-world witness proves the stored aggregate/ID manifest insufficient for finer removal.
-Explicit reduced answers preserve lawful subset information with honest coverage and
-uncertainty. Replay must finish before raw expiry under the declared no-pin policy.
-Admission regressions (deadline relabeling, future artifacts and mutation before rejecting
-over-capacity input) were fixed; all grid metrics are unchanged. 166 tests pass; all nine
-cycles' source hashes are verified.
+0010: first bounded nonlinear I06 slice completed. 128 deterministic SE(2)
+configurations, four methods, 512 outputs / 1,536 synthetic event records. A compact
+nonlinear likelihood matches an independent raw SVD solve and observed Hessian;
+the frozen first-order quadratic can require large rebuild corrections without new
+observations. Recentering that quadratic does not repair it. Two-world witnesses expose
+information missing from this representation. Even the exact likelihood's local Gaussian
+interval can contain only 86.58% angular posterior mass in a weak fixture; no frequentist
+coverage claim follows. Serialization regression fixed. 184 tests pass; both new artifacts
+reproduce byte for byte and all ten cycles' source hashes are verified.
 No complete family or production mechanism is declared proven. Publication is verified
 against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0010: I06's first nonlinear freeze slice. Use a small SE(2) pose/landmark model, a frozen
-linearization, controlled angular displacement from it and a full-data batch reference.
-Predeclare geometry/noise, a bounded sweep and independent residual/error/uncertainty
-checks. Separate approximation error from information loss or permission changes. Start
-with deterministic geometry; add fixed-seed coverage only after validating the independent
-reference and within the cycle budget. Keep broader SE(3), timing faults and physical
-consumers queued.
+0011: fixed-seed Monte Carlo uncertainty calibration in the same known-landmark SE(2)
+model. Predeclare strong/weak geometry, trial counts, seeds, held-out checks and statistical
+confidence intervals. Compare local observed-Hessian/Gauss–Newton intervals with intervals
+from the full angular likelihood. Fix anchors before sampling; keep truth out of candidate
+solves. Measure error/coverage and rebuild corrections on common inputs under explicit P0.
 
-Reason for this priority: the exact information, permissions and initial recovery cases
-now expose what retained state can and cannot support. Follow the existing sequence into
-nonlinear approximation, where exact scalar successes cannot justify a frozen pose prior.
+Reason: the independent reference now passes deterministic checks, but conditional
+posterior mass is not repeated-sample coverage. Establish that distinction before promoting
+an uncertainty contract. Following that, test a converged freeze followed by new independent
+constraints and elimination of uncertain landmarks/calibration. The known-landmark moment
+formula is not assumed sufficient there. Broader SE(3), timing faults and physical consumers
+remain queued.
 
 ## Coverage
 
@@ -66,10 +66,16 @@ nonlinear approximation, where exact scalar successes cannot justify a frozen po
   versus per-source withdrawal, half-open raw/derivative expiry, replay completion deadline,
   explicit reduced coverage and a retained-state insufficiency witness. Moving-state lag
   elimination, alternate retention policies, nonlinear state and real latency remain open.
-- I06-I08, R05/R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
+- I06: first deterministic SE(2) witness in 0010 with exact known landmarks, isotropic
+  independent noise, a prescribed displaced linearization and full raw reference.
+  Nonlinear moment sufficiency, quadratic insufficiency and local-Gaussian limitations
+  are scoped to this model. Monte Carlo, converged-survey freeze followed by new evidence,
+  uncertain-landmark/calibration elimination, SE(3) and production behavior remain open.
+- I07-I08, R05/R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
   coverage yet. R05 has an adjacent single-record example in 0009, not its full scope.
 - Mandatory compounds: R03+F03 has the limited 0009 witness; other compounds remain planned.
-- Production changes: none. Distributed, nonlinear and hardware claims: none.
+- Production changes: none. Distributed and hardware claims: none. Nonlinear evidence
+  is limited to the explicit 0010 planar model.
 
 ## Durable history
 
@@ -89,6 +95,8 @@ nonlinear approximation, where exact scalar successes cannot justify a frozen po
   custody/replay gaps, checkpoint withdrawal and output-seeded double counting.
 - [0009](cycles/0009.md): withdrawal granularity versus summary decomposition,
   raw/derivative expiry, bounded replay and explicit reduced-information answers.
+- [0010](cycles/0010.md): nonlinear likelihood versus frozen quadratic, independent
+  pose/uncertainty checks, insufficient summaries and no-data rebuild corrections.
 
 ## Scheduling
 

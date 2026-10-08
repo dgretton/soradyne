@@ -38,9 +38,9 @@ python3 -B research/information_lifecycle/baseline.py
 ```
 
 On this machine use `/Users/rim/Dev/.venv-nestbox/bin/python`. Do not change the
-system Python. Later experiments may use the existing NumPy/GTSAM environment;
-record dependencies and versions for each. The initial exact-arithmetic witnesses
-do not depend on GTSAM or import either application's implementation.
+system Python. Cycle 0010 and the full test suite now require NumPy and SciPy;
+recorded versions are 1.26.4 and 1.17.1 in that existing environment. Earlier exact
+witnesses remain stdlib-only. No experiment imports either application's implementation.
 
 ## Reproduce cycle 0002
 
@@ -144,6 +144,21 @@ representative traces, an aggregate-insufficiency witness and source hashes. See
 [protocol](cycles/0009-protocol.md) and [findings](cycles/0009.md). Summary granularity,
 raw/derivative deadlines and explicit reduced coverage determine what remains usable.
 No-pin/no-renewal rules are fixture policies. Use a fresh directory for changed runs.
+
+## Reproduce cycle 0010
+
+```sh
+/Users/rim/Dev/.venv-nestbox/bin/python -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+/Users/rim/Dev/.venv-nestbox/bin/python -B research/information_lifecycle/nonlinear_freeze.py --output-dir /tmp/information-lifecycle-cycle-0010
+```
+
+This writes 128 deterministic nonlinear freeze configurations (512 method outputs),
+eight complete event traces, two quadratic-insufficiency witnesses and source hashes.
+See the [protocol](cycles/0010-protocol.md) and [findings](cycles/0010.md). Known exact
+landmarks and isotropic noise permit a compact nonlinear sufficient statistic. Local
+Gaussian uncertainty still needs qualification; no Monte Carlo or general survey-freeze
+claim follows. The output directory must not already exist. Use a fresh directory for
+changed methods/configurations. Dependencies: NumPy and SciPy, not GTSAM.
 
 ## Four-hour cycle procedure
 

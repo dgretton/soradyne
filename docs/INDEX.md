@@ -13,12 +13,12 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0009](../research/information_lifecycle/cycles/0009.md)
-  tests withdrawal after retention expiry: source-level aggregates cannot always support
-  record-level removal. Replay must complete before raw expiry under the tested policy;
-  explicitly reduced answers preserve usable subsets without claiming full recovery.
-  Admission and rejected-input state regressions were fixed. A first nonlinear freeze
-  slice is next; all results retain their stated mathematical and synthetic-dynamics limits.
+- **Latest evidence:** [cycle 0010](../research/information_lifecycle/cycles/0010.md)
+  tests a first bounded nonlinear freeze case. Compact planar point-registration moments
+  preserve the likelihood; a frozen first-order quadratic can lose nonlinear information
+  and produce large rebuild corrections without new measurements. Even an exact likelihood's
+  local Gaussian interval can misstate broad angular uncertainty. Monte Carlo calibration
+  is next; general survey marginalization and consumer safety remain unproven.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.
