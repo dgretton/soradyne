@@ -5,30 +5,30 @@ Base: `9cbba49` (`shared-flow-demo-contracts`).
 
 ## Current cycle
 
-0006: feedback/repeated-influence slice completed. 48 configurations, five methods:
-240 runs / 3,040 exact event-query outcomes. Restricted local likelihoods, original-
-component accounting and exact bound-base residuals match all 1,824 of their checks.
-Newest-posterior reuse fails even with acyclic artifact references; direct-only
-revocation leaves forbidden influence. Wrong-base subtraction and bounded-but-wrong
-feedback have retained exact witnesses. 107 total tests pass, including corrections
-to policy-version metadata and transient peak base counts; numerical and authorization
-results are unchanged by those fixes.
+0007: exact anchor-loss/observability slice completed. 24 configurations, five methods:
+120 runs / 4,800 event-query outcomes. Per-query rank checks and separate permitted
+summaries match all 1,920 of their checks, preserving relative precision through anchor
+withdrawal. Blanket joint invalidation needlessly withholds 168 answers; treating a
+gauge as absolute evidence invents 432 finite answers. Deliberate anchor retention causes
+480 forbidden-processing queries, sometimes despite a numerically correct relative
+answer. Coordinate expression changes, input corrections and query validity are recorded
+separately. 124 total tests pass; all seven cycles' source hashes are verified.
 No complete family or production mechanism is declared proven. Publication is verified
 against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0007: I05 with a narrow R06 anchor-loss case. Use a tiny exact linear system where
-withdrawing the last absolute anchor leaves a relative query observable. Compare
-explicit observable/unobservable answers, blanket invalidation, and an artificial fixed
-gauge that could fabricate absolute precision. Include consistent coordinate-origin
-changes, correct relative-query covariance, and immediate withdrawal of anchor influence.
-Keep broader floating-point/nonlinear geometry, consumer dynamics and recovery queued.
+0008: F01 with a narrow F02 replay case. Give two producers unequal lossy deliveries
+before failover. Compare a durable horizon alone, a checkpoint bound to its actual input
+manifest plus authorized replay, and explicit unavailability when retained evidence is
+missing. Check exact mean/uncertainty, input identity, duplicates and current permissions;
+distinguish published output from restart state. Include an authorized custodian that
+survives a producer and a missing component. Keep crash-at-every-write, fencing,
+floating-point/nonlinear geometry and consumer dynamics in their planned later slices.
 
-Reason for this priority: 0005 rejected missing absolute calibration without exposing
-remaining observable queries; 0006 confirms that preserved numerical dependencies must
-match the actual query. Test what useful information can survive anchor withdrawal
-before expanding the recovery and nonlinear studies.
+Reason for this priority: the initial I03/I04/I05 witnesses now show what information
+must remain separable and queryable. Follow the existing plan into retained-state recovery
+and test whether a replacement worker can know and reconstruct what was actually used.
 
 ## Coverage
 
@@ -50,8 +50,13 @@ before expanding the recovery and nonlinear studies.
   versioned replacement, matched conditioning bases, transitive withdrawal and clean
   replay. Immutable artifact acyclicity does not establish independence. General
   feedback, nonlinear messages and asynchronous authority remain open.
-- I05-I08, R05-R07, R09-R10, F01-F06, S02 and S04-S08 have no dedicated scenario-level
-  coverage yet. The next slice addresses a bounded I05/R06 case.
+- I05/R06: partial exact two-variable evidence in 0007 for weak/singular geometry,
+  origin changes, anchor/relative-constraint withdrawal, separate frozen components,
+  gauge-induced false certainty and reanchoring. Per-query validity preserves lawful
+  observables. Floating-point rank thresholds, nonlinear/scale/connectivity cases and
+  physical consumer response remain open.
+- I06-I08, R05/R07, R09-R10, F01-F06, S02 and S04-S08 have no dedicated scenario-level
+  coverage yet. The next slice addresses bounded F01/F02 recovery.
 - Mandatory compound scenarios: planned, none executed.
 - Production changes: none. Distributed, nonlinear and hardware claims: none.
 
@@ -67,6 +72,8 @@ before expanding the recovery and nonlinear studies.
   overlap insufficiency, honest reduced covariance and strict withdrawal/rebuild.
 - [0006](cycles/0006.md): parent feedback, original-evidence accounting, exact base
   binding, transitive withdrawal, false precision and delayed correction response.
+- [0007](cycles/0007.md): query-specific observability after anchor/constraint loss,
+  retained independent summaries, covariance, coordinate changes and false gauge precision.
 
 ## Scheduling
 

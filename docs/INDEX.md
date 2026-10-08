@@ -13,12 +13,12 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Scope:** freezing/replacing evidence, permission transitions, retained-state
   recovery, and consumer stability. Results, failed candidates and design tensions
   are recorded per cycle; coverage claims are limited to the experiments run.
-- **Latest evidence:** [cycle 0006](../research/information_lifecycle/cycles/0006.md)
-  tests returned parent influence: version replacement and acyclic artifact references
-  can still invent precision. Local-evidence accounting works in the declared scalar
-  model; subtraction requires the matching retained conditioning base. Transitive
-  withdrawal and clean replay are exercised. Observable queries after anchor loss are
-  next; earlier results retain their stated mathematical and synthetic-dynamics limits.
+- **Latest evidence:** [cycle 0007](../research/information_lifecycle/cycles/0007.md)
+  tests query-specific observability: relative precision survives absolute-anchor loss
+  in a small exact model, while treating a numerical gauge as evidence invents certainty.
+  Separate permitted summaries preserve the useful component; global invalidation can
+  discard it unnecessarily. Unequal-input failover and retained-state recovery are next;
+  earlier results retain their stated mathematical and synthetic-dynamics limits.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

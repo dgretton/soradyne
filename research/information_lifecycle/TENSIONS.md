@@ -45,6 +45,13 @@ cancellation or inferred from historical causal ancestry. This adds a limited su
 case alongside the earlier insufficiency witnesses, without resolving general derivative
 policy or subtraction after elimination.
 
+[Cycle 0007](cycles/0007.md) adds a limited sufficient case: independently authorized
+absolute and relative scalar summaries preserve the latter after the anchor is withdrawn.
+Validity is query-specific; a singular full joint need not invalidate every relative
+query. This decomposition is supplied before freezing, not recovered from an arbitrary
+collapsed posterior. It supports keeping separable lawful information where practical
+without weakening the earlier insufficiency witnesses or deciding general derivative rights.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).
@@ -81,6 +88,14 @@ mean correction in one exact fixture. A separately tested damped iteration conve
 to the wrong answer. These are inference failures before any controller is modeled;
 small jumps or convergence alone do not establish a valid response. No additional
 physical-safety conclusion or new architectural contradiction follows.
+
+[Cycle 0007](cycles/0007.md) distinguishes a coordinate-origin change, a numerical gauge
+choice and new anchoring evidence. A harmless origin change can create a large coordinate
+jump; arbitrary gauge pinning can create false precision and a jump without evidence.
+Lawful relative answers can persist while global answers are unavailable, but this does
+not establish that a moving consumer can safely continue. Reacquisition follows an explicit
+validity gap, not a blend with the withdrawn anchor. These results refine the existing
+query/consumer contract question; they do not introduce another physical-safety conclusion.
 
 ## New tensions
 

@@ -106,6 +106,19 @@ complete traces and artifact graphs, and wrong-base/damped-feedback witnesses. S
 is justified only for the declared exact additive model and matching retained base;
 its derivative rights are explicit assumptions. Use a fresh directory for changed runs.
 
+## Reproduce cycle 0007
+
+```sh
+python3 -B -m unittest discover -s research/information_lifecycle -p 'test_*.py' -q
+python3 -B research/information_lifecycle/observability.py --output-dir /tmp/information-lifecycle-cycle-0007
+```
+
+This writes metrics for 120 observability runs (4,800 event-query checks), ten complete
+representative traces and source hashes. See the [protocol](cycles/0007-protocol.md)
+and [findings](cycles/0007.md). Relative queries can survive absolute-anchor withdrawal;
+coordinate pinning supplies no absolute evidence. Exact fractions do not validate
+floating-point rank decisions or consumer safety. Use a fresh directory for changed runs.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and
