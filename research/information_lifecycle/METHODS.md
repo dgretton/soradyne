@@ -1,5 +1,24 @@
 # Evidence discipline
 
+## Closing program after cycle 0011
+
+Dana's 2026-10-08 steering narrows further work to irreversible data-model/contract
+choices (PLAN, closing sequence), at most three witness cycles then one synthesis/
+review cycle. Small exact witnesses and finite local state machines suffice when
+they expose the missing retained information or acceptance boundary. Do not require
+new Monte Carlo, physical simulations, latency sweeps or SE(3) validation just to
+complete this phase. Existing numerical evidence supports an approximation contract,
+not a selected production estimator or consumer operating envelope.
+
+Each remaining witness states which early choice it constrains, the smallest retained
+state/identity that preserves the option, alternatives, and the limit of the conclusion.
+An unimplemented deferred operation is not supported merely because metadata names it;
+identify the sufficient numerical state or replay path, authorization and future contract
+hooks it would need. Exact witnesses do not establish that those permissions are granted.
+The synthesis's scenario statuses are scoped capability dispositions; evidence levels
+below still apply. Independent reviewers receive the same pushed synthesis snapshot;
+their original interpretations and the parent's responses remain distinguishable.
+
 ## Experiment record
 
 Before implementing a slice, state its scenario IDs, hypothesis, policy variant,

@@ -4,15 +4,26 @@ Status: active research, started 2026-10-07. Production behavior is unchanged.
 Branch: `research/information-lifecycle`, based on `shared-flow-demo-contracts`
 at `9cbba49`. Owner: this Codex chat, on Dana's instruction.
 
-Investigate which simple representations and algorithms preserve the information,
-authorization and stability needed by networked estimation when evidence is frozen,
-replaced, shared, withdrawn or recovered. Establish where an answer must become
-unavailable. Smoothness alone is not evidence of correctness or physical safety.
+Investigate which representation, retention, identity and contract choices preserve
+future correct withdrawal, recovery and consistent results when evidence is frozen,
+replaced or shared. Establish where an answer must become unavailable. Smoothness
+alone is not evidence of correctness or physical safety.
+
+**Closing scope, Dana's 2026-10-08 steering:** near-term use is one local network or
+Tailscale, with unavailable nodes repaired before sessions. At most four more cycles
+after 0011: calibration/withdrawal (I07 + R05), snapshots/reset semantics (I08 + S02),
+crash/atomic boundaries (F04), then synthesis and two independent expert reviews.
+Skip the old converged-freeze/new-batch 0012. Estimator/controller tuning, broader
+nonlinear/SE(3) coverage, R07, F05/F06, S04–S08 stay deferred with their future
+requirements recorded. PLAN's closing sequence and STATUS's remaining budget override
+old next-action notes and the former full-matrix completion gate.
 
 Start with [PLAN.md](PLAN.md), [METHODS.md](METHODS.md), [STATUS.md](STATUS.md) and
 [TENSIONS.md](TENSIONS.md). Every cycle produces a report under `cycles/` and compact
-reproducible evidence under `runs/`. Dead ends and experimental code are committed
-and pushed; deletion comes later, with the conclusion and reproducer preserved.
+reproducible evidence under `runs/` when an experiment is run. The synthesis/review
+cycle preserves documents rather than inventing a new simulation. Dead ends and
+experimental code are committed and pushed; deletion comes later, with the conclusion
+and reproducer preserved.
 
 ## Scope and placement
 
@@ -191,10 +202,11 @@ the output directory must not exist. Previous cycle files remain unchanged.
 3. Fetch the remote research branch. Fast-forward only when clean and appropriate.
    If it diverged, preserve both sides and report or resolve without history rewriting.
    Notice changes to the design base, but do not automatically merge unrelated work.
-4. Choose ONE bounded hypothesis or scenario slice, normally 45-75 minutes and no
-   more than 90 minutes of work. Simulations get explicit step/time/memory limits.
-   Prefer the next unfinished highest-risk item, not a broad redesign. A cycle may
-   end with a useful counterexample or an inconclusive result.
+4. Choose the next authorized item in PLAN's **finite closing sequence**, normally
+   45-75 minutes and no more than 90 minutes of work. A small exact witness may finish
+   sooner; do not pad it with extra research. Simulations get explicit limits. A cycle
+   may end with a counterexample or inconclusive result; neither expands the four-cycle
+   budget. After at most three witness cycles go directly to synthesis and reviews.
 5. Before running, record assumptions, competing methods, independent reference,
    acceptance thresholds and failure conditions. Implement a minimal test/simulation,
    run appropriate checks, and preserve seed/configuration plus compact raw evidence.
@@ -214,9 +226,14 @@ the output directory must not exist. Previous cycle files remain unchanged.
 8. Report meaningful findings, test failures, new material tensions, completion or
    required user action in this chat. Remain quiet on unchanged/non-actionable state;
    durable records still receive the required cycle updates and push. Do not send
-   email or messages to other chats. No physical actuation or external deployment.
+   email or messages to other chats. A genuine new architectural contradiction must
+   be recorded and reported immediately, not held until cycle end; distinguish it
+   from a refinement of T01/T02. No physical actuation or external deployment.
 
-Once the matrix has evidence of the specified scope and the synthesis identifies a
-minimal approach with explicit limits, document completion, push, notify Dana and
-pause the recurring job. Do not manufacture further work. New scenarios may be added
-when evidence identifies a real gap; explain why, rather than growing scope by habit.
+Completion is the narrowed PLAN criterion: push `SYNTHESIS.md` with minimal contracts,
+every scenario's scoped disposition (including must-not-be-precluded deferrals), Dana's
+open policy choices and proposals for owning contracts. Then launch the two independent
+expert review agents, preserve their reports and any separate parent response, push
+and verify them, pause `information-lifecycle-investigation`, and notify Dana. Keep
+reviews independent through their first reports. No production contract edits or new
+research cycles follow merely because a reviewer suggests further work.

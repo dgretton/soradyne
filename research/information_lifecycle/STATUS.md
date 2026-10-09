@@ -3,6 +3,34 @@
 Started 2026-10-07. Branch: `research/information-lifecycle`.
 Base: `9cbba49` (`shared-flow-demo-contracts`).
 
+## Current steering — 2026-10-08
+
+Dana narrowed the goal after 0011: preserve long-range mathematical options through
+representation, retention, identity and contracts. Near-term operation is on one local
+network or Tailscale, with unavailable nodes repaired before sessions. Estimator quality,
+controller tuning and broad fault/performance coverage are deferred.
+
+**Closing budget: four further cycles maximum; zero completed under this new scope.**
+This documentation/scheduler change does not consume an experiment cycle. The old
+converged-freeze/new-batch 0012 is cancelled, not run; the number is reused below.
+PLAN's closing sequence supersedes older cycle reports' next actions and the old full
+matrix completion gate. No new architectural contradiction was found during rescoping.
+
+| Cycle | Remaining deliverable | State |
+|---|---|---|
+| 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Next |
+| 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Planned |
+| 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Planned |
+| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Planned |
+
+Combine or skip witnesses when prior evidence suffices; do not add replacement work.
+No more than three witness cycles before synthesis. R07, F05, F06, S08, S04–S07 and
+further nonlinear/SE(3) coverage are explicit must-not-be-precluded deferrals. Other
+unselected rows get a synthesis audit only. Every matrix row must receive its scoped
+status and reason. Owning contract changes remain proposals in the research directory.
+See PLAN for the exact synthesis/review deliverables and the immediate reporting rule
+for genuine new contradictions.
+
 ## Current cycle
 
 0011: bounded I06 Monte Carlo angular calibration completed. 131,072 independent
@@ -20,16 +48,14 @@ against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0012: freeze a converged first measurement batch, then add an independent batch of the
-same static pose. Compare a retained first-order quadratic, exact nonlinear moments and
-all-raw recomputation as the optimum moves. Predeclare both batches' geometry/noise,
-information ratios and bounded perturbations. Separate valid new-data response from
-approximation error; retain input identity and covariance checks.
-
-Reason: 0010–0011 used predetermined anchors. A converged freeze followed by new evidence
-is the next prerequisite before testing uncertain-landmark/calibration elimination.
-The known-landmark moment formula cannot be assumed sufficient for that broader graph.
-Broader SE(3), timing faults and physical consumers remain queued.
+0012, replacement scope: use small exact shared-calibration examples for I07 + R05,
+reusing 0005/0009 rather than rerunning them. Compare joint/decomposed retained state
+and authorized replay with collapsed or falsely independent representations. Cover
+calibration drift/replacement and sensor/time-range/field withdrawal, including the
+supporting evidence of learned calibration. Determine the identity/dependency and
+numerical retention needed to keep those operations possible, with explicit policy
+alternatives; do not build or tune a calibration estimator. PLAN states the witness
+and contract questions. Converged freeze/new-batch and nonlinear sweeps stay deferred.
 
 ## Coverage
 
@@ -75,7 +101,9 @@ Broader SE(3), timing faults and physical consumers remain queued.
   production behavior remain open.
 - I07-I08, R05/R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
   coverage yet. R05 has an adjacent single-record example in 0009, not its full scope.
-- Mandatory compounds: R03+F03 has the limited 0009 witness; other compounds remain planned.
+- Former mandatory compounds: R03+F03 has the limited 0009 witness. The remaining
+  compounds are no longer required experiments; preserve their dependencies/limits
+  in synthesis without reopening deferred scenarios.
 - Production changes: none. Distributed and hardware claims: none. Nonlinear evidence
   is limited to the explicit planar model in 0010–0011.
 
@@ -101,11 +129,17 @@ Broader SE(3), timing faults and physical consumers remain queued.
   pose/uncertainty checks, insufficient summaries and no-data rebuild corrections.
 - [0011](cycles/0011.md): repeated-sample angular coverage, full circular intervals,
   weak-geometry Gaussian undercoverage, anchor dependence and numerical-reference checks.
+- 2026-10-08 human steering: finite closing program in PLAN/README/METHODS/STATUS;
+  prior experiments, protocols and evidence unchanged. No new experimental result.
 
 ## Scheduling
 
 Requested: a heartbeat in the current chat every four hours, one bounded chunk,
 commit/push every cycle including temporary/negative work. See README for procedure.
 Automation: `information-lifecycle-investigation`, confirmed ACTIVE, same-chat
-heartbeat, four-hour interval. Each run follows README and preserves evidence in Git.
+heartbeat, four-hour interval, now bounded by the closing sequence above. Each run
+follows README and preserves evidence in Git. After synthesis is pushed, launch the
+two independent specialists (network architecture; uncertainty propagation for changing
+3D alignment), preserve and push both reports, then pause this automation. Do not pause
+before reviews, and do not extend the research to satisfy the old completion criteria.
 Local execution requires this computer and the app to be running.

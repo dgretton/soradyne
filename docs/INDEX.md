@@ -4,22 +4,26 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 
 ## Current architecture (2026-09-11)
 
-### Information lifecycle investigation (2026-10-07)
+### Information lifecycle investigation (2026-10-07; closing scope 2026-10-08)
 - **Location:** [research plan](../research/information_lifecycle/PLAN.md),
   [status](../research/information_lifecycle/STATUS.md), and
   [methods](../research/information_lifecycle/METHODS.md).
 - **Status:** isolated research on `research/information-lifecycle`, based on
   `shared-flow-demo-contracts`; not production behavior or a revised protocol spec.
-- **Scope:** freezing/replacing evidence, permission transitions, retained-state
-  recovery, and consumer stability. Results, failed candidates and design tensions
-  are recorded per cycle; coverage claims are limited to the experiments run.
+- **Scope:** preserve future mathematical options through representation, retention,
+  identity and contracts. Near-term deployment uses one local network or Tailscale, with
+  unavailable nodes repaired before sessions. At most four further cycles after 0011:
+  I07/R05 calibration and withdrawal, I08/S02 snapshots and reset semantics, F04 crash
+  boundaries, then synthesis and independent architecture/mathematics reviews. Other
+  work remains explicitly deferred without being ruled out by early design choices.
+  Owning contract changes stay proposals; pause automation after the reviews are pushed.
 - **Latest evidence:** [cycle 0011](../research/information_lifecycle/cycles/0011.md)
   tests repeated-sample angular coverage on 131,072 seeded datasets. Local Gaussian
   intervals under-cover in weak geometry; full circular intervals pass the declared
   primary/held-out checks with a model-specific justification, but remain broad.
-  Frozen-anchor dependence and a numerical-CDF limitation are documented. A converged
-  freeze followed by new independent evidence is next; general survey marginalization
-  and consumer safety remain unproven.
+  Frozen-anchor dependence and a numerical-CDF limitation are documented. The queued
+  converged-freeze/new-batch experiment is cancelled under the narrowed scope;
+  general survey marginalization and consumer safety remain unproven.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

@@ -1,8 +1,32 @@
-# Investigation plan: evidence, permissions and continuous operation
+# Investigation plan: preserve future mathematical and contract options
 
-2026-10-07. This is an investigation plan, not a promised implementation or a proof
+Started 2026-10-07; scope redirected by Dana on 2026-10-08 after cycle 0011.
+This is an investigation plan, not a promised implementation or a proof
 that every combination of desired behavior is possible. Prefer the least complex
 method that passes the required information, authorization and stability checks.
+
+## Binding closing scope
+
+Near-term Nestbox runs on one local network or Tailscale, with unavailable nodes
+repaired before each session. This is an operating assumption for prioritization,
+not a claim that crashes, inconsistent updates or future distributed use cannot occur.
+The remaining question is what representation, retention, identity and contracts
+must preserve so correct withdrawal, recovery and consistent results stay possible.
+Estimator selection, controller tuning and broad reliability/performance validation
+are deferred. Preserve the earlier evidence and its limitations.
+
+Spend **at most four more cycles after 0011**, including synthesis and the requested
+reviews: 0012–0015 below. This steering/documentation update is not an experiment
+cycle. Combine or skip a remaining witness if existing evidence answers its contract
+question; do not use saved time to add scenarios. After at most three witness cycles,
+go directly to step 10. An inconclusive witness becomes an explicit synthesis limit,
+not an excuse to extend the program. Publication retries do not authorize new research.
+
+The previously queued 0012 (converged freeze plus a new batch) is **cancelled**.
+0010–0011 already justify an approximation contract distinguishing retained likelihood,
+linearization/chart, model revision and uncertainty meaning. More estimator coverage
+would refine its numerical envelope without deciding another necessary data-model
+choice. The cycle number 0012 is reused for the calibration/withdrawal contract witness.
 
 ## Questions the program must answer
 
@@ -10,12 +34,10 @@ method that passes the required information, authorization and stability checks.
    remain correct, uncertainty remains honest and revisions do not duplicate evidence?
 2. Which permission changes allow reuse of retained derivatives, which require
    recomputation, and which make the requested inference impossible with lawful data?
-3. Can an implementation update/recover fast enough to keep up with observations
-   and access changes, with bounded memory and backlog?
-4. How do corrected alignments affect consumers between measurements? Can a simpler
-   transition protocol avoid preventable control disturbances without hiding a real
-   bump, using forbidden information, understating uncertainty or delaying necessary
-   loss-of-validity signals?
+3. Which input, model, calibration, dependency and policy identities must a result or
+   checkpoint carry so recovery and composition remain well-defined?
+4. Which epoch/reset and validity semantics let later consumers distinguish physical
+   change from coordinate re-expression without hiding loss of authority or information?
 5. Which generic revision, entitlement, retention and publication contracts are needed
    from the provider, and which choices remain application mathematics or control?
 
@@ -81,8 +103,11 @@ after eliminating shared variables is a hypothesis to test, not an automatic inv
 
 ## Scenario matrix
 
-All entries below are PLANNED unless STATUS gives a run and its limited evidence
-level. Each row needs a named test or simulation, an oracle and explicit failure.
+This is the full inventory, not the remaining execution queue. STATUS gives the
+existing evidence; the closing sequence below alone authorizes further experiments.
+Only I07, I08, R05, S02 and F04 receive new witnesses. Every row must appear in the
+synthesis, even when deferred. An executed row needs an oracle and explicit failure;
+an unexecuted row needs an honest status and the contract choices that leave it open.
 An expected-to-fail naive method is a negative control, never an accepted solution.
 
 | ID | Scenario and disturbance | Methods/comparison | Evidence required |
@@ -122,6 +147,10 @@ An expected-to-fail naive method is a negative control, never an accepted soluti
 
 ## Dynamic stability experiments
 
+Historical methodology, preserved for later implementation work. Do not run further
+controller/dynamics experiments in the closing program. S02 is limited to reset,
+epoch and re-expression semantics, using a small exact coordinate witness.
+
 Do not put a cosmetic low-pass filter on authoritative transforms and call the
 problem solved. Distinguish the inference result, the consumer's chosen reference
 frame/transition, and the controller's trajectory. Attach revision, effective time,
@@ -150,14 +179,12 @@ never a universal physical-safety claim from this model.
 ## Interaction coverage and sequence
 
 The matrix is a maintained coverage argument, not a claim of enumerating all futures.
-Start with one-factor cases, then deterministic pairwise combinations across policy,
-representation, topology, observation loss and correction rate. Mandatory compound
-cases: R03+F03, R04+I03, R07+F05, R08+F04, R06+S04, S02+F05,
-S03+F06, I07+S07 and F01+S05. Add randomized event traces after semantics are clear;
-save seeds and shrink every failure to a small reproducer. Test disallowed combinations
-as unsupported rather than hoping a solver makes them legal.
+The original compound list was R03+F03, R04+I03, R07+F05, R08+F04, R06+S04,
+S02+F05, S03+F06, I07+S07 and F01+S05. It is no longer a mandatory execution or
+completion gate. Record existing compound evidence and otherwise retain the relevant
+dependencies in the synthesis. Do not reopen deferred rows via compound tests.
 
-Suggested bounded cycles (adapt to evidence, not a deadline):
+Original ten-step structure (historical steps 1–9 are not a new work queue):
 
 1. Exact arithmetic baselines: I01, I02, R03 small witnesses, independent answers.
 2. S01 dynamic harness plus S03 policy split; establish controller/clearance metrics
@@ -173,14 +200,136 @@ Suggested bounded cycles (adapt to evidence, not a deadline):
 10. Synthesize a minimal design and its supported envelope, explicit rejected cases,
     remaining policy decisions, and proposed changes to the owning contracts.
 
-Every numbered item can take multiple runs; one run must not claim a whole family
-tested from one toy case. The scheduler should always choose a manageable next slice.
+### Remaining cycle 0012 — I07 + R05: calibration and withdrawal granularity
+
+Use tiny exact linear models with one shared calibration quantity and, only as needed,
+two time segments connected by an explicit drift constraint. Compare retaining the
+joint calibration dependency or an adequate conditional/decomposed representation with
+independently inflating observation noise or keeping only a collapsed posterior.
+Change/replace calibration information without treating a model replacement as a new
+independent observation. Exercise withdrawal by sensor, half-open acquisition-time
+range and field, including a calibration estimate learned from subsequently withdrawn
+records. Distinguish withdrawing those supporting observations from permission to keep
+an independently authorized calibration derivative.
+
+Reuse 0005/0009 evidence; add only missing witnesses. Compare authorized-only exact
+recomputation against retained-state candidates, including covariance/cross terms.
+Decide what must be identifiable: source record/revision, field/component, measurement
+time convention, calibration identity/revision/validity interval, shared latent or
+dependency identity, and support of derived calibration. Determine whether an explicit
+retained variable is necessary in each tested case or whether a sufficient joint factor
+or replay preserves the same option. Do not declare one storage representation universal.
+For correlated fields, test or state why deleting one component requires the correct
+remaining marginal/conditional likelihood rather than arbitrary matrix-entry deletion.
+Separate metadata identifying a withdrawal from numerical state sufficient to perform it.
+
+Deliver a short contract conclusion with supported granularity, lost-information
+counterexample if present, and explicit coarse-invalidation/rebuild alternatives.
+No camera calibration optimizer, drift estimator or nonlinear accuracy sweep.
+
+### Remaining cycle 0013 — I08 + S02: snapshots and epoch meaning
+
+Construct a small nested-domain example where individually valid edge revisions form
+an inconsistent composite. Compare a dependency-bound revision manifest/consistent cut
+with selecting the latest edge independently. Ask what an opaque result revision must
+bind internally, without giving result readers permission to inspect private lineage.
+Include input and calibration revisions, coordinate epochs, model/representation version,
+query time/coverage and the applicable authorization decision. Do not prescribe a single
+global counter or global transaction unless the witness actually requires it.
+
+Use an exact coordinate example to distinguish a real body bump from a pure origin/SLAM
+reset. A pure re-expression transforms all relevant state and covariance consistently;
+physical motion is a different event. A SLAM reset with an unknown old-to-new relation
+must remain unknown/invalid, not be labeled a harmless known transform. Record old/new
+epoch identity, event kind and effective interval, relation direction and uncertainty
+when available, and unavailable/ambiguous semantics when the cause is not established.
+Do not infer cause from jump magnitude alone. No controller tuning or partition protocol.
+
+### Remaining cycle 0014 — F04: atomic acceptance and recovery boundaries
+
+Use a finite local state machine, explicit durable versus volatile state and crash
+injection after each modeled write/publish transition for export replacement, checkpoint,
+epoch close and grant update. Include idempotent retry and a restart acceptance oracle.
+Ask which payload/dependency/policy/epoch fields must become accepted as one manifest,
+what must be durable before an acknowledgment, and when an old result must be rejected
+even if a replacement is unfinished. Do not count a grant revocation as applied if a
+crash can silently restore its old accepted result. Distinguish data completeness,
+authority freshness and publication; they need not be one cross-network transaction.
+
+Name the assumed local storage primitive and ordering. Establish contract obligations
+under that primitive, not filesystem durability or distributed consensus. Concurrent
+publisher fencing and partitions remain F05, deferred. Reuse 0008/0009 identities and
+retention assumptions where possible; do not build a production storage engine.
+
+### Remaining cycle 0015 — step 10, synthesis and independent reviews
+
+Write `SYNTHESIS.md` with:
+
+1. The minimal contracts and representation choices supported by the evidence:
+   what must be recorded, retained and identified; numerical versus identity-only
+   state; granularity; revision/epoch binding; authorization and atomic acceptance.
+   Preserve alternatives when evidence establishes an obligation but not one format.
+2. One row for **every** scenario ID in this plan, classified `supported`, `unsupported`,
+   `policy-blocked`, or `deferred-but-not-precluded`. Scope each label to a named model
+   or contract capability; `supported` does not mean a production implementation exists.
+   Link evidence and give a one-line reason, the preservation condition for deferred
+   rows, and the owner's outstanding decision for policy-blocked rows. Unsupported
+   combinations must identify what information/permission is absent, not imply that
+   the entire future scenario is mathematically impossible.
+3. Remaining policy/consent decisions for Dana, including derivative retention/use,
+   contribution withdrawal scope, calibration descendants, time/field granularity,
+   history/backfill and disclosure, acceptable reduced/unavailable results and any
+   transition grace. Mark decisions not needed for the near-term profile separately.
+4. Proposed changes to the owning `nestbox-ng` contracts and the shared-flow contracts,
+   with target document/section, rationale, evidence and unresolved choices. Keep these
+   **proposals only**, in this research directory; do not edit the owning contracts.
+   Preserve generic provider mechanisms and application-owned mathematical semantics.
+
+Commit and push the synthesis and verify its remote commit **before launching reviews**.
+Then launch two separate expert subagents, each reading that same pushed snapshot:
+
+- Network software system architecture: identity, dependency snapshots, durable/recovery
+  boundaries, authority, interface ownership and whether deferral preserves future options.
+- Uncertainty propagation for 3D alignment with quantities changing over time:
+  sufficiency, correlations/shared calibration, marginalization/withdrawal, gauge/epochs,
+  approximation semantics and whether the evidence supports each mathematical claim.
+
+Use independent prompts with the same user scope, fresh context where practical, and
+no access to the other's report until both initial reviews are complete. They are
+independent interpretations, not a vote or a claim of external human certification.
+Pin reviewed commits and source references. Each agent writes only its own report under
+`reviews/`; the parent owns Git operations. Request concrete issues, assumptions, policy
+choices, nonissues/refinements and verdict, distinguishing contradictions from T01/T02.
+Preserve both reports. Record parent responses separately, correcting clear immediate
+errors if warranted, but do not turn recommendations into new investigation cycles.
+Push both reports and any response/corrections, verify the remote, then pause automation
+`information-lifecycle-investigation` and send Dana a short conclusion. Do not pause at
+the first synthesis push while the requested reviews are still outstanding.
+
+## Explicit deferrals: must not be precluded
+
+No new cycles on R07 (offline/expiry/key rotation), F05 (partitions/fencing), F06
+(correction storms/backlog), S08 (repeated loss/regrant), S04–S07 (physical consumer
+scenarios), or further nonlinear/SE(3) accuracy/coverage beyond the existing approximation
+contract evidence. Include each as `deferred-but-not-precluded` in the synthesis with
+the interfaces/state it will require, and identify any missing preservation condition.
+Do not claim it is preserved merely because the design has an unspecified extension point.
+Other unselected rows, including R09/R10, receive an evidence/contract audit for synthesis,
+not dedicated experiments. No further S01/S03 controller work. Unresolved policy or
+unsupported combinations within deferred scenarios stay explicit alongside the deferral.
 
 ## Completion criteria
 
-Each row has a reproducer and evidence at its intended level, or an explicit justified
-unsupported/policy-blocked result with the next decision identified. Mandatory compound
-cases have been exercised. Recommend the simplest surviving approach using correctness,
-authorization, stability, latency and memory evidence together. Publish limitations,
-negative results and promotion proposals. Do not merge research into production or
-close open safety/consent choices merely to complete the checklist.
+The closing cycle limit is respected; the five selected scenarios have small witnesses
+or an explicit evidence limit; every scenario is classified with reasons and retained
+future options; `SYNTHESIS.md` and both independent expert reports are committed and
+verified on the remote; clear immediate corrections have an explicit disposition; the
+automation is confirmed paused and Dana receives the short conclusion. Full matrix
+testing, mandatory compounds, production performance and hardware safety are not
+completion gates. Do not close policy choices merely to complete the checklist.
+
+If a **new architectural contradiction** emerges (incompatible requirements with a
+concrete witness, not a refinement of T01/T02), record it in TENSIONS and tell Dana
+immediately in this chat. Do not wait until cycle publication or silently choose which
+requirement to weaken. Continue only independent work while any needed priority decision
+is pending; this does not authorize more cycles.
