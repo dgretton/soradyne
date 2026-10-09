@@ -273,6 +273,10 @@ retention assumptions where possible; do not build a production storage engine.
 
 ### Remaining cycle 0015 — step 10, synthesis and independent reviews
 
+In progress: [SYNTHESIS.md](SYNTHESIS.md) is prepared; initial publication and the two
+independent reviews follow. [Cycle 0015](cycles/0015.md) records closeout; no new
+scenario experiment is authorized by this phase.
+
 Write `SYNTHESIS.md` with:
 
 1. The minimal contracts and representation choices supported by the evidence:

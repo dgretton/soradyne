@@ -10,7 +10,7 @@ representation, retention, identity and contracts. Near-term operation is on one
 network or Tailscale, with unavailable nodes repaired before sessions. Estimator quality,
 controller tuning and broad fault/performance coverage are deferred.
 
-**Closing budget: four further cycles maximum; three completed, one remaining.**
+**Closing budget: four further cycles maximum; three completed, final cycle in progress.**
 This documentation/scheduler change does not consume an experiment cycle. The old
 converged-freeze/new-batch 0012 is cancelled, not run; the number is reused below.
 PLAN's closing sequence supersedes older cycle reports' next actions and the old full
@@ -21,7 +21,7 @@ matrix completion gate. No new architectural contradiction was found during resc
 | 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Complete, bounded exact evidence |
 | 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Complete, bounded exact evidence |
 | 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Complete, bounded local evidence with a preserved serving correction |
-| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Next; no further witnesses |
+| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Synthesis prepared; publication and reviews next; no further witnesses |
 
 Combine or skip witnesses when prior evidence suffices; do not add replacement work.
 No more than three witness cycles before synthesis. R07, F05, F06, S08, S04–S07 and
@@ -32,6 +32,14 @@ See PLAN for the exact synthesis/review deliverables and the immediate reporting
 for genuine new contradictions.
 
 ## Current cycle
+
+0015: [SYNTHESIS.md](SYNTHESIS.md) is prepared with eight semantic contracts, all 32
+scenario dispositions, seven open owner decisions and proposed changes to named owning
+sections. This is an evidence/document audit only. Initial publication, both independent
+reviews, final report publication and automation pause remain outstanding; do not mark
+the investigation complete at the initial synthesis push. See [cycle report](cycles/0015.md).
+
+## Last witness
 
 0014: F04 contract witness completed. Under an assumed atomic durable local record
 primitive, 46 crash cuts and retries preserve complete accepted results and durable
@@ -48,10 +56,7 @@ Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0015: go directly to step 10. Write `SYNTHESIS.md` with minimal evidence-supported
-contracts and representations; all 32 scenario dispositions and preservation conditions;
-Dana's remaining policy/consent choices; and proposals for named owning contract sections.
-Audit existing evidence only. Push and verify synthesis BEFORE launching the two explicitly
+0015: finish the final cycle. Audit and push/verify the prepared synthesis BEFORE launching the two explicitly
 authorized independent expert subagents (network architecture and changing 3D uncertainty).
 Give both the same pushed snapshot and separate fresh prompts; preserve each initial
 report without reading the other's. Parent owns Git, records responses separately and
@@ -153,6 +158,7 @@ automation and send Dana a short conclusion. No new experiments or scope expansi
   identity, distinct coordinate/motion epochs and known/unknown reset relations.
 - [0014](cycles/0014.md): atomic local publication and durable invalidation, checkpoint
   coverage, idempotent receipts, distinct live/restart states and a preserved serving fix.
+- [0015](cycles/0015.md): synthesis and independent review closeout, in progress.
 
 ## Scheduling
 
