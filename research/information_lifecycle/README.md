@@ -1,13 +1,15 @@
 # Information lifecycle investigation
 
-Status: active research, started 2026-10-07. Production behavior is unchanged.
+Status: completed 2026-10-09 under the narrowed scope; started 2026-10-07.
+Automation is confirmed PAUSED. Production behavior is unchanged.
 Branch: `research/information-lifecycle`, based on `shared-flow-demo-contracts`
 at `9cbba49`. Owner: this Codex chat, on Dana's instruction.
 
 The final [synthesis](SYNTHESIS.md) contains minimal contracts, all scenario dispositions,
 owner decisions and owning-contract proposals. Both independent reviews are complete;
 their [parent response](reviews/PARENT_RESPONSE.md) records the small accepted refinements.
-Final publication and automation pause are tracked in [cycle 0015](cycles/0015.md).
+Publication and the confirmed automation pause are recorded in [cycle 0015](cycles/0015.md).
+No further research cycle is queued.
 
 Investigate which representation, retention, identity and contract choices preserve
 future correct withdrawal, recovery and consistent results when evidence is frozen,
@@ -212,7 +214,7 @@ The directory must be new. STATUS identifies the remaining closing work.
 This stdlib-only slice checks eight nested revision/uncertainty combinations, 18 arrival
 prefixes, private/public result bindings and exact known/unknown reset semantics. See
 the [protocol](cycles/0013-protocol.md) and [report](cycles/0013.md). The output directory
-must be new. F04 is now complete; only synthesis and the independent reviews remain.
+must be new. F04, synthesis and both independent reviews are now complete.
 
 ## Reproduce cycle 0014
 
@@ -226,8 +228,8 @@ durable primitive, with 17 negative controls. See the [protocol](cycles/0014-pro
 The original `crash_boundaries.py` and `runs/0014` are preserved diagnostic evidence:
 their recovery checks missed a live read while control durability was pending. The
 corrected run is `runs/0014-corrected`; both reproduce without changing frozen sources.
-The output directory must be new. Only cycle 0015 remains: synthesis, push and verify,
-then independent reviews, preserve/push them, verify, and pause the automation.
+The output directory must be new. Cycle 0015 has completed synthesis, independent
+reviews, publication and automation pause; no further witness is scheduled.
 
 ## Four-hour cycle procedure
 

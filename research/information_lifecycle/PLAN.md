@@ -5,6 +5,11 @@ This is an investigation plan, not a promised implementation or a proof
 that every combination of desired behavior is possible. Prefer the least complex
 method that passes the required information, authorization and stability checks.
 
+**Completed 2026-10-09 under the closing scope below.** See [SYNTHESIS.md](SYNTHESIS.md)
+and [cycle 0015](cycles/0015.md) for both independent reviews, dispositions and the
+confirmed automation pause. The historical matrix and execution instructions are
+preserved as context, not an active work queue.
+
 ## Binding closing scope
 
 Near-term Nestbox runs on one local network or Tailscale, with unavailable nodes
@@ -271,12 +276,13 @@ under that primitive, not filesystem durability or distributed consensus. Concur
 publisher fencing and partitions remain F05, deferred. Reuse 0008/0009 identities and
 retention assumptions where possible; do not build a production storage engine.
 
-### Remaining cycle 0015 — step 10, synthesis and independent reviews
+### Closing cycle 0015 — step 10, synthesis and independent reviews
 
-In progress: [SYNTHESIS.md](SYNTHESIS.md) was published before both independent reviews;
+Complete: [SYNTHESIS.md](SYNTHESIS.md) was published before both independent reviews;
 their [parent response](reviews/PARENT_RESPONSE.md) records the accepted clarifications.
-Final publication and pause remain. [Cycle 0015](cycles/0015.md) records closeout; no new
-scenario experiment or extended review is authorized by this phase.
+Reports/corrections were pushed and verified, then the automation was confirmed paused.
+[Cycle 0015](cycles/0015.md) records closeout; no new scenario experiment or extended
+review is authorized by this phase. The following instructions are the completed plan.
 
 Write `SYNTHESIS.md` with:
 

@@ -8,16 +8,18 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Location:** [research plan](../research/information_lifecycle/PLAN.md),
   [status](../research/information_lifecycle/STATUS.md), and
   [synthesis](../research/information_lifecycle/SYNTHESIS.md).
-- **Status:** isolated research on `research/information-lifecycle`, based on
+- **Status:** investigation completed 2026-10-09; automation confirmed paused.
+  Isolated research on `research/information-lifecycle`, based on
   `shared-flow-demo-contracts`; not production behavior or a revised protocol spec.
 - **Scope:** preserve future mathematical options through representation, retention,
   identity and contracts. Near-term deployment uses one local network or Tailscale, with
-  unavailable nodes repaired before sessions. Three of at most four closing cycles are
+  unavailable nodes repaired before sessions. The three closing witness cycles are
   complete (I07/R05 calibration/withdrawal, I08/S02 snapshots/reset semantics, F04 local
   crash boundaries). The synthesis was published before the independent architecture/
-  mathematics reviews, which both support closing; final publication/pause is pending.
+  mathematics reviews, which both support closing. Reports/corrections are pushed and
+  verified, and the automation is paused; all four closing cycles are complete.
   Other work remains explicitly deferred without being ruled out by early design choices.
-  Owning contract changes stay proposals; pause automation after the reviews are pushed.
+  Owning contract changes stay proposals; no additional cycle is queued.
 - **Latest evidence:** [cycle 0014](../research/information_lifecycle/cycles/0014.md)
   checks 46 local crash cuts and retries, durable manifest/acceptance binding, separate
   invalidation and replacement, and distinct control/publication acknowledgments. An

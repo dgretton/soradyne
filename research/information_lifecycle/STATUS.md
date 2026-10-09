@@ -3,6 +3,10 @@
 Started 2026-10-07. Branch: `research/information-lifecycle`.
 Base: `9cbba49` (`shared-flow-demo-contracts`).
 
+**Completed 2026-10-09 under Dana's narrowed closing scope.** Synthesis and both
+independent reviews are pushed and verified; the automation is confirmed **PAUSED**.
+No research, review or publication retry is queued.
+
 ## Current steering — 2026-10-08
 
 Dana narrowed the goal after 0011: preserve long-range mathematical options through
@@ -10,18 +14,18 @@ representation, retention, identity and contracts. Near-term operation is on one
 network or Tailscale, with unavailable nodes repaired before sessions. Estimator quality,
 controller tuning and broad fault/performance coverage are deferred.
 
-**Closing budget: four further cycles maximum; three completed, final cycle in progress.**
+**Closing budget: four further cycles maximum; all four completed.**
 This documentation/scheduler change does not consume an experiment cycle. The old
 converged-freeze/new-batch 0012 is cancelled, not run; the number is reused below.
 PLAN's closing sequence supersedes older cycle reports' next actions and the old full
 matrix completion gate. No new architectural contradiction was found during rescoping.
 
-| Cycle | Remaining deliverable | State |
+| Cycle | Closing deliverable | State |
 |---|---|---|
 | 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Complete, bounded exact evidence |
 | 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Complete, bounded exact evidence |
 | 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Complete, bounded local evidence with a preserved serving correction |
-| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Synthesis published; both reviews complete; final publication and pause pending |
+| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Complete; reviews/corrections pushed at `d6fd28f`, automation confirmed PAUSED |
 
 Combine or skip witnesses when prior evidence suffices; do not add replacement work.
 No more than three witness cycles before synthesis. R07, F05, F06, S08, S04–S07 and
@@ -40,8 +44,9 @@ contradiction or further research. Their original reports remain unchanged. The
 [parent response](reviews/PARENT_RESPONSE.md) records accepted clarification of stale
 publication, retained clock models, withdrawal/acknowledgment ownership and Gaussian
 qualifiers; no scenario status changed. The mathematical reviewer reran all 259 existing
-tests successfully and verified all 15 source manifests. Final report/correction
-publication and automation pause remain; see [cycle report](cycles/0015.md).
+tests successfully and verified all 15 source manifests. Reports/corrections were pushed
+and verified at `d6fd28f54b2139e819c71244fb901ee4461e4de1`, then the automation was
+confirmed PAUSED at 2026-10-09 15:04 UTC; see [cycle report](cycles/0015.md).
 
 ## Last witness
 
@@ -60,10 +65,9 @@ Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0015: audit and commit/push both unchanged reviews plus the separate response and small
-synthesis clarifications; verify the remote. THEN pause the automation and record its
-confirmed status, publish the closing receipt and notify Dana. No further review,
-experiment, implementation or policy decision is required to close this investigation.
+None. The bounded investigation is complete. Owning-contract adoption, Dana's D1–D7
+decisions and explicitly deferred implementation scenarios are future work, not an
+automatic continuation. Resume only on new human steering.
 
 ## Coverage
 
@@ -160,16 +164,15 @@ experiment, implementation or policy decision is required to close this investig
   identity, distinct coordinate/motion epochs and known/unknown reset relations.
 - [0014](cycles/0014.md): atomic local publication and durable invalidation, checkpoint
   coverage, idempotent receipts, distinct live/restart states and a preserved serving fix.
-- [0015](cycles/0015.md): synthesis and independent review closeout, in progress.
+- [0015](cycles/0015.md): synthesis, independent reviews, separate parent response,
+  final publication and confirmed automation pause.
 
 ## Scheduling
 
 Requested: a heartbeat in the current chat every four hours, one bounded chunk,
 commit/push every cycle including temporary/negative work. See README for procedure.
-Automation: `information-lifecycle-investigation`, confirmed ACTIVE, same-chat
-heartbeat, four-hour interval, now bounded by the closing sequence above. Each run
-follows README and preserves evidence in Git. After synthesis is pushed, launch the
-two independent specialists (network architecture; uncertainty propagation for changing
-3D alignment), preserve and push both reports, then pause this automation. Do not pause
-before reviews, and do not extend the research to satisfy the old completion criteria.
-Local execution requires this computer and the app to be running.
+Automation: `information-lifecycle-investigation`, confirmed **PAUSED** after both
+reviews and the response/corrections were pushed and their remote commit verified.
+The automation tool returned PAUSED; the saved configuration independently confirms
+it, with prompt, name, cadence and target chat preserved. Dana may restart it with new
+steering. The former full-matrix criteria do not authorize additional work.

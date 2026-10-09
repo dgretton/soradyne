@@ -392,6 +392,7 @@ The initial synthesis was pushed and verified before independent
 Both support closing the investigation without a new contradiction or more experiments.
 Their original reports are unchanged; the [parent response](reviews/PARENT_RESPONSE.md)
 records the accepted preservation/wording refinements. [Cycle 0015](cycles/0015.md)
-records publication pins, validation and completion. After reports and corrections are
-pushed and verified, pause the automation. No further research cycle is authorized by
-an unresolved row, review recommendation or the former full-matrix plan.
+records publication pins, validation and completion. Both reports and corrections were
+pushed and verified at `d6fd28f`, then the automation was confirmed PAUSED. No further
+research cycle is authorized by an unresolved row, review recommendation or the former
+full-matrix plan.
