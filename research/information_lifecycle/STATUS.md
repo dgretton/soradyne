@@ -10,7 +10,7 @@ representation, retention, identity and contracts. Near-term operation is on one
 network or Tailscale, with unavailable nodes repaired before sessions. Estimator quality,
 controller tuning and broad fault/performance coverage are deferred.
 
-**Closing budget: four further cycles maximum; two completed, two remaining.**
+**Closing budget: four further cycles maximum; three completed, one remaining.**
 This documentation/scheduler change does not consume an experiment cycle. The old
 converged-freeze/new-batch 0012 is cancelled, not run; the number is reused below.
 PLAN's closing sequence supersedes older cycle reports' next actions and the old full
@@ -20,8 +20,8 @@ matrix completion gate. No new architectural contradiction was found during resc
 |---|---|---|
 | 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Complete, bounded exact evidence |
 | 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Complete, bounded exact evidence |
-| 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Next |
-| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Planned |
+| 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Complete, bounded local evidence with a preserved serving correction |
+| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Next; no further witnesses |
 
 Combine or skip witnesses when prior evidence suffices; do not add replacement work.
 No more than three witness cycles before synthesis. R07, F05, F06, S08, S04–S07 and
@@ -33,28 +33,30 @@ for genuine new contradictions.
 
 ## Current cycle
 
-0013: I08 + S02 contract witnesses completed. Eight nested edge/covariance combinations:
-two compatible answers agree exactly with the original-variable oracle; all six mixed
-combinations are rejected. Six arrival orders/18 prefixes preserve explicit incomplete
-versus historical snapshot semantics. Equal numerical outputs receive different opaque
-bindings when their private manifests differ; current permission is checked separately.
-Exact reset witnesses distinguish known coordinate re-expression, physical motion and
-unknown/ambiguous relations, including covariance and shared uncertain-bridge effects.
-236 tests pass; the 119,807-byte evidence file reproduces byte for byte and all thirteen
-source manifests match. Existing validity/representation obligations refined; no new
-contradiction, distributed proof, privacy proof or physical-safety claim.
+0014: F04 contract witness completed. Under an assumed atomic durable local record
+primitive, 46 crash cuts and retries preserve complete accepted results and durable
+invalidations. Control and publication acknowledgments have separate meanings. Current
+use is unavailable while affected replacement work is incomplete. An original live
+serving gap between control receipt and durability is preserved, corrected and tested;
+the original recovery-only pass did not establish that live invariant. 17 negative
+controls include correct-mean/wrong-variance checkpoint recovery and invalidation rollback.
+259 tests pass. Both 0014 artifacts reproduce byte for byte; all fifteen source manifests
+across fourteen cycles match. No new contradiction or production/distributed/physical
+safety claim. Local unacknowledged controls require retry after pre-commit crash; an
+earlier external-effect promise needs stronger restart freshness than this model supplies.
 Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0014: F04 only. Build a finite local state machine with explicit durable/volatile state,
-an assumed atomic storage primitive and crashes after each relevant write/publish step
-for export replacement, checkpoint, epoch close and grant update. Check recovery and
-idempotent retry against an independent allowed-state oracle. Determine what manifest
-must bind data/dependencies/policy/epochs, what must be durable before acknowledgment,
-and when old output must be rejected despite an unfinished replacement. Use 0013's
-compatibility/epoch distinctions; do not claim distributed transactions or reopen F05
-partitions/fencing. After this one witness cycle, go straight to synthesis/reviews.
+0015: go directly to step 10. Write `SYNTHESIS.md` with minimal evidence-supported
+contracts and representations; all 32 scenario dispositions and preservation conditions;
+Dana's remaining policy/consent choices; and proposals for named owning contract sections.
+Audit existing evidence only. Push and verify synthesis BEFORE launching the two explicitly
+authorized independent expert subagents (network architecture and changing 3D uncertainty).
+Give both the same pushed snapshot and separate fresh prompts; preserve each initial
+report without reading the other's. Parent owns Git, records responses separately and
+handles only clear immediate corrections. Commit/push reports, verify, THEN pause the
+automation and send Dana a short conclusion. No new experiments or scope expansion.
 
 ## Coverage
 
@@ -108,8 +110,13 @@ partitions/fencing. After this one witness cycle, go straight to synthesis/revie
   physical bump ambiguity, half-open epochs and shared reset uncertainty. Payload truth,
   authenticated metadata and policy snapshots are assumed. Distributed construction,
   unknown-reset recovery, cause detection and physical response remain untested.
-- R07, R09-R10, F04-F06 and S04-S08 have no dedicated scenario-level coverage yet;
-  only F04 receives a further witness under the closing plan.
+- F04: bounded local evidence in 0014 for export/checkpoint publication, separate
+  durable grant/epoch invalidation, receipt-bound retry and acceptance/current policy.
+  Original pending-control serving defect preserved and corrected. Atomic storage,
+  one serialized writer and caller retry are assumptions; external-time revocation,
+  distributed freshness/fencing, disk durability and garbage collection are untested.
+- R07, R09-R10, F05-F06 and S04-S08 have no dedicated scenario-level coverage;
+  all receive synthesis dispositions only, with explicit deferrals preserved.
 - Former mandatory compounds: R03+F03 has the limited 0009 witness. The remaining
   compounds are no longer required experiments; preserve their dependencies/limits
   in synthesis without reopening deferred scenarios.
@@ -144,6 +151,8 @@ partitions/fencing. After this one witness cycle, go straight to synthesis/revie
   revision sufficiency, learned-calibration withdrawal and correlated field marginals.
 - [0013](cycles/0013.md): compatible nested revisions and uncertainty, opaque answer
   identity, distinct coordinate/motion epochs and known/unknown reset relations.
+- [0014](cycles/0014.md): atomic local publication and durable invalidation, checkpoint
+  coverage, idempotent receipts, distinct live/restart states and a preserved serving fix.
 
 ## Scheduling
 

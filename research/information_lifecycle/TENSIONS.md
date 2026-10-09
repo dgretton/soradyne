@@ -182,5 +182,16 @@ a controller, cause detector or distributed coordination mechanism.
 
 ## New tensions
 
+[Cycle 0014](cycles/0014.md) establishes no new contradiction. Complete publication,
+durable invalidation and current-use authority are separable obligations. A replacement
+may be unfinished after a grant/epoch change is applied, so current-use can be unavailable;
+restoring the old artifact is not a valid substitute. That refines T02's validity rule.
+The original live read between control receipt and durability was a model/test defect,
+preserved and corrected. A crash before durable application still requires retry under
+the explicitly local acknowledgment rule; stronger external-time effect needs an explicit
+restart freshness contract. That is a stated boundary, not a claim that offline revocation
+has been solved. Wrong checkpoint coverage despite a correct mean refines T01's binding
+and numerical-state distinction. No new research or owner priority decision is triggered.
+
 None established yet. Test/model defects will be recorded as such before treating
 them as architectural contradictions.

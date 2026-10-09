@@ -207,7 +207,22 @@ The directory must be new. STATUS identifies the remaining closing work.
 This stdlib-only slice checks eight nested revision/uncertainty combinations, 18 arrival
 prefixes, private/public result bindings and exact known/unknown reset semantics. See
 the [protocol](cycles/0013-protocol.md) and [report](cycles/0013.md). The output directory
-must be new. Two closing cycles remain: F04, then synthesis and the independent reviews.
+must be new. F04 is now complete; only synthesis and the independent reviews remain.
+
+## Reproduce cycle 0014
+
+```sh
+/Users/rim/Dev/.venv-nestbox/bin/python -B research/information_lifecycle/crash_serving_barrier.py --output-dir /tmp/information-lifecycle-cycle-0014-corrected
+```
+
+This stdlib-only slice checks 46 local crash cuts and retries under an assumed atomic
+durable primitive, with 17 negative controls. See the [protocol](cycles/0014-protocol.md),
+[serving correction](cycles/0014-serving-addendum.md) and [report](cycles/0014.md).
+The original `crash_boundaries.py` and `runs/0014` are preserved diagnostic evidence:
+their recovery checks missed a live read while control durability was pending. The
+corrected run is `runs/0014-corrected`; both reproduce without changing frozen sources.
+The output directory must be new. Only cycle 0015 remains: synthesis, push and verify,
+then independent reviews, preserve/push them, verify, and pause the automation.
 
 ## Four-hour cycle procedure
 

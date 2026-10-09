@@ -1,0 +1,5660 @@
+{
+  "cycle": "0014-corrected",
+  "design_base": "9cbba49",
+  "nestbox_revision": "00d435f926f69aa964d1d053bd2221a8fe248969",
+  "parent": "c51a554219dd4630eadceabfcf75f50e0006a8ef",
+  "python": "3.13.4",
+  "randomness": "none",
+  "results": {
+    "counts": {
+      "crash_cuts": 46,
+      "negative_controls": 17,
+      "unavailable_live": 20,
+      "unavailable_restarts": 18
+    },
+    "crash_cuts": [
+      {
+        "case": "export",
+        "cut": 0,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 1,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 2,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 3,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 4,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 5,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 6,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 7,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 8,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "live_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "export",
+        "cut": 9,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "live_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish",
+          "ack_publication"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "export-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "f7f049c59c8a6fd0a4a86e3c9eb54a33031421594b05a5b7f33d12c62df0acac"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 0,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 1,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 2,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 3,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 4,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 5,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 6,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 7,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 8,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "live_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "checkpoint",
+        "cut": 9,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "live_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish",
+          "ack_publication"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/3"
+        },
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "retry_receipts": {
+          "checkpoint-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "initial",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 1
+            },
+            "manifest": "ec2b60628380b8e020e96d2d913d4015d4aaef812c91b99689bf4dc662dfb001"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 0,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "epoch-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "live_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "prefix": [],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "epoch-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 1,
+        "live": {
+          "reason": "control received, durability pending",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "epoch-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 2,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 3,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 4,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 5,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 6,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 7,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 8,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 9,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 10,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 11,
+        "live": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "20",
+          "1",
+          [
+            "c"
+          ],
+          "E1"
+        ],
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "20",
+          "1",
+          [
+            "c"
+          ],
+          "E1"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "epoch",
+        "cut": 12,
+        "live": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "20",
+          "1",
+          [
+            "c"
+          ],
+          "E1"
+        ],
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish",
+          "ack_publication"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "20",
+          "1",
+          [
+            "c"
+          ],
+          "E1"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "20",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "epoch-new": {
+            "accepted_gate": {
+              "closed": [
+                [
+                  "E0",
+                  10
+                ]
+              ],
+              "epoch": "E1",
+              "event": "physical-state-close@10",
+              "forbidden": [],
+              "policy": "policy@1",
+              "revision": 2
+            },
+            "manifest": "20cb798bc7450cb151613c34670c6aa83f059011fd09db3244586c2909354d38"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 0,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "grant-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "live_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "prefix": [],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "grant-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 1,
+        "live": {
+          "reason": "control received, durability pending",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "grant-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "5",
+          "1/2",
+          [
+            "a",
+            "b"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 2,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 3,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 4,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 5,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 6,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 7,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 8,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 9,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 10,
+        "live": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "live_oracle": null,
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head"
+        ],
+        "recovered": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "replay": null,
+        "restart_oracle": null,
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 11,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      },
+      {
+        "case": "grant",
+        "cut": 12,
+        "live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "live_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "prefix": [
+          "stage_gate",
+          "persist_gate",
+          "ack_control",
+          "stage_payload",
+          "persist_payload",
+          "stage_dependency",
+          "persist_dependency",
+          "stage_manifest",
+          "persist_manifest",
+          "stage_head",
+          "publish",
+          "ack_publication"
+        ],
+        "recovered": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "replay": null,
+        "restart_oracle": [
+          "0",
+          "1",
+          [
+            "a"
+          ],
+          "E0"
+        ],
+        "retried": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "retry_receipts": {
+          "grant-new": {
+            "accepted_gate": {
+              "closed": [],
+              "epoch": "E0",
+              "event": "withdraw-b",
+              "forbidden": [
+                "b"
+              ],
+              "policy": "policy@2",
+              "revision": 2
+            },
+            "manifest": "3a43c5cd8f4f560eba360995a0d0a8672257d81a3bbde45264dd449b382e81b8"
+          }
+        }
+      }
+    ],
+    "fixtures": {
+      "checkpoint": [
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": null,
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "checkpoint",
+            "model": "independent-unit-variance-v1",
+            "operation": "checkpoint-old",
+            "payload": "d74fb5e45420030d9b7d8a5bc60dc794e3afdf5bc513435f420bb12d1e356db2",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "checkpoint-old-result"
+          },
+          "name": "checkpoint-old",
+          "payload": {
+            "precision": "1",
+            "weighted_sum": "0"
+          }
+        },
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": null,
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a",
+              "b"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "checkpoint",
+            "model": "independent-unit-variance-v1",
+            "operation": "checkpoint-new",
+            "payload": "37c3ee120ffdad397791ce2ea19c2d1db8b5226000957fc4bd54f4a2895f7277",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "checkpoint-new-result"
+          },
+          "name": "checkpoint-new",
+          "payload": {
+            "precision": "2",
+            "weighted_sum": "10"
+          }
+        }
+      ],
+      "epoch": [
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": null,
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a",
+              "b"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "export",
+            "model": "independent-unit-variance-v1",
+            "operation": "epoch-old",
+            "payload": "37c3ee120ffdad397791ce2ea19c2d1db8b5226000957fc4bd54f4a2895f7277",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "epoch-old-result"
+          },
+          "name": "epoch-old",
+          "payload": {
+            "precision": "2",
+            "weighted_sum": "10"
+          }
+        },
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E1",
+            "inputs": [
+              "c"
+            ],
+            "interval": [
+              10,
+              20
+            ],
+            "kind": "export",
+            "model": "independent-unit-variance-v1",
+            "operation": "epoch-new",
+            "payload": "156501b044e5feb89a29a94c8696596570eec5541c81aad32dfd765258f944e9",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "epoch-new-result"
+          },
+          "name": "epoch-new",
+          "payload": {
+            "precision": "1",
+            "weighted_sum": "20"
+          }
+        }
+      ],
+      "export": [
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": null,
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "export",
+            "model": "independent-unit-variance-v1",
+            "operation": "export-old",
+            "payload": "d74fb5e45420030d9b7d8a5bc60dc794e3afdf5bc513435f420bb12d1e356db2",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "export-old-result"
+          },
+          "name": "export-old",
+          "payload": {
+            "precision": "1",
+            "weighted_sum": "0"
+          }
+        },
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": null,
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a",
+              "b"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "export",
+            "model": "independent-unit-variance-v1",
+            "operation": "export-new",
+            "payload": "37c3ee120ffdad397791ce2ea19c2d1db8b5226000957fc4bd54f4a2895f7277",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "export-new-result"
+          },
+          "name": "export-new",
+          "payload": {
+            "precision": "2",
+            "weighted_sum": "10"
+          }
+        }
+      ],
+      "grant": [
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": null,
+          "manifest": {
+            "build_policy": "policy@1",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a",
+              "b"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "export",
+            "model": "independent-unit-variance-v1",
+            "operation": "grant-old",
+            "payload": "37c3ee120ffdad397791ce2ea19c2d1db8b5226000957fc4bd54f4a2895f7277",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "grant-old-result"
+          },
+          "name": "grant-old",
+          "payload": {
+            "precision": "2",
+            "weighted_sum": "10"
+          }
+        },
+        {
+          "dependency": {
+            "calibration": "fixed-unit-gain@1",
+            "model": "independent-unit-variance-v1"
+          },
+          "gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "manifest": {
+            "build_policy": "policy@2",
+            "calibration": "fixed-unit-gain@1",
+            "coordinate_epoch": "chart0",
+            "dependency": "6c592b8f5ae03e692aeec492e06e74064ab73efcc9c592fda5f144773ae8875f",
+            "epoch": "E0",
+            "inputs": [
+              "a"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "kind": "export",
+            "model": "independent-unit-variance-v1",
+            "operation": "grant-new",
+            "payload": "d74fb5e45420030d9b7d8a5bc60dc794e3afdf5bc513435f420bb12d1e356db2",
+            "representation": "scalar-natural-parameters-m-v1",
+            "revision": "grant-new-result"
+          },
+          "name": "grant-new",
+          "payload": {
+            "precision": "1",
+            "weighted_sum": "0"
+          }
+        }
+      ]
+    },
+    "local_control_effect": "durable gate installation before acknowledgment; pending live barrier; external freshness not proved",
+    "negative_controls": [
+      {
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "0",
+          "revision": "export-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "case": "export",
+        "control": "split_numerical_state_and_coverage",
+        "replay": null
+      },
+      {
+        "acks": [
+          [
+            "publication",
+            "export-new"
+          ]
+        ],
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "export-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "case": "export",
+        "control": "ack_before_publication"
+      },
+      {
+        "acks": [
+          [
+            "publication",
+            "export-new"
+          ]
+        ],
+        "answer": {
+          "reason": "missing payload/dependency",
+          "status": "unavailable"
+        },
+        "case": "export",
+        "control": "head_before_payload_durability"
+      },
+      {
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-new-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "case": "checkpoint",
+        "control": "split_numerical_state_and_coverage",
+        "replay": {
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "mean": "10",
+          "variance": "1/2"
+        }
+      },
+      {
+        "acks": [
+          [
+            "publication",
+            "checkpoint-new"
+          ]
+        ],
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "0",
+          "revision": "checkpoint-old-result",
+          "status": "available",
+          "variance": "1"
+        },
+        "case": "checkpoint",
+        "control": "ack_before_publication"
+      },
+      {
+        "acks": [
+          [
+            "publication",
+            "checkpoint-new"
+          ]
+        ],
+        "answer": {
+          "reason": "missing payload/dependency",
+          "status": "unavailable"
+        },
+        "case": "checkpoint",
+        "control": "head_before_payload_durability"
+      },
+      {
+        "answer": {
+          "accepted_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E1",
+          "inputs": [
+            "c"
+          ],
+          "mean": "5",
+          "revision": "epoch-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "case": "epoch",
+        "control": "split_numerical_state_and_coverage",
+        "replay": null
+      },
+      {
+        "acks": [
+          [
+            "control",
+            "physical-state-close@10"
+          ],
+          [
+            "publication",
+            "epoch-new"
+          ]
+        ],
+        "answer": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "case": "epoch",
+        "control": "ack_before_publication"
+      },
+      {
+        "acks": [
+          [
+            "publication",
+            "epoch-new"
+          ]
+        ],
+        "answer": {
+          "reason": "missing payload/dependency",
+          "status": "unavailable"
+        },
+        "case": "epoch",
+        "control": "head_before_payload_durability"
+      },
+      {
+        "acks": [
+          [
+            "control",
+            "physical-state-close@10"
+          ]
+        ],
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "epoch-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "case": "epoch",
+        "control": "volatile_control_ack"
+      },
+      {
+        "bypass": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [
+              [
+                "E0",
+                10
+              ]
+            ],
+            "epoch": "E1",
+            "event": "physical-state-close@10",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "epoch-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "case": "epoch",
+        "checked": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "control": "trust_build_time_policy_or_epoch"
+      },
+      {
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a"
+          ],
+          "mean": "5",
+          "revision": "grant-new-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "case": "grant",
+        "control": "split_numerical_state_and_coverage",
+        "replay": null
+      },
+      {
+        "acks": [
+          [
+            "control",
+            "withdraw-b"
+          ],
+          [
+            "publication",
+            "grant-new"
+          ]
+        ],
+        "answer": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "case": "grant",
+        "control": "ack_before_publication"
+      },
+      {
+        "acks": [
+          [
+            "publication",
+            "grant-new"
+          ]
+        ],
+        "answer": {
+          "reason": "missing payload/dependency",
+          "status": "unavailable"
+        },
+        "case": "grant",
+        "control": "head_before_payload_durability"
+      },
+      {
+        "acks": [
+          [
+            "control",
+            "withdraw-b"
+          ]
+        ],
+        "answer": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "grant-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "case": "grant",
+        "control": "volatile_control_ack"
+      },
+      {
+        "bypass": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "withdraw-b",
+            "forbidden": [
+              "b"
+            ],
+            "policy": "policy@2",
+            "revision": 2
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "grant-old-result",
+          "status": "available",
+          "variance": "1/2"
+        },
+        "case": "grant",
+        "checked": {
+          "reason": "current authority/epoch excludes result",
+          "status": "unavailable"
+        },
+        "control": "trust_build_time_policy_or_epoch"
+      },
+      {
+        "control": "original_missing_pending_control_barrier",
+        "corrected_live": {
+          "reason": "control received, durability pending",
+          "status": "unavailable"
+        },
+        "original_live": {
+          "accepted_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "current_gate": {
+            "closed": [],
+            "epoch": "E0",
+            "event": "initial",
+            "forbidden": [],
+            "policy": "policy@1",
+            "revision": 1
+          },
+          "epoch": "E0",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "mean": "5",
+          "revision": "grant-old-result",
+          "status": "available",
+          "variance": "1/2"
+        }
+      }
+    ],
+    "storage_assumption": "single serialized writer; atomic durable record replacement; volatile staging; no GC",
+    "supersedes": "runs/0014: live oracle omitted the pending-control barrier; original evidence preserved"
+  },
+  "source_sha256": {
+    "crash_boundaries.py": "30e5c8245d17ecb8168e8e2f7c0714a948779bcd5fa1d400be69927cc5909deb",
+    "crash_serving_barrier.py": "274b7b007c2304c283e4a9fc5e9ca4a64ac74c350076f6903cddd0448919ce80",
+    "cycles/0014-protocol.md": "399806ed439df701123f5fef37bd5db9d2649197e6d9b02d6ad5adc95d2c20cf",
+    "cycles/0014-serving-addendum.md": "0614a2d58634ab5ca529f87eaa16e8572406890b54f8fbc651408ba2dca9d677",
+    "test_crash_boundaries.py": "a19ef1c502e3c91ba081335c20c57d9f59558af9fffa94ef16e8d849e47e7942",
+    "test_crash_serving_barrier.py": "a275bea3884c6c73c8ec4f862e95f235842ac219eaaa8922a9899fc518255345"
+  }
+}

@@ -12,17 +12,17 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   `shared-flow-demo-contracts`; not production behavior or a revised protocol spec.
 - **Scope:** preserve future mathematical options through representation, retention,
   identity and contracts. Near-term deployment uses one local network or Tailscale, with
-  unavailable nodes repaired before sessions. Two of at most four closing cycles are
-  complete (I07/R05 calibration/withdrawal and I08/S02 snapshots/reset semantics). Next:
-  F04 crash boundaries, then synthesis and independent architecture/mathematics reviews.
+  unavailable nodes repaired before sessions. Three of at most four closing cycles are
+  complete (I07/R05 calibration/withdrawal, I08/S02 snapshots/reset semantics, F04 local
+  crash boundaries). Next: synthesis and independent architecture/mathematics reviews.
   Other work remains explicitly deferred without being ruled out by early design choices.
   Owning contract changes stay proposals; pause automation after the reviews are pushed.
-- **Latest evidence:** [cycle 0013](../research/information_lifecycle/cycles/0013.md)
-  binds nested results to compatible dependency and uncertainty revisions, separates
-  current permission from historical coherence, and distinguishes coordinate resets
-  from physical-state changes/unknown relations. Exact witnesses preserve geometry and
-  shared reset covariance. 236 tests pass. These are scoped contract findings, not
-  distributed snapshot, privacy or consumer-safety validation.
+- **Latest evidence:** [cycle 0014](../research/information_lifecycle/cycles/0014.md)
+  checks 46 local crash cuts and retries, durable manifest/acceptance binding, separate
+  invalidation and replacement, and distinct control/publication acknowledgments. An
+  initial pending-control live-serving defect is preserved and corrected. 259 tests
+  pass. The atomic storage primitive and authority scope are assumptions, not disk,
+  distributed snapshot, global revocation or consumer-safety validation.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

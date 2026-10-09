@@ -251,7 +251,11 @@ epoch identity, event kind and effective interval, relation direction and uncert
 when available, and unavailable/ambiguous semantics when the cause is not established.
 Do not infer cause from jump magnitude alone. No controller tuning or partition protocol.
 
-### Remaining cycle 0014 — F04: atomic acceptance and recovery boundaries
+### Closing cycle 0014 — F04: atomic acceptance and recovery boundaries
+
+Completed within the bounded local contract scope; see [report](cycles/0014.md).
+The first live-serving candidate's gap is preserved alongside its correction. The
+following is recorded intent, not a queue for more crash/freshness experiments.
 
 Use a finite local state machine, explicit durable versus volatile state and crash
 injection after each modeled write/publish transition for export replacement, checkpoint,

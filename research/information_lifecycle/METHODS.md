@@ -33,6 +33,17 @@ cause witness. Metadata compatibility and opaque binding are not mathematical va
 cryptographic privacy or distributed snapshot construction. Unknown relation/cause stays
 explicit; event classification is an input, not a detector tested by the simulation.
 
+Cycle 0014 separates a declared atomic durable primitive from an implementation claim.
+Crash cuts straddle each staging/persistence/publication step. A literal allowed-state
+table checks exact answers, uncertainty, coverage, authority and acknowledged promises;
+retry and negative controls expose duplicate/misbound state and invalidation rollback.
+The initial oracle wrongly equated live and restarted states during a pending control.
+Keep that source/artifact unchanged, document the correction before rerunning, and use
+distinct live/restart oracles in the corrected candidate. An unacknowledged control lost
+before durable commit requires caller retry in this model; an external effective-time
+promise requires a stronger authority/restart contract. Passing an acknowledgment model
+does not establish disk durability, global authority freshness or consensus.
+
 ## Experiment record
 
 Before implementing a slice, state its scenario IDs, hypothesis, policy variant,
