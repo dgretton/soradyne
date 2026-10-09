@@ -171,6 +171,15 @@ while retaining lawful information; the consumer's acceptance response remains a
 contract. No dynamics/controller or physical continuation policy is established by
 these static repeated-sample and no-data rebuild tests.
 
+[Cycle 0013](cycles/0013.md) refines existing result/validity obligations rather than
+establishing another contradiction. Compatible dependency and covariance revisions can
+prevent a false correction even when endpoint epochs match; identities alone still do
+not certify their numerical payload. Coordinate re-expression, physical motion and an
+unknown relation require distinguishable epoch/event semantics. A common uncertain reset
+relation also contributes correlation. Historical compatibility does not override current
+permission. These findings preserve options for later consumer behavior without selecting
+a controller, cause detector or distributed coordination mechanism.
+
 ## New tensions
 
 None established yet. Test/model defects will be recorded as such before treating

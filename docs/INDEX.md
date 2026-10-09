@@ -12,17 +12,17 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   `shared-flow-demo-contracts`; not production behavior or a revised protocol spec.
 - **Scope:** preserve future mathematical options through representation, retention,
   identity and contracts. Near-term deployment uses one local network or Tailscale, with
-  unavailable nodes repaired before sessions. One of at most four closing cycles is
-  complete (I07/R05 calibration and withdrawal). Next: I08/S02 snapshots and reset
-  semantics, F04 crash boundaries, then synthesis and independent architecture/mathematics
-  reviews. Other work remains explicitly deferred without being ruled out by early design choices.
+  unavailable nodes repaired before sessions. Two of at most four closing cycles are
+  complete (I07/R05 calibration/withdrawal and I08/S02 snapshots/reset semantics). Next:
+  F04 crash boundaries, then synthesis and independent architecture/mathematics reviews.
+  Other work remains explicitly deferred without being ruled out by early design choices.
   Owning contract changes stay proposals; pause automation after the reviews are pushed.
-- **Latest evidence:** [cycle 0012](../research/information_lifecycle/cycles/0012.md)
-  uses exact calibration/withdrawal witnesses: a shared temporal calibration need not
-  remain an active variable if its dependence is retained; model replacement may need
-  more than a target marginal; learned-calibration support and correlated-field noise
-  must survive the promised withdrawal granularity. 217 tests pass. These are scoped
-  contract findings, not general calibration, distributed or consumer-safety validation.
+- **Latest evidence:** [cycle 0013](../research/information_lifecycle/cycles/0013.md)
+  binds nested results to compatible dependency and uncertainty revisions, separates
+  current permission from historical coherence, and distinguishes coordinate resets
+  from physical-state changes/unknown relations. Exact witnesses preserve geometry and
+  shared reset covariance. 236 tests pass. These are scoped contract findings, not
+  distributed snapshot, privacy or consumer-safety validation.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

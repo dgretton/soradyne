@@ -26,6 +26,13 @@ calibration support; and correlated-field marginalization. Alternative fixtures 
 explicitly separate policy/model worlds. No model tag alone is treated as a sufficient
 statistic, and no P2 derivative right is inferred under P3 contribution withdrawal.
 
+Cycle 0013 compares composed edge means/joint covariance to cancellation in the original
+independent variables, then checks all bounded revision combinations and arrival prefixes.
+Reset geometry uses exact distances, rotated vectors/covariance and a same-jump/different-
+cause witness. Metadata compatibility and opaque binding are not mathematical validation,
+cryptographic privacy or distributed snapshot construction. Unknown relation/cause stays
+explicit; event classification is an input, not a detector tested by the simulation.
+
 ## Experiment record
 
 Before implementing a slice, state its scenario IDs, hypothesis, policy variant,

@@ -230,7 +230,10 @@ Deliver a short contract conclusion with supported granularity, lost-information
 counterexample if present, and explicit coarse-invalidation/rebuild alternatives.
 No camera calibration optimizer, drift estimator or nonlinear accuracy sweep.
 
-### Remaining cycle 0013 — I08 + S02: snapshots and epoch meaning
+### Closing cycle 0013 — I08 + S02: snapshots and epoch meaning
+
+Completed within the bounded contract scope; see [report](cycles/0013.md). The remaining
+descriptions here are recorded intent, not a queue for additional snapshot/reset work.
 
 Construct a small nested-domain example where individually valid edge revisions form
 an inconsistent composite. Compare a dependency-bound revision manifest/consistent cut

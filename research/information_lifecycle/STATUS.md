@@ -10,7 +10,7 @@ representation, retention, identity and contracts. Near-term operation is on one
 network or Tailscale, with unavailable nodes repaired before sessions. Estimator quality,
 controller tuning and broad fault/performance coverage are deferred.
 
-**Closing budget: four further cycles maximum; one completed, three remaining.**
+**Closing budget: four further cycles maximum; two completed, two remaining.**
 This documentation/scheduler change does not consume an experiment cycle. The old
 converged-freeze/new-batch 0012 is cancelled, not run; the number is reused below.
 PLAN's closing sequence supersedes older cycle reports' next actions and the old full
@@ -19,8 +19,8 @@ matrix completion gate. No new architectural contradiction was found during resc
 | Cycle | Remaining deliverable | State |
 |---|---|---|
 | 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Complete, bounded exact evidence |
-| 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Next |
-| 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Planned |
+| 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Complete, bounded exact evidence |
+| 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Next |
 | 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Planned |
 
 Combine or skip witnesses when prior evidence suffices; do not add replacement work.
@@ -33,29 +33,28 @@ for genuine new contradictions.
 
 ## Current cycle
 
-0012: I07 + R05 exact contract witnesses completed. Joint latent calibration and an
-integrated correlated-observation representation agree in 32 tiny drift configurations;
-active calibration variables are not universally required, but shared dependence and
-rebuildable model information must survive. Two worlds with identical target marginals
-require different answers after the same drift-model revision. Sensor/time/field
-withdrawal propagates through learned calibration support. Correlated-field withdrawal
-needs a marginal likelihood; precision slicing can retain forbidden influence or false
-precision. P2 derivative permission and P3 withdrawal remain explicit alternatives.
-217 tests pass; the 40,420-byte evidence file reproduces byte for byte, and all twelve
-source manifests match. T01 refined; no new contradiction or production claim.
+0013: I08 + S02 contract witnesses completed. Eight nested edge/covariance combinations:
+two compatible answers agree exactly with the original-variable oracle; all six mixed
+combinations are rejected. Six arrival orders/18 prefixes preserve explicit incomplete
+versus historical snapshot semantics. Equal numerical outputs receive different opaque
+bindings when their private manifests differ; current permission is checked separately.
+Exact reset witnesses distinguish known coordinate re-expression, physical motion and
+unknown/ambiguous relations, including covariance and shared uncertain-bridge effects.
+236 tests pass; the 119,807-byte evidence file reproduces byte for byte and all thirteen
+source manifests match. Existing validity/representation obligations refined; no new
+contradiction, distributed proof, privacy proof or physical-safety claim.
 Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0013: I08 + S02, only snapshot/epoch semantics. Construct a small nested-domain
-composition where individually valid edge revisions mix incompatible dependencies;
-compare a dependency-bound result manifest/consistent cut with independent latest-edge
-selection. Then distinguish a physical bump from a known pure coordinate re-expression
-and a reset whose relation is unknown. Determine what revision, epoch, model/calibration,
-query-time, validity and uncertainty semantics the result must bind; private provenance
-may stay behind an opaque public revision. Do not infer cause from jump magnitude or
-assume a global counter/transaction is necessary. No controller or partition experiments.
-After this: F04 atomic boundaries, then synthesis/reviews. No further calibration work.
+0014: F04 only. Build a finite local state machine with explicit durable/volatile state,
+an assumed atomic storage primitive and crashes after each relevant write/publish step
+for export replacement, checkpoint, epoch close and grant update. Check recovery and
+idempotent retry against an independent allowed-state oracle. Determine what manifest
+must bind data/dependencies/policy/epochs, what must be durable before acknowledgment,
+and when old output must be rejected despite an unfinished replacement. Use 0013's
+compatibility/epoch distinctions; do not claim distributed transactions or reopen F05
+partitions/fencing. After this one witness cycle, go straight to synthesis/reviews.
 
 ## Coverage
 
@@ -104,8 +103,13 @@ After this: F04 atomic boundaries, then synthesis/reviews. No further calibratio
   and correlated fields. Representation equivalence and insufficiency are model-specific;
   real calibration estimation, nonlinear drift, clock uncertainty and rights enforcement
   remain untested. No additional cycle is needed before synthesis under the closing scope.
-- I08, R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
-  coverage yet; only I08/S02 and F04 receive further witnesses under the closing plan.
+- I08/S02: bounded exact evidence in 0013 for dependency/covariance-bound nested
+  snapshots, opaque result bindings, policy separation, known coordinate re-expression,
+  physical bump ambiguity, half-open epochs and shared reset uncertainty. Payload truth,
+  authenticated metadata and policy snapshots are assumed. Distributed construction,
+  unknown-reset recovery, cause detection and physical response remain untested.
+- R07, R09-R10, F04-F06 and S04-S08 have no dedicated scenario-level coverage yet;
+  only F04 receives a further witness under the closing plan.
 - Former mandatory compounds: R03+F03 has the limited 0009 witness. The remaining
   compounds are no longer required experiments; preserve their dependencies/limits
   in synthesis without reopening deferred scenarios.
@@ -138,6 +142,8 @@ After this: F04 atomic boundaries, then synthesis/reviews. No further calibratio
   prior experiments, protocols and evidence unchanged. No new experimental result.
 - [0012](cycles/0012.md): shared temporal calibration without mandatory active variables,
   revision sufficiency, learned-calibration withdrawal and correlated field marginals.
+- [0013](cycles/0013.md): compatible nested revisions and uncertainty, opaque answer
+  identity, distinct coordinate/motion epochs and known/unknown reset relations.
 
 ## Scheduling
 

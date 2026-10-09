@@ -188,7 +188,7 @@ the output directory must not exist. Previous cycle files remain unchanged.
 
 ## Reproduce cycle 0012
 
-Latest closing witness: [0012](cycles/0012.md), calibration/withdrawal. Reproduce with:
+Cycle [0012](cycles/0012.md), calibration/withdrawal. Reproduce with:
 
 ```sh
 /Users/rim/Dev/.venv-nestbox/bin/python -B research/information_lifecycle/calibration_contracts.py --output-dir /tmp/information-lifecycle-cycle-0012
@@ -196,7 +196,18 @@ Latest closing witness: [0012](cycles/0012.md), calibration/withdrawal. Reproduc
 
 This stdlib-only slice contains 32 exact drift comparisons, four selection cases,
 calibration revision/derivative-policy checks and a correlated-field counterexample.
-The directory must be new. Three closing cycles remain; STATUS identifies the next one.
+The directory must be new. STATUS identifies the remaining closing work.
+
+## Reproduce cycle 0013
+
+```sh
+/Users/rim/Dev/.venv-nestbox/bin/python -B research/information_lifecycle/snapshot_epochs.py --output-dir /tmp/information-lifecycle-cycle-0013
+```
+
+This stdlib-only slice checks eight nested revision/uncertainty combinations, 18 arrival
+prefixes, private/public result bindings and exact known/unknown reset semantics. See
+the [protocol](cycles/0013-protocol.md) and [report](cycles/0013.md). The output directory
+must be new. Two closing cycles remain: F04, then synthesis and the independent reviews.
 
 ## Four-hour cycle procedure
 

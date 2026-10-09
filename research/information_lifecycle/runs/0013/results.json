@@ -1,0 +1,4090 @@
+{
+  "bounds": {
+    "combinations": 8,
+    "delivery_orders": 6,
+    "edges": 3,
+    "event_kinds": 4,
+    "issuer_answers": 4,
+    "points": 3,
+    "prefixes_per_order": 3
+  },
+  "cycle": "0013",
+  "design_base": "9cbba49",
+  "nestbox_revision": "041f1146df2e2a271cd0489fda520bc65f2e9f70",
+  "parent": "aebef841045ad02ce408ac77e6001df0f7a3aa1b",
+  "python": "3.13.4",
+  "randomness": "none",
+  "results": {
+    "combinations": [
+      {
+        "bad_unbound_composition": {
+          "mean": "9",
+          "variance": "5/4"
+        },
+        "checked": {
+          "answer": {
+            "actual_inputs": [
+              "body-observation@1",
+              "calibration-evidence@1",
+              "leaf-observation@1"
+            ],
+            "edges": [
+              {
+                "calibration": [
+                  "shared-anchor",
+                  1
+                ],
+                "dependencies": [],
+                "destination": "W:e0",
+                "inputs": [
+                  "calibration-evidence@1"
+                ],
+                "interval": [
+                  0,
+                  20
+                ],
+                "mean": "10",
+                "name": "outer",
+                "representation": "scalar-additive-metres-v1",
+                "revision": 1,
+                "source": "P:e0",
+                "variance": "4"
+              },
+              {
+                "calibration": [
+                  "shared-anchor",
+                  1
+                ],
+                "dependencies": [
+                  [
+                    "outer",
+                    1
+                  ]
+                ],
+                "destination": "P:e0",
+                "inputs": [
+                  "calibration-evidence@1",
+                  "body-observation@1"
+                ],
+                "interval": [
+                  0,
+                  20
+                ],
+                "mean": "-3",
+                "name": "middle",
+                "representation": "scalar-additive-metres-v1",
+                "revision": 11,
+                "source": "C:e0",
+                "variance": "5"
+              },
+              {
+                "calibration": null,
+                "dependencies": [],
+                "destination": "C:e0",
+                "inputs": [
+                  "leaf-observation@1"
+                ],
+                "interval": [
+                  0,
+                  20
+                ],
+                "mean": "2",
+                "name": "leaf",
+                "representation": "scalar-additive-metres-v1",
+                "revision": 7,
+                "source": "B:e0",
+                "variance": "1/4"
+              }
+            ],
+            "mean": "9",
+            "policy_revision": "permission@1",
+            "query_time": 10,
+            "uncertainty": {
+              "covariance": [
+                [
+                  "4",
+                  "-4",
+                  "0"
+                ],
+                [
+                  "-4",
+                  "5",
+                  "0"
+                ],
+                [
+                  "0",
+                  "0",
+                  "1/4"
+                ]
+              ],
+              "identity": "joint@1",
+              "refs": [
+                [
+                  "outer",
+                  1
+                ],
+                [
+                  "middle",
+                  11
+                ],
+                [
+                  "leaf",
+                  7
+                ]
+              ],
+              "representation": "scalar-additive-metres-v1"
+            },
+            "variance": "5/4"
+          },
+          "status": "accepted"
+        },
+        "selection": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "9",
+          "variance": "-35/4"
+        },
+        "checked": {
+          "reason": "Uncertainty bound to another revision tuple",
+          "status": "unavailable"
+        },
+        "selection": [
+          1,
+          1,
+          2
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "-91",
+          "variance": "25/4"
+        },
+        "checked": {
+          "reason": "Uncertainty bound to another revision tuple",
+          "status": "unavailable"
+        },
+        "selection": [
+          1,
+          2,
+          1
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "-91",
+          "variance": "-15/4"
+        },
+        "checked": {
+          "reason": "Uncertainty bound to another revision tuple",
+          "status": "unavailable"
+        },
+        "selection": [
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "109",
+          "variance": "25/4"
+        },
+        "checked": {
+          "reason": "Uncertainty bound to another revision tuple",
+          "status": "unavailable"
+        },
+        "selection": [
+          2,
+          1,
+          1
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "109",
+          "variance": "-15/4"
+        },
+        "checked": {
+          "reason": "Uncertainty bound to another revision tuple",
+          "status": "unavailable"
+        },
+        "selection": [
+          2,
+          1,
+          2
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "9",
+          "variance": "45/4"
+        },
+        "checked": {
+          "reason": "Uncertainty bound to another revision tuple",
+          "status": "unavailable"
+        },
+        "selection": [
+          2,
+          2,
+          1
+        ]
+      },
+      {
+        "bad_unbound_composition": {
+          "mean": "9",
+          "variance": "5/4"
+        },
+        "checked": {
+          "answer": {
+            "actual_inputs": [
+              "body-observation@1",
+              "calibration-evidence@2",
+              "leaf-observation@1"
+            ],
+            "edges": [
+              {
+                "calibration": [
+                  "shared-anchor",
+                  2
+                ],
+                "dependencies": [],
+                "destination": "W:e0",
+                "inputs": [
+                  "calibration-evidence@2"
+                ],
+                "interval": [
+                  0,
+                  20
+                ],
+                "mean": "110",
+                "name": "outer",
+                "representation": "scalar-additive-metres-v1",
+                "revision": 2,
+                "source": "P:e0",
+                "variance": "9"
+              },
+              {
+                "calibration": [
+                  "shared-anchor",
+                  2
+                ],
+                "dependencies": [
+                  [
+                    "outer",
+                    2
+                  ]
+                ],
+                "destination": "P:e0",
+                "inputs": [
+                  "calibration-evidence@2",
+                  "body-observation@1"
+                ],
+                "interval": [
+                  0,
+                  20
+                ],
+                "mean": "-103",
+                "name": "middle",
+                "representation": "scalar-additive-metres-v1",
+                "revision": 12,
+                "source": "C:e0",
+                "variance": "10"
+              },
+              {
+                "calibration": null,
+                "dependencies": [],
+                "destination": "C:e0",
+                "inputs": [
+                  "leaf-observation@1"
+                ],
+                "interval": [
+                  0,
+                  20
+                ],
+                "mean": "2",
+                "name": "leaf",
+                "representation": "scalar-additive-metres-v1",
+                "revision": 7,
+                "source": "B:e0",
+                "variance": "1/4"
+              }
+            ],
+            "mean": "9",
+            "policy_revision": "permission@1",
+            "query_time": 10,
+            "uncertainty": {
+              "covariance": [
+                [
+                  "9",
+                  "-9",
+                  "0"
+                ],
+                [
+                  "-9",
+                  "10",
+                  "0"
+                ],
+                [
+                  "0",
+                  "0",
+                  "1/4"
+                ]
+              ],
+              "identity": "joint@2",
+              "refs": [
+                [
+                  "outer",
+                  2
+                ],
+                [
+                  "middle",
+                  12
+                ],
+                [
+                  "leaf",
+                  7
+                ]
+              ],
+              "representation": "scalar-additive-metres-v1"
+            },
+            "variance": "5/4"
+          },
+          "status": "accepted"
+        },
+        "selection": [
+          2,
+          2,
+          2
+        ]
+      }
+    ],
+    "delivery_orders": [
+      {
+        "order": [
+          "outer",
+          "middle",
+          "uncertainty"
+        ],
+        "prefixes": [
+          {
+            "bad_latest_parts": {
+              "mean": "109",
+              "variance": "25/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "outer",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "45/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "middle",
+            "requested_new": {
+              "reason": "Uncertainty bound to another revision tuple",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "5/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "uncertainty",
+            "requested_new": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@2",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@2"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "110",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 2,
+                    "source": "P:e0",
+                    "variance": "9"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        2
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@2",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-103",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 12,
+                    "source": "C:e0",
+                    "variance": "10"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "9",
+                      "-9",
+                      "0"
+                    ],
+                    [
+                      "-9",
+                      "10",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@2",
+                  "refs": [
+                    [
+                      "outer",
+                      2
+                    ],
+                    [
+                      "middle",
+                      12
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            }
+          }
+        ]
+      },
+      {
+        "order": [
+          "outer",
+          "uncertainty",
+          "middle"
+        ],
+        "prefixes": [
+          {
+            "bad_latest_parts": {
+              "mean": "109",
+              "variance": "25/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "outer",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "109",
+              "variance": "-15/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "uncertainty",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "5/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "middle",
+            "requested_new": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@2",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@2"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "110",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 2,
+                    "source": "P:e0",
+                    "variance": "9"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        2
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@2",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-103",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 12,
+                    "source": "C:e0",
+                    "variance": "10"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "9",
+                      "-9",
+                      "0"
+                    ],
+                    [
+                      "-9",
+                      "10",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@2",
+                  "refs": [
+                    [
+                      "outer",
+                      2
+                    ],
+                    [
+                      "middle",
+                      12
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            }
+          }
+        ]
+      },
+      {
+        "order": [
+          "middle",
+          "outer",
+          "uncertainty"
+        ],
+        "prefixes": [
+          {
+            "bad_latest_parts": {
+              "mean": "-91",
+              "variance": "25/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "middle",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "45/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "outer",
+            "requested_new": {
+              "reason": "Uncertainty bound to another revision tuple",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "5/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "uncertainty",
+            "requested_new": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@2",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@2"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "110",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 2,
+                    "source": "P:e0",
+                    "variance": "9"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        2
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@2",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-103",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 12,
+                    "source": "C:e0",
+                    "variance": "10"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "9",
+                      "-9",
+                      "0"
+                    ],
+                    [
+                      "-9",
+                      "10",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@2",
+                  "refs": [
+                    [
+                      "outer",
+                      2
+                    ],
+                    [
+                      "middle",
+                      12
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            }
+          }
+        ]
+      },
+      {
+        "order": [
+          "middle",
+          "uncertainty",
+          "outer"
+        ],
+        "prefixes": [
+          {
+            "bad_latest_parts": {
+              "mean": "-91",
+              "variance": "25/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "middle",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "-91",
+              "variance": "-15/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "uncertainty",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "5/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "outer",
+            "requested_new": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@2",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@2"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "110",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 2,
+                    "source": "P:e0",
+                    "variance": "9"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        2
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@2",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-103",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 12,
+                    "source": "C:e0",
+                    "variance": "10"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "9",
+                      "-9",
+                      "0"
+                    ],
+                    [
+                      "-9",
+                      "10",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@2",
+                  "refs": [
+                    [
+                      "outer",
+                      2
+                    ],
+                    [
+                      "middle",
+                      12
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            }
+          }
+        ]
+      },
+      {
+        "order": [
+          "uncertainty",
+          "outer",
+          "middle"
+        ],
+        "prefixes": [
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "-35/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "uncertainty",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "109",
+              "variance": "-15/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "outer",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "5/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "middle",
+            "requested_new": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@2",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@2"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "110",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 2,
+                    "source": "P:e0",
+                    "variance": "9"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        2
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@2",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-103",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 12,
+                    "source": "C:e0",
+                    "variance": "10"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "9",
+                      "-9",
+                      "0"
+                    ],
+                    [
+                      "-9",
+                      "10",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@2",
+                  "refs": [
+                    [
+                      "outer",
+                      2
+                    ],
+                    [
+                      "middle",
+                      12
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            }
+          }
+        ]
+      },
+      {
+        "order": [
+          "uncertainty",
+          "middle",
+          "outer"
+        ],
+        "prefixes": [
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "-35/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "uncertainty",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "-91",
+              "variance": "-15/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "middle",
+            "requested_new": {
+              "reason": "Requested snapshot is not present",
+              "status": "unavailable"
+            }
+          },
+          {
+            "bad_latest_parts": {
+              "mean": "9",
+              "variance": "5/4"
+            },
+            "historical_old_explicit": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@1",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "10",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 1,
+                    "source": "P:e0",
+                    "variance": "4"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      1
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        1
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@1",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-3",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 11,
+                    "source": "C:e0",
+                    "variance": "5"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "4",
+                      "-4",
+                      "0"
+                    ],
+                    [
+                      "-4",
+                      "5",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@1",
+                  "refs": [
+                    [
+                      "outer",
+                      1
+                    ],
+                    [
+                      "middle",
+                      11
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            },
+            "received": "outer",
+            "requested_new": {
+              "answer": {
+                "actual_inputs": [
+                  "body-observation@1",
+                  "calibration-evidence@2",
+                  "leaf-observation@1"
+                ],
+                "edges": [
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [],
+                    "destination": "W:e0",
+                    "inputs": [
+                      "calibration-evidence@2"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "110",
+                    "name": "outer",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 2,
+                    "source": "P:e0",
+                    "variance": "9"
+                  },
+                  {
+                    "calibration": [
+                      "shared-anchor",
+                      2
+                    ],
+                    "dependencies": [
+                      [
+                        "outer",
+                        2
+                      ]
+                    ],
+                    "destination": "P:e0",
+                    "inputs": [
+                      "calibration-evidence@2",
+                      "body-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "-103",
+                    "name": "middle",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 12,
+                    "source": "C:e0",
+                    "variance": "10"
+                  },
+                  {
+                    "calibration": null,
+                    "dependencies": [],
+                    "destination": "C:e0",
+                    "inputs": [
+                      "leaf-observation@1"
+                    ],
+                    "interval": [
+                      0,
+                      20
+                    ],
+                    "mean": "2",
+                    "name": "leaf",
+                    "representation": "scalar-additive-metres-v1",
+                    "revision": 7,
+                    "source": "B:e0",
+                    "variance": "1/4"
+                  }
+                ],
+                "mean": "9",
+                "policy_revision": "permission@1",
+                "query_time": 10,
+                "uncertainty": {
+                  "covariance": [
+                    [
+                      "9",
+                      "-9",
+                      "0"
+                    ],
+                    [
+                      "-9",
+                      "10",
+                      "0"
+                    ],
+                    [
+                      "0",
+                      "0",
+                      "1/4"
+                    ]
+                  ],
+                  "identity": "joint@2",
+                  "refs": [
+                    [
+                      "outer",
+                      2
+                    ],
+                    [
+                      "middle",
+                      12
+                    ],
+                    [
+                      "leaf",
+                      7
+                    ]
+                  ],
+                  "representation": "scalar-additive-metres-v1"
+                },
+                "variance": "5/4"
+              },
+              "status": "accepted"
+            }
+          }
+        ]
+      }
+    ],
+    "oracle": {
+      "derivation": "outer+middle+leaf=9+e+f; e,f independent with variances 1,1/4",
+      "mean": "9",
+      "variance": "5/4"
+    },
+    "policy_checks": {
+      "coherent_new_after_withdrawal": {
+        "answer": {
+          "actual_inputs": [
+            "body-observation@1",
+            "calibration-evidence@2",
+            "leaf-observation@1"
+          ],
+          "edges": [
+            {
+              "calibration": [
+                "shared-anchor",
+                2
+              ],
+              "dependencies": [],
+              "destination": "W:e0",
+              "inputs": [
+                "calibration-evidence@2"
+              ],
+              "interval": [
+                0,
+                20
+              ],
+              "mean": "110",
+              "name": "outer",
+              "representation": "scalar-additive-metres-v1",
+              "revision": 2,
+              "source": "P:e0",
+              "variance": "9"
+            },
+            {
+              "calibration": [
+                "shared-anchor",
+                2
+              ],
+              "dependencies": [
+                [
+                  "outer",
+                  2
+                ]
+              ],
+              "destination": "P:e0",
+              "inputs": [
+                "calibration-evidence@2",
+                "body-observation@1"
+              ],
+              "interval": [
+                0,
+                20
+              ],
+              "mean": "-103",
+              "name": "middle",
+              "representation": "scalar-additive-metres-v1",
+              "revision": 12,
+              "source": "C:e0",
+              "variance": "10"
+            },
+            {
+              "calibration": null,
+              "dependencies": [],
+              "destination": "C:e0",
+              "inputs": [
+                "leaf-observation@1"
+              ],
+              "interval": [
+                0,
+                20
+              ],
+              "mean": "2",
+              "name": "leaf",
+              "representation": "scalar-additive-metres-v1",
+              "revision": 7,
+              "source": "B:e0",
+              "variance": "1/4"
+            }
+          ],
+          "mean": "9",
+          "policy_revision": "permission@2",
+          "query_time": 10,
+          "uncertainty": {
+            "covariance": [
+              [
+                "9",
+                "-9",
+                "0"
+              ],
+              [
+                "-9",
+                "10",
+                "0"
+              ],
+              [
+                "0",
+                "0",
+                "1/4"
+              ]
+            ],
+            "identity": "joint@2",
+            "refs": [
+              [
+                "outer",
+                2
+              ],
+              [
+                "middle",
+                12
+              ],
+              [
+                "leaf",
+                7
+              ]
+            ],
+            "representation": "scalar-additive-metres-v1"
+          },
+          "variance": "5/4"
+        },
+        "status": "accepted"
+      },
+      "coherent_old_after_withdrawal": {
+        "reason": "Current contribution permission missing",
+        "status": "unavailable"
+      },
+      "old_with_new_policy_same_rights": {
+        "answer": {
+          "actual_inputs": [
+            "body-observation@1",
+            "calibration-evidence@1",
+            "leaf-observation@1"
+          ],
+          "edges": [
+            {
+              "calibration": [
+                "shared-anchor",
+                1
+              ],
+              "dependencies": [],
+              "destination": "W:e0",
+              "inputs": [
+                "calibration-evidence@1"
+              ],
+              "interval": [
+                0,
+                20
+              ],
+              "mean": "10",
+              "name": "outer",
+              "representation": "scalar-additive-metres-v1",
+              "revision": 1,
+              "source": "P:e0",
+              "variance": "4"
+            },
+            {
+              "calibration": [
+                "shared-anchor",
+                1
+              ],
+              "dependencies": [
+                [
+                  "outer",
+                  1
+                ]
+              ],
+              "destination": "P:e0",
+              "inputs": [
+                "calibration-evidence@1",
+                "body-observation@1"
+              ],
+              "interval": [
+                0,
+                20
+              ],
+              "mean": "-3",
+              "name": "middle",
+              "representation": "scalar-additive-metres-v1",
+              "revision": 11,
+              "source": "C:e0",
+              "variance": "5"
+            },
+            {
+              "calibration": null,
+              "dependencies": [],
+              "destination": "C:e0",
+              "inputs": [
+                "leaf-observation@1"
+              ],
+              "interval": [
+                0,
+                20
+              ],
+              "mean": "2",
+              "name": "leaf",
+              "representation": "scalar-additive-metres-v1",
+              "revision": 7,
+              "source": "B:e0",
+              "variance": "1/4"
+            }
+          ],
+          "mean": "9",
+          "policy_revision": "permission@2",
+          "query_time": 10,
+          "uncertainty": {
+            "covariance": [
+              [
+                "4",
+                "-4",
+                "0"
+              ],
+              [
+                "-4",
+                "5",
+                "0"
+              ],
+              [
+                "0",
+                "0",
+                "1/4"
+              ]
+            ],
+            "identity": "joint@1",
+            "refs": [
+              [
+                "outer",
+                1
+              ],
+              [
+                "middle",
+                11
+              ],
+              [
+                "leaf",
+                7
+              ]
+            ],
+            "representation": "scalar-additive-metres-v1"
+          },
+          "variance": "5/4"
+        },
+        "status": "accepted"
+      }
+    },
+    "public_views": [
+      {
+        "destination": "W:e0",
+        "mean": "9",
+        "query_time": 10,
+        "representation": "scalar-additive-metres-v1",
+        "revision": "fixture-answer-1",
+        "source": "B:e0",
+        "status_at_issue": "valid; current use still needs permission",
+        "units": "metres; variance metres^2",
+        "variance": "5/4"
+      },
+      {
+        "destination": "W:e0",
+        "mean": "9",
+        "query_time": 10,
+        "representation": "scalar-additive-metres-v1",
+        "revision": "fixture-answer-2",
+        "source": "B:e0",
+        "status_at_issue": "valid; current use still needs permission",
+        "units": "metres; variance metres^2",
+        "variance": "5/4"
+      }
+    ],
+    "resets": {
+      "boundary_queries": {
+        "10": "new",
+        "19": "new",
+        "20": null,
+        "9": "old"
+      },
+      "events": [
+        {
+          "bridge_new_from_old": {
+            "rotation": [
+              [
+                0,
+                -1
+              ],
+              [
+                1,
+                0
+              ]
+            ],
+            "translation": [
+              100,
+              -20
+            ],
+            "uncertainty": "exact in fixture"
+          },
+          "classification_source": "trusted external input; not inferred from jump size",
+          "clock": "fixture-common-clock",
+          "coordinate_epoch_after": "chart@2",
+          "coordinate_epoch_before": "chart@1",
+          "coordinate_relation_status": "known",
+          "cross_epoch_state_reuse": "reexpress consistently",
+          "effective_time": 10,
+          "kind": "reexpression",
+          "motion_epoch_after": "body-motion@1",
+          "motion_epoch_before": "body-motion@1",
+          "new_interval": [
+            10,
+            20
+          ],
+          "old_interval": [
+            0,
+            10
+          ],
+          "within_new_epoch_relative_query": "allowed when independently supported and authorized"
+        },
+        {
+          "bridge_new_from_old": null,
+          "classification_source": "trusted external input; not inferred from jump size",
+          "clock": "fixture-common-clock",
+          "coordinate_epoch_after": "chart@1",
+          "coordinate_epoch_before": "chart@1",
+          "coordinate_relation_status": "unchanged",
+          "cross_epoch_state_reuse": "unavailable without new state/relation",
+          "effective_time": 10,
+          "kind": "physical_bump",
+          "motion_epoch_after": "body-motion@2",
+          "motion_epoch_before": "body-motion@1",
+          "new_interval": [
+            10,
+            20
+          ],
+          "old_interval": [
+            0,
+            10
+          ],
+          "within_new_epoch_relative_query": "allowed when independently supported and authorized"
+        },
+        {
+          "bridge_new_from_old": null,
+          "classification_source": "trusted external input; not inferred from jump size",
+          "clock": "fixture-common-clock",
+          "coordinate_epoch_after": "chart@2",
+          "coordinate_epoch_before": "chart@1",
+          "coordinate_relation_status": "unknown",
+          "cross_epoch_state_reuse": "unavailable without new state/relation",
+          "effective_time": 10,
+          "kind": "unknown_reset",
+          "motion_epoch_after": "unknown",
+          "motion_epoch_before": "body-motion@1",
+          "new_interval": [
+            10,
+            20
+          ],
+          "old_interval": [
+            0,
+            10
+          ],
+          "within_new_epoch_relative_query": "allowed when independently supported and authorized"
+        },
+        {
+          "bridge_new_from_old": null,
+          "classification_source": "trusted external input; not inferred from jump size",
+          "clock": "fixture-common-clock",
+          "coordinate_epoch_after": "chart@2",
+          "coordinate_epoch_before": "chart@1",
+          "coordinate_relation_status": "unknown",
+          "cross_epoch_state_reuse": "unavailable without new state/relation",
+          "effective_time": 10,
+          "kind": "ambiguous",
+          "motion_epoch_after": "unknown",
+          "motion_epoch_before": "body-motion@1",
+          "new_interval": [
+            10,
+            20
+          ],
+          "old_interval": [
+            0,
+            10
+          ],
+          "within_new_epoch_relative_query": "allowed when independently supported and authorized"
+        }
+      ],
+      "known_reexpression": {
+        "bad_difference_per_publication_tick": [
+          "97",
+          "-21"
+        ],
+        "bad_only_point_reexpressed_target_distance_squared": "9461",
+        "new": {
+          "covariance": [
+            [
+              "4",
+              "0"
+            ],
+            [
+              "0",
+              "1"
+            ]
+          ],
+          "obstacle": [
+            "97",
+            "-10"
+          ],
+          "point": [
+            "98",
+            "-19"
+          ],
+          "target": [
+            "94",
+            "-16"
+          ],
+          "velocity": [
+            "1",
+            "2"
+          ]
+        },
+        "obstacle_distance_squared_after": "82",
+        "obstacle_distance_squared_before": "82",
+        "old": {
+          "covariance": [
+            [
+              "1",
+              "0"
+            ],
+            [
+              "0",
+              "4"
+            ]
+          ],
+          "obstacle": [
+            "10",
+            "3"
+          ],
+          "point": [
+            "1",
+            "2"
+          ],
+          "target": [
+            "4",
+            "6"
+          ],
+          "velocity": [
+            "2",
+            "-1"
+          ]
+        },
+        "physical_time_elapsed_at_event": 0,
+        "target_distance_squared_after": "25",
+        "target_distance_squared_before": "25"
+      },
+      "same_displayed_jump": {
+        "point_after": 101,
+        "point_before": 1,
+        "relative_after_coordinate_shift": "9",
+        "relative_after_physical_bump": "-91",
+        "target_after_coordinate_shift": 110,
+        "target_after_physical_bump": 10,
+        "target_before": 10
+      },
+      "uncertain_common_translation": {
+        "bad_independent_relation_copies": "23",
+        "cross_covariance": "9",
+        "point_variance": "10",
+        "relation_variance": "9",
+        "relative_variance": "5",
+        "target_variance": "13"
+      }
+    },
+    "worlds": [
+      [
+        [
+          {
+            "calibration": [
+              "shared-anchor",
+              1
+            ],
+            "dependencies": [],
+            "destination": "W:e0",
+            "inputs": [
+              "calibration-evidence@1"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "mean": "10",
+            "name": "outer",
+            "representation": "scalar-additive-metres-v1",
+            "revision": 1,
+            "source": "P:e0",
+            "variance": "4"
+          },
+          {
+            "calibration": [
+              "shared-anchor",
+              1
+            ],
+            "dependencies": [
+              [
+                "outer",
+                1
+              ]
+            ],
+            "destination": "P:e0",
+            "inputs": [
+              "calibration-evidence@1",
+              "body-observation@1"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "mean": "-3",
+            "name": "middle",
+            "representation": "scalar-additive-metres-v1",
+            "revision": 11,
+            "source": "C:e0",
+            "variance": "5"
+          },
+          {
+            "calibration": null,
+            "dependencies": [],
+            "destination": "C:e0",
+            "inputs": [
+              "leaf-observation@1"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "mean": "2",
+            "name": "leaf",
+            "representation": "scalar-additive-metres-v1",
+            "revision": 7,
+            "source": "B:e0",
+            "variance": "1/4"
+          }
+        ],
+        {
+          "covariance": [
+            [
+              "4",
+              "-4",
+              "0"
+            ],
+            [
+              "-4",
+              "5",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "1/4"
+            ]
+          ],
+          "identity": "joint@1",
+          "refs": [
+            [
+              "outer",
+              1
+            ],
+            [
+              "middle",
+              11
+            ],
+            [
+              "leaf",
+              7
+            ]
+          ],
+          "representation": "scalar-additive-metres-v1"
+        }
+      ],
+      [
+        [
+          {
+            "calibration": [
+              "shared-anchor",
+              2
+            ],
+            "dependencies": [],
+            "destination": "W:e0",
+            "inputs": [
+              "calibration-evidence@2"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "mean": "110",
+            "name": "outer",
+            "representation": "scalar-additive-metres-v1",
+            "revision": 2,
+            "source": "P:e0",
+            "variance": "9"
+          },
+          {
+            "calibration": [
+              "shared-anchor",
+              2
+            ],
+            "dependencies": [
+              [
+                "outer",
+                2
+              ]
+            ],
+            "destination": "P:e0",
+            "inputs": [
+              "calibration-evidence@2",
+              "body-observation@1"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "mean": "-103",
+            "name": "middle",
+            "representation": "scalar-additive-metres-v1",
+            "revision": 12,
+            "source": "C:e0",
+            "variance": "10"
+          },
+          {
+            "calibration": null,
+            "dependencies": [],
+            "destination": "C:e0",
+            "inputs": [
+              "leaf-observation@1"
+            ],
+            "interval": [
+              0,
+              20
+            ],
+            "mean": "2",
+            "name": "leaf",
+            "representation": "scalar-additive-metres-v1",
+            "revision": 7,
+            "source": "B:e0",
+            "variance": "1/4"
+          }
+        ],
+        {
+          "covariance": [
+            [
+              "9",
+              "-9",
+              "0"
+            ],
+            [
+              "-9",
+              "10",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "1/4"
+            ]
+          ],
+          "identity": "joint@2",
+          "refs": [
+            [
+              "outer",
+              2
+            ],
+            [
+              "middle",
+              12
+            ],
+            [
+              "leaf",
+              7
+            ]
+          ],
+          "representation": "scalar-additive-metres-v1"
+        }
+      ]
+    ]
+  },
+  "source_sha256": {
+    "cycles/0013-protocol.md": "097b9168743f916f0d99568a32e010b173d1c685d20c23eeb6cfdcd069993aed",
+    "snapshot_epochs.py": "ad67220b24e1b0189074d93b4b0343717cd2f69636f5418422a3a612eeced116",
+    "test_snapshot_epochs.py": "ade29c6a44b9a157990178d087935c09038e4403b05dd554bb5e41e446fab449"
+  }
+}
