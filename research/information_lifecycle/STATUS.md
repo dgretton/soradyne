@@ -10,7 +10,7 @@ representation, retention, identity and contracts. Near-term operation is on one
 network or Tailscale, with unavailable nodes repaired before sessions. Estimator quality,
 controller tuning and broad fault/performance coverage are deferred.
 
-**Closing budget: four further cycles maximum; zero completed under this new scope.**
+**Closing budget: four further cycles maximum; one completed, three remaining.**
 This documentation/scheduler change does not consume an experiment cycle. The old
 converged-freeze/new-batch 0012 is cancelled, not run; the number is reused below.
 PLAN's closing sequence supersedes older cycle reports' next actions and the old full
@@ -18,8 +18,8 @@ matrix completion gate. No new architectural contradiction was found during resc
 
 | Cycle | Remaining deliverable | State |
 |---|---|---|
-| 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Next |
-| 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Planned |
+| 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Complete, bounded exact evidence |
+| 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Next |
 | 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Planned |
 | 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Planned |
 
@@ -33,29 +33,29 @@ for genuine new contradictions.
 
 ## Current cycle
 
-0011: bounded I06 Monte Carlo angular calibration completed. 131,072 independent
-four-observation datasets, six methods, 786,432 interval evaluations. Full circular
-intervals are compatible with 95% coverage in all 32 phase/configuration cells under
-the predeclared simultaneous test, with an exact conditional-coverage derivation for
-this restricted model. Local Gaussian intervals under-cover in all eight weakest cells;
-held-out coverage is about 89–90%. Correct full intervals there are typically about
-+/-115 degrees, so calibration does not imply useful precision. Frozen-anchor dependence
-also survives held-out testing. A library-CDF accuracy limit was caught and corrected
-before formal primary/held-out runs; no statistical threshold or seed changed. 200 tests
-pass. Both new artifacts reproduce byte for byte; all eleven source manifests match.
-No complete family or production mechanism is declared proven. Publication is verified
-against the remote tip at cycle close.
+0012: I07 + R05 exact contract witnesses completed. Joint latent calibration and an
+integrated correlated-observation representation agree in 32 tiny drift configurations;
+active calibration variables are not universally required, but shared dependence and
+rebuildable model information must survive. Two worlds with identical target marginals
+require different answers after the same drift-model revision. Sensor/time/field
+withdrawal propagates through learned calibration support. Correlated-field withdrawal
+needs a marginal likelihood; precision slicing can retain forbidden influence or false
+precision. P2 derivative permission and P3 withdrawal remain explicit alternatives.
+217 tests pass; the 40,420-byte evidence file reproduces byte for byte, and all twelve
+source manifests match. T01 refined; no new contradiction or production claim.
+Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0012, replacement scope: use small exact shared-calibration examples for I07 + R05,
-reusing 0005/0009 rather than rerunning them. Compare joint/decomposed retained state
-and authorized replay with collapsed or falsely independent representations. Cover
-calibration drift/replacement and sensor/time-range/field withdrawal, including the
-supporting evidence of learned calibration. Determine the identity/dependency and
-numerical retention needed to keep those operations possible, with explicit policy
-alternatives; do not build or tune a calibration estimator. PLAN states the witness
-and contract questions. Converged freeze/new-batch and nonlinear sweeps stay deferred.
+0013: I08 + S02, only snapshot/epoch semantics. Construct a small nested-domain
+composition where individually valid edge revisions mix incompatible dependencies;
+compare a dependency-bound result manifest/consistent cut with independent latest-edge
+selection. Then distinguish a physical bump from a known pure coordinate re-expression
+and a reset whose relation is unknown. Determine what revision, epoch, model/calibration,
+query-time, validity and uncertainty semantics the result must bind; private provenance
+may stay behind an opaque public revision. Do not infer cause from jump magnitude or
+assume a global counter/transaction is necessary. No controller or partition experiments.
+After this: F04 atomic boundaries, then synthesis/reviews. No further calibration work.
 
 ## Coverage
 
@@ -99,8 +99,13 @@ and contract questions. Converged freeze/new-batch and nonlinear sweeps stay def
   anchor-dependent frozen failures are reproduced. Joint pose/point coverage, converged
   freeze followed by new evidence, uncertain-landmark/calibration elimination, SE(3) and
   production behavior remain open.
-- I07-I08, R05/R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
-  coverage yet. R05 has an adjacent single-record example in 0009, not its full scope.
+- I07/R05: bounded exact contract evidence in 0012 for a shared offset with two-time
+  drift, prior/gain replacement, learned calibration support, sensor/time/field selectors
+  and correlated fields. Representation equivalence and insufficiency are model-specific;
+  real calibration estimation, nonlinear drift, clock uncertainty and rights enforcement
+  remain untested. No additional cycle is needed before synthesis under the closing scope.
+- I08, R07, R09-R10, F04-F06, S02 and S04-S08 have no dedicated scenario-level
+  coverage yet; only I08/S02 and F04 receive further witnesses under the closing plan.
 - Former mandatory compounds: R03+F03 has the limited 0009 witness. The remaining
   compounds are no longer required experiments; preserve their dependencies/limits
   in synthesis without reopening deferred scenarios.
@@ -131,6 +136,8 @@ and contract questions. Converged freeze/new-batch and nonlinear sweeps stay def
   weak-geometry Gaussian undercoverage, anchor dependence and numerical-reference checks.
 - 2026-10-08 human steering: finite closing program in PLAN/README/METHODS/STATUS;
   prior experiments, protocols and evidence unchanged. No new experimental result.
+- [0012](cycles/0012.md): shared temporal calibration without mandatory active variables,
+  revision sufficiency, learned-calibration withdrawal and correlated field marginals.
 
 ## Scheduling
 

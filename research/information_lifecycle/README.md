@@ -186,6 +186,18 @@ The full circular interval is calibrated in this restricted angular model; broad
 uncertainty does not establish usable precision or consumer safety. NumPy/SciPy required;
 the output directory must not exist. Previous cycle files remain unchanged.
 
+## Reproduce cycle 0012
+
+Latest closing witness: [0012](cycles/0012.md), calibration/withdrawal. Reproduce with:
+
+```sh
+/Users/rim/Dev/.venv-nestbox/bin/python -B research/information_lifecycle/calibration_contracts.py --output-dir /tmp/information-lifecycle-cycle-0012
+```
+
+This stdlib-only slice contains 32 exact drift comparisons, four selection cases,
+calibration revision/derivative-policy checks and a correlated-field counterexample.
+The directory must be new. Three closing cycles remain; STATUS identifies the next one.
+
 ## Four-hour cycle procedure
 
 1. Read current user steering in the chat, then STATUS, the last cycle, PLAN and

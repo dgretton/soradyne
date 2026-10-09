@@ -19,6 +19,13 @@ The synthesis's scenario statuses are scoped capability dispositions; evidence l
 below still apply. Independent reviewers receive the same pushed synthesis snapshot;
 their original interpretations and the parent's responses remain distinguishable.
 
+Cycle 0012 implements this narrower approach: exact latent-factor inference compared
+with independently derived observation covariance and scalar conditioning formulas;
+identical retained marginals that separate after a model revision; withdrawal through
+calibration support; and correlated-field marginalization. Alternative fixtures have
+explicitly separate policy/model worlds. No model tag alone is treated as a sufficient
+statistic, and no P2 derivative right is inferred under P3 contribution withdrawal.
+
 ## Experiment record
 
 Before implementing a slice, state its scenario IDs, hypothesis, policy variant,

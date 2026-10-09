@@ -1,0 +1,2004 @@
+{
+  "bounds": {
+    "drift_cases": 32,
+    "matrix_dimension": 3,
+    "selector_records": 8
+  },
+  "cycle": "0012",
+  "design_base": "9cbba49",
+  "nestbox_revision": "041f1146df2e2a271cd0489fda520bc65f2e9f70",
+  "parent": "ac6abd090dfb49cfb0c7681889c5bf8bab982152",
+  "python": "3.13.4",
+  "randomness": "none",
+  "results": {
+    "correlated_fields": {
+      "after_withdraw_v": {
+        "mean": "0",
+        "variance": "1"
+      },
+      "bad_conditional_precision_with_only_u": {
+        "mean": "0",
+        "variance": "3/4"
+      },
+      "bad_precision_and_information_slice": {
+        "mean": "-2",
+        "variance": "3/4"
+      },
+      "full": {
+        "mean": "2",
+        "variance": "3/4"
+      }
+    },
+    "drift_cases": [
+      {
+        "bad_independent": {
+          "mean": "12/5",
+          "variance": "6/5"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "3/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/3",
+              "-1",
+              "-1/3"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "2",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "2",
+            "variance": "5/3"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "2",
+          "variance": "5/3"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "11/5",
+          "variance": "6/5"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "3/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/3",
+              "-1",
+              "-1/3"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "2",
+            "0",
+            "1"
+          ],
+          "x": {
+            "mean": "2",
+            "variance": "5/3"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "2",
+          "variance": "5/3"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "6/5",
+          "variance": "3/10"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "3/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/12",
+              "-1/2",
+              "-1/6"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/6",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "1",
+            "variance": "5/12"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "1",
+          "variance": "5/12"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "11/10",
+          "variance": "3/10"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "3/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/12",
+              "-1/2",
+              "-1/6"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/6",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1",
+            "0",
+            "1"
+          ],
+          "x": {
+            "mean": "1",
+            "variance": "5/12"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "1",
+          "variance": "5/12"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "18/7",
+          "variance": "12/7"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/5",
+              "-1",
+              "-2/5"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-2/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "12/5",
+            "0",
+            "6/5"
+          ],
+          "x": {
+            "mean": "12/5",
+            "variance": "11/5"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "12/5",
+          "variance": "11/5"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "16/7",
+          "variance": "12/7"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/5",
+              "-1",
+              "-2/5"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-2/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "11/5",
+            "0",
+            "3/5"
+          ],
+          "x": {
+            "mean": "11/5",
+            "variance": "11/5"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "11/5",
+          "variance": "11/5"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "9/7",
+          "variance": "3/7"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "1/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/20",
+              "-1/2",
+              "-1/5"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "6/5",
+            "0",
+            "6/5"
+          ],
+          "x": {
+            "mean": "6/5",
+            "variance": "11/20"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "6/5",
+          "variance": "11/20"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "8/7",
+          "variance": "3/7"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "1/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/20",
+              "-1/2",
+              "-1/5"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "11/10",
+            "0",
+            "3/5"
+          ],
+          "x": {
+            "mean": "11/10",
+            "variance": "11/20"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "11/10",
+          "variance": "11/20"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "3/2",
+          "variance": "3/2"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "3/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/6",
+              "-1",
+              "-2/3"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-2/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1",
+            "0",
+            "4"
+          ],
+          "x": {
+            "mean": "1",
+            "variance": "11/6"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "1",
+          "variance": "11/6"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "7/4",
+          "variance": "3/2"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "3/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/6",
+              "-1",
+              "-2/3"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-2/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/2",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "3/2",
+            "variance": "11/6"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "3/2",
+          "variance": "11/6"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "3/4",
+          "variance": "3/8"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "3/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/24",
+              "-1/2",
+              "-1/3"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1/2",
+            "0",
+            "4"
+          ],
+          "x": {
+            "mean": "1/2",
+            "variance": "11/24"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "1/2",
+          "variance": "11/24"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "7/8",
+          "variance": "3/8"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "3/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/24",
+              "-1/2",
+              "-1/3"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/4",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "3/4",
+            "variance": "11/24"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "3/4",
+          "variance": "11/24"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "9/5",
+          "variance": "21/10"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/2",
+              "-1",
+              "-1"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-1",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/2",
+            "0",
+            "3"
+          ],
+          "x": {
+            "mean": "3/2",
+            "variance": "5/2"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "3/2",
+          "variance": "5/2"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "19/10",
+          "variance": "21/10"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/2",
+              "-1",
+              "-1"
+            ],
+            [
+              "-1",
+              "1",
+              "0"
+            ],
+            [
+              "-1",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "7/4",
+            "0",
+            "3/2"
+          ],
+          "x": {
+            "mean": "7/4",
+            "variance": "5/2"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "7/4",
+          "variance": "5/2"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "9/10",
+          "variance": "21/40"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "1/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/8",
+              "-1/2",
+              "-1/2"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/2",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/4",
+            "0",
+            "3"
+          ],
+          "x": {
+            "mean": "3/4",
+            "variance": "5/8"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "3/4",
+          "variance": "5/8"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "19/20",
+          "variance": "21/40"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "1/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "5/8",
+              "-1/2",
+              "-1/2"
+            ],
+            [
+              "-1/2",
+              "1",
+              "0"
+            ],
+            [
+              "-1/2",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "7/8",
+            "0",
+            "3/2"
+          ],
+          "x": {
+            "mean": "7/8",
+            "variance": "5/8"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "1"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "7/8",
+          "variance": "5/8"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "30/11",
+          "variance": "30/11"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "9/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "14/3",
+              "-4",
+              "-1/3"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "2",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "2",
+            "variance": "14/3"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "2",
+          "variance": "14/3"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "26/11",
+          "variance": "30/11"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "9/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "14/3",
+              "-4",
+              "-1/3"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "2",
+            "0",
+            "1"
+          ],
+          "x": {
+            "mean": "2",
+            "variance": "14/3"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "2",
+          "variance": "14/3"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "15/11",
+          "variance": "15/22"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "9/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "7/6",
+              "-2",
+              "-1/6"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/6",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "1",
+            "variance": "7/6"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "1",
+          "variance": "7/6"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "13/11",
+          "variance": "15/22"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "9/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "7/6",
+              "-2",
+              "-1/6"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/6",
+              "0",
+              "2/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1",
+            "0",
+            "1"
+          ],
+          "x": {
+            "mean": "1",
+            "variance": "7/6"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "1",
+          "variance": "7/6"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "36/13",
+          "variance": "42/13"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "5"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "26/5",
+              "-4",
+              "-2/5"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-2/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "12/5",
+            "0",
+            "6/5"
+          ],
+          "x": {
+            "mean": "12/5",
+            "variance": "26/5"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "12/5",
+          "variance": "26/5"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "31/13",
+          "variance": "42/13"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "5"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "26/5",
+              "-4",
+              "-2/5"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-2/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "11/5",
+            "0",
+            "3/5"
+          ],
+          "x": {
+            "mean": "11/5",
+            "variance": "26/5"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "11/5",
+          "variance": "26/5"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "18/13",
+          "variance": "21/26"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "5/4"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "13/10",
+              "-2",
+              "-1/5"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "6/5",
+            "0",
+            "6/5"
+          ],
+          "x": {
+            "mean": "6/5",
+            "variance": "13/10"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "6/5",
+          "variance": "13/10"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "31/26",
+          "variance": "21/26"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "5/4"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "13/10",
+              "-2",
+              "-1/5"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/5",
+              "0",
+              "4/5"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "11/10",
+            "0",
+            "3/5"
+          ],
+          "x": {
+            "mean": "11/10",
+            "variance": "13/10"
+          }
+        },
+        "model": {
+          "drift": "1",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "11/10",
+          "variance": "13/10"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "15/7",
+          "variance": "45/14"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "9/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "29/6",
+              "-4",
+              "-2/3"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-2/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1",
+            "0",
+            "4"
+          ],
+          "x": {
+            "mean": "1",
+            "variance": "29/6"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "1",
+          "variance": "29/6"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "29/14",
+          "variance": "45/14"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "9/2"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "29/6",
+              "-4",
+              "-2/3"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-2/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/2",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "3/2",
+            "variance": "29/6"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "3/2",
+          "variance": "29/6"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "15/14",
+          "variance": "45/56"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "9/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "29/24",
+              "-2",
+              "-1/3"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "1/2",
+            "0",
+            "4"
+          ],
+          "x": {
+            "mean": "1/2",
+            "variance": "29/24"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "1/2",
+          "variance": "29/24"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "29/28",
+          "variance": "45/56"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "9/8"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "29/24",
+              "-2",
+              "-1/3"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/3",
+              "0",
+              "4/3"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/4",
+            "0",
+            "2"
+          ],
+          "x": {
+            "mean": "3/4",
+            "variance": "29/24"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "1",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "3/4",
+          "variance": "29/24"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "9/4",
+          "variance": "15/4"
+        },
+        "bad_no_drift": {
+          "mean": "3",
+          "variance": "5"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/2",
+              "-4",
+              "-1"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-1",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/2",
+            "0",
+            "3"
+          ],
+          "x": {
+            "mean": "3/2",
+            "variance": "11/2"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "3/2",
+          "variance": "11/2"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "17/8",
+          "variance": "15/4"
+        },
+        "bad_no_drift": {
+          "mean": "5/2",
+          "variance": "5"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/2",
+              "-4",
+              "-1"
+            ],
+            [
+              "-4",
+              "4",
+              "0"
+            ],
+            [
+              "-1",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "7/4",
+            "0",
+            "3/2"
+          ],
+          "x": {
+            "mean": "7/4",
+            "variance": "11/2"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "1",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "7/4",
+          "variance": "11/2"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "9/8",
+          "variance": "15/16"
+        },
+        "bad_no_drift": {
+          "mean": "3/2",
+          "variance": "5/4"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/8",
+              "-2",
+              "-1/2"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/2",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "3/4",
+            "0",
+            "3"
+          ],
+          "x": {
+            "mean": "3/4",
+            "variance": "11/8"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          0,
+          6
+        ],
+        "reference": {
+          "mean": "3/4",
+          "variance": "11/8"
+        }
+      },
+      {
+        "bad_independent": {
+          "mean": "17/16",
+          "variance": "15/16"
+        },
+        "bad_no_drift": {
+          "mean": "5/4",
+          "variance": "5/4"
+        },
+        "joint": {
+          "covariance_x_b0_d": [
+            [
+              "11/8",
+              "-2",
+              "-1/2"
+            ],
+            [
+              "-2",
+              "4",
+              "0"
+            ],
+            [
+              "-1/2",
+              "0",
+              "2"
+            ]
+          ],
+          "mean_x_b0_d": [
+            "7/8",
+            "0",
+            "3/2"
+          ],
+          "x": {
+            "mean": "7/8",
+            "variance": "11/8"
+          }
+        },
+        "model": {
+          "drift": "4",
+          "gain": "2",
+          "identity": "shared-offset",
+          "noise": "2",
+          "revision": 1,
+          "tau": "4"
+        },
+        "observations": [
+          1,
+          4
+        ],
+        "reference": {
+          "mean": "7/8",
+          "variance": "11/8"
+        }
+      }
+    ],
+    "learned_dependency": {
+      "artifact": {
+        "identity": "shared-offset",
+        "mean": "24/5",
+        "revision": 1,
+        "support": [
+          "c10@1:calibration-offset"
+        ],
+        "variance": "4/5"
+      },
+      "bad_ignore_withdrawal": {
+        "mean": "6/5",
+        "variance": "17/15"
+      },
+      "original_support_of_target_result": [
+        "a11@1:signal",
+        "a9@1:signal",
+        "b10@1:signal",
+        "c10@1:calibration-offset"
+      ],
+      "p2_explicit_retained_derivative": {
+        "mean": "6/5",
+        "variance": "17/15"
+      },
+      "p3_missing_surviving_numeric_state": null,
+      "p3_rebuild_from_surviving_records": {
+        "mean": "6",
+        "variance": "13/3"
+      },
+      "p3_reuse_forbidden_derivative": null
+    },
+    "replacement": {
+      "bad_append_old_and_new_drift_prior": {
+        "mean": "15/7",
+        "variance": "65/14"
+      },
+      "bad_relabel_old_coefficients": {
+        "mean": "2",
+        "variance": "14/3"
+      },
+      "different_new_marginals": [
+        {
+          "mean": "1",
+          "variance": "29/6"
+        },
+        {
+          "mean": "3/2",
+          "variance": "29/6"
+        }
+      ],
+      "gain_rebuilt": {
+        "mean": "1",
+        "variance": "7/6"
+      },
+      "gain_revision": {
+        "drift": "1",
+        "gain": "2",
+        "identity": "shared-offset",
+        "noise": "1",
+        "revision": 2,
+        "tau": "4"
+      },
+      "identity_only_manifest": [
+        "early@1:signal",
+        "late@1:signal"
+      ],
+      "new_model": {
+        "drift": "4",
+        "gain": "1",
+        "identity": "shared-offset",
+        "noise": "1",
+        "revision": 2,
+        "tau": "4"
+      },
+      "old_model": {
+        "drift": "1",
+        "gain": "1",
+        "identity": "shared-offset",
+        "noise": "1",
+        "revision": 1,
+        "tau": "4"
+      },
+      "same_old_marginals": [
+        {
+          "mean": "2",
+          "variance": "14/3"
+        },
+        {
+          "mean": "2",
+          "variance": "14/3"
+        }
+      ],
+      "worlds": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          4
+        ]
+      ]
+    },
+    "selectors": {
+      "cases": {
+        "conjunction": {
+          "calibration_support": [],
+          "joint": {
+            "mean": "6",
+            "variance": "13/3"
+          },
+          "mean_change_from_initial": "24/5",
+          "reference": {
+            "mean": "6",
+            "variance": "13/3"
+          },
+          "selector": {
+            "field": "calibration-offset",
+            "interval": [
+              10,
+              11
+            ],
+            "sensor": "A"
+          },
+          "survivors": [
+            "a9@1:signal",
+            "b10@1:signal",
+            "a11@1:signal"
+          ]
+        },
+        "field_calibration": {
+          "calibration_support": [],
+          "joint": {
+            "mean": "6",
+            "variance": "13/3"
+          },
+          "mean_change_from_initial": "24/5",
+          "reference": {
+            "mean": "6",
+            "variance": "13/3"
+          },
+          "selector": {
+            "field": "calibration-offset"
+          },
+          "survivors": [
+            "a9@1:signal",
+            "b10@1:signal",
+            "a11@1:signal"
+          ]
+        },
+        "range_10_11": {
+          "calibration_support": [],
+          "joint": {
+            "mean": "6",
+            "variance": "9/2"
+          },
+          "mean_change_from_initial": "24/5",
+          "reference": {
+            "mean": "6",
+            "variance": "9/2"
+          },
+          "selector": {
+            "interval": [
+              10,
+              11
+            ]
+          },
+          "survivors": [
+            "a9@1:signal",
+            "a11@1:signal"
+          ]
+        },
+        "sensor_A": {
+          "calibration_support": [],
+          "joint": {
+            "mean": "6",
+            "variance": "5"
+          },
+          "mean_change_from_initial": "24/5",
+          "reference": {
+            "mean": "6",
+            "variance": "5"
+          },
+          "selector": {
+            "sensor": "A"
+          },
+          "survivors": [
+            "b10@1:signal"
+          ]
+        }
+      },
+      "initial": {
+        "mean": "6/5",
+        "variance": "17/15"
+      },
+      "records": [
+        {
+          "calibration": "shared-offset",
+          "field": "signal",
+          "record_id": "a9",
+          "revision": 1,
+          "sensor": "A",
+          "time": 9,
+          "value": "0"
+        },
+        {
+          "calibration": "shared-offset",
+          "field": "signal",
+          "record_id": "b10",
+          "revision": 1,
+          "sensor": "B",
+          "time": 10,
+          "value": "6"
+        },
+        {
+          "calibration": "shared-offset",
+          "field": "signal",
+          "record_id": "a11",
+          "revision": 1,
+          "sensor": "A",
+          "time": 11,
+          "value": "12"
+        },
+        {
+          "calibration": "shared-offset",
+          "field": "calibration-offset",
+          "record_id": "c10",
+          "revision": 1,
+          "sensor": "A",
+          "time": 10,
+          "value": "6"
+        }
+      ]
+    }
+  },
+  "scope": "Exact linear contract witnesses; no general inference, grant or storage implementation",
+  "source_sha256": {
+    "baseline.py": "6886880e0ea61bc1ad89cd9383975c8c3bf1286616241c71d26cd285441bb540",
+    "calibration_contracts.py": "3dea091f11c3f03529fb1aaf8c27bcfb758290e629802dbce58941bb36f43872",
+    "cycles/0012-protocol.md": "481500a40eed7e21476e5c46d62fb7368e227312edef9a7fb94a127b7fd09bb3",
+    "test_calibration_contracts.py": "662d46ea5740166ec7aa508a8184950a09e78150b3823e8ebf81b847747af750"
+  }
+}

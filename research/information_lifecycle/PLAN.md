@@ -200,7 +200,10 @@ Original ten-step structure (historical steps 1–9 are not a new work queue):
 10. Synthesize a minimal design and its supported envelope, explicit rejected cases,
     remaining policy decisions, and proposed changes to the owning contracts.
 
-### Remaining cycle 0012 — I07 + R05: calibration and withdrawal granularity
+### Closing cycle 0012 — I07 + R05: calibration and withdrawal granularity
+
+Completed within the bounded contract scope; see [report](cycles/0012.md). The witness
+description below records its intended scope, not a queue for further calibration work.
 
 Use tiny exact linear models with one shared calibration quantity and, only as needed,
 two time segments connected by an explicit drift constraint. Compare retaining the

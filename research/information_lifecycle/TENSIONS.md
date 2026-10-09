@@ -86,6 +86,16 @@ declared primary/held-out checks. Their typical weak-case width is about +/-115 
 Keeping the nonlinear sufficient statistic permits honest angular uncertainty here,
 but does not establish an adequate consumer query or a general marginalized-state contract.
 
+[Cycle 0012](cycles/0012.md) refines the calibration case. Integrating a shared temporal
+offset into a joint observation covariance is exact for the tested x query without
+keeping it as an active variable; replacing its drift model can nevertheless require
+information that a collapsed target marginal discarded. Learned calibration support
+must participate in withdrawal, and correlated fields require the remaining marginal
+likelihood rather than sliced precision. These constrain decomposition, model identity
+and retained numerical state. They do not require every calibration to remain live or
+resolve permission to reuse a derivative after its training data is removed. No new
+architectural contradiction follows; the closing investigation moves to I08/S02.
+
 ## T02 — continuous consumer motion versus immediate loss of usable information
 
 Known investigation target, partial dynamic evidence in [cycle 0002](cycles/0002.md).

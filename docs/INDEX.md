@@ -12,18 +12,17 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   `shared-flow-demo-contracts`; not production behavior or a revised protocol spec.
 - **Scope:** preserve future mathematical options through representation, retention,
   identity and contracts. Near-term deployment uses one local network or Tailscale, with
-  unavailable nodes repaired before sessions. At most four further cycles after 0011:
-  I07/R05 calibration and withdrawal, I08/S02 snapshots and reset semantics, F04 crash
-  boundaries, then synthesis and independent architecture/mathematics reviews. Other
-  work remains explicitly deferred without being ruled out by early design choices.
+  unavailable nodes repaired before sessions. One of at most four closing cycles is
+  complete (I07/R05 calibration and withdrawal). Next: I08/S02 snapshots and reset
+  semantics, F04 crash boundaries, then synthesis and independent architecture/mathematics
+  reviews. Other work remains explicitly deferred without being ruled out by early design choices.
   Owning contract changes stay proposals; pause automation after the reviews are pushed.
-- **Latest evidence:** [cycle 0011](../research/information_lifecycle/cycles/0011.md)
-  tests repeated-sample angular coverage on 131,072 seeded datasets. Local Gaussian
-  intervals under-cover in weak geometry; full circular intervals pass the declared
-  primary/held-out checks with a model-specific justification, but remain broad.
-  Frozen-anchor dependence and a numerical-CDF limitation are documented. The queued
-  converged-freeze/new-batch experiment is cancelled under the narrowed scope;
-  general survey marginalization and consumer safety remain unproven.
+- **Latest evidence:** [cycle 0012](../research/information_lifecycle/cycles/0012.md)
+  uses exact calibration/withdrawal witnesses: a shared temporal calibration need not
+  remain an active variable if its dependence is retained; model replacement may need
+  more than a target marginal; learned-calibration support and correlated-field noise
+  must survive the promised withdrawal granularity. 217 tests pass. These are scoped
+  contract findings, not general calibration, distributed or consumer-safety validation.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.
