@@ -4,9 +4,10 @@ Status: active research, started 2026-10-07. Production behavior is unchanged.
 Branch: `research/information-lifecycle`, based on `shared-flow-demo-contracts`
 at `9cbba49`. Owner: this Codex chat, on Dana's instruction.
 
-The final [synthesis](SYNTHESIS.md) is prepared: minimal contracts, all scenario
-dispositions, owner decisions and owning-contract proposals. Independent reviews and
-closeout are tracked in [cycle 0015](cycles/0015.md); completion is not yet claimed.
+The final [synthesis](SYNTHESIS.md) contains minimal contracts, all scenario dispositions,
+owner decisions and owning-contract proposals. Both independent reviews are complete;
+their [parent response](reviews/PARENT_RESPONSE.md) records the small accepted refinements.
+Final publication and automation pause are tracked in [cycle 0015](cycles/0015.md).
 
 Investigate which representation, retention, identity and contract choices preserve
 future correct withdrawal, recovery and consistent results when evidence is frozen,

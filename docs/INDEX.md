@@ -14,8 +14,8 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   identity and contracts. Near-term deployment uses one local network or Tailscale, with
   unavailable nodes repaired before sessions. Three of at most four closing cycles are
   complete (I07/R05 calibration/withdrawal, I08/S02 snapshots/reset semantics, F04 local
-  crash boundaries). The synthesis is prepared; independent architecture/mathematics
-  reviews and final closeout are next.
+  crash boundaries). The synthesis was published before the independent architecture/
+  mathematics reviews, which both support closing; final publication/pause is pending.
   Other work remains explicitly deferred without being ruled out by early design choices.
   Owning contract changes stay proposals; pause automation after the reviews are pushed.
 - **Latest evidence:** [cycle 0014](../research/information_lifecycle/cycles/0014.md)
@@ -24,6 +24,11 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   initial pending-control live-serving defect is preserved and corrected. 259 tests
   pass. The atomic storage primitive and authority scope are assumptions, not disk,
   distributed snapshot, global revocation or consumer-safety validation.
+- **Final review:** [parent response](../research/information_lifecycle/reviews/PARENT_RESPONSE.md)
+  preserves both independent reports and records clarifications of stale publication,
+  reconstructible clock state, withdrawal/acknowledgment ownership and Gaussian scope.
+  All 32 scenario dispositions and the remaining owner decisions are in the synthesis;
+  no new architectural contradiction or further experiment is claimed.
 
 ### `20260911_shared_flow_demo_contracts.md`
 - **Status:** current design direction; implementation and demo fixtures pending.

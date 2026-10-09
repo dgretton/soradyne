@@ -182,6 +182,13 @@ a controller, cause detector or distributed coordination mechanism.
 
 ## New tensions
 
+The [0015 synthesis](SYNTHESIS.md) and both independent reviews establish no new
+architectural contradiction. Their accepted clarifications concern stale-publication
+selection state, reconstructible clock mapping, withdrawal/acknowledgment ownership
+and exact scope of mathematical claims. See the separate
+[parent response](reviews/PARENT_RESPONSE.md). They refine existing obligations and
+leave Dana's policy choices open; no additional research cycle is queued.
+
 [Cycle 0014](cycles/0014.md) establishes no new contradiction. Complete publication,
 durable invalidation and current-use authority are separable obligations. A replacement
 may be unfinished after a grant/epoch change is applied, so current-use can be unavailable;

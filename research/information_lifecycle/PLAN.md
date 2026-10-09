@@ -273,9 +273,10 @@ retention assumptions where possible; do not build a production storage engine.
 
 ### Remaining cycle 0015 — step 10, synthesis and independent reviews
 
-In progress: [SYNTHESIS.md](SYNTHESIS.md) is prepared; initial publication and the two
-independent reviews follow. [Cycle 0015](cycles/0015.md) records closeout; no new
-scenario experiment is authorized by this phase.
+In progress: [SYNTHESIS.md](SYNTHESIS.md) was published before both independent reviews;
+their [parent response](reviews/PARENT_RESPONSE.md) records the accepted clarifications.
+Final publication and pause remain. [Cycle 0015](cycles/0015.md) records closeout; no new
+scenario experiment or extended review is authorized by this phase.
 
 Write `SYNTHESIS.md` with:
 

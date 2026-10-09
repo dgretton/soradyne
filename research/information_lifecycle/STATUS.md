@@ -21,7 +21,7 @@ matrix completion gate. No new architectural contradiction was found during resc
 | 0012 | I07 + R05: shared/drifting/replaced calibration; sensor/time/field withdrawal; retained state and identity granularity | Complete, bounded exact evidence |
 | 0013 | I08 + S02: coherent nested revisions; physical bump versus known/unknown coordinate reset | Complete, bounded exact evidence |
 | 0014 | F04: crash/atomic manifest boundaries for export, checkpoint, epoch close and grant update | Complete, bounded local evidence with a preserved serving correction |
-| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Synthesis prepared; publication and reviews next; no further witnesses |
+| 0015 | Step 10 `SYNTHESIS.md`; push; then two independent expert reviews; commit/push reports and any immediate corrections; pause automation | Synthesis published; both reviews complete; final publication and pause pending |
 
 Combine or skip witnesses when prior evidence suffices; do not add replacement work.
 No more than three witness cycles before synthesis. R07, F05, F06, S08, S04–S07 and
@@ -33,11 +33,15 @@ for genuine new contradictions.
 
 ## Current cycle
 
-0015: [SYNTHESIS.md](SYNTHESIS.md) is prepared with eight semantic contracts, all 32
-scenario dispositions, seven open owner decisions and proposed changes to named owning
-sections. This is an evidence/document audit only. Initial publication, both independent
-reviews, final report publication and automation pause remain outstanding; do not mark
-the investigation complete at the initial synthesis push. See [cycle report](cycles/0015.md).
+0015: initial [SYNTHESIS.md](SYNTHESIS.md) pushed/verified at `d51cb50` before independent
+reviews. Both [architecture](reviews/network_architecture.md) and
+[mathematics](reviews/uncertainty_propagation.md) reviewers support closing without a new
+contradiction or further research. Their original reports remain unchanged. The
+[parent response](reviews/PARENT_RESPONSE.md) records accepted clarification of stale
+publication, retained clock models, withdrawal/acknowledgment ownership and Gaussian
+qualifiers; no scenario status changed. The mathematical reviewer reran all 259 existing
+tests successfully and verified all 15 source manifests. Final report/correction
+publication and automation pause remain; see [cycle report](cycles/0015.md).
 
 ## Last witness
 
@@ -56,12 +60,10 @@ Publication is verified against the remote tip at cycle close.
 
 ## Next bounded chunk
 
-0015: finish the final cycle. Audit and push/verify the prepared synthesis BEFORE launching the two explicitly
-authorized independent expert subagents (network architecture and changing 3D uncertainty).
-Give both the same pushed snapshot and separate fresh prompts; preserve each initial
-report without reading the other's. Parent owns Git, records responses separately and
-handles only clear immediate corrections. Commit/push reports, verify, THEN pause the
-automation and send Dana a short conclusion. No new experiments or scope expansion.
+0015: audit and commit/push both unchanged reviews plus the separate response and small
+synthesis clarifications; verify the remote. THEN pause the automation and record its
+confirmed status, publish the closing receipt and notify Dana. No further review,
+experiment, implementation or policy decision is required to close this investigation.
 
 ## Coverage
 

@@ -5,6 +5,11 @@ Evidence through research commit `99aad608ed1b1ca2cca1c468b55b1bc42579afca`, bas
 shared-flow design `9cbba490362647bbc9a7216735e51f1b9477d32b`. Application documents
 reviewed at nestbox-ng `ed141df17477c40a4b9365854aa385f82e1d9280`.
 
+Independent reviews assessed the initially pushed synthesis at
+`d51cb5024102098d140effaabfacb82423d1c7d3`. Their reports are preserved unchanged;
+the small post-review clarifications below are recorded in the separate
+[parent response](reviews/PARENT_RESPONSE.md).
+
 ## Conclusion
 
 **The direction is implementable, provided “freeze” means a declared representation
@@ -59,6 +64,13 @@ and supersession/withdrawal relationships. Delivery twice or two permission path
 not produce two observations. Keep acquisition time, delivery/receipt time, solve input
 selection and publication time distinguishable.
 
+If later time reassociation is promised, retain original acquisition clock readings
+with clock domain/incarnation and applicable mapping/model history, or equivalent
+reconstructible state. Bind conversion revision, applicability, uncertainty and shared
+clock dependence. A converted timestamp plus marginal uncertainty and a clock label
+need not permit a future offset/skew correction. Unsupported or ambiguous reassociation
+must remain explicit; this adds no clock estimator or S05 experiment.
+
 **Granularity must match the promised withdrawal operation.** Whole-source retention
 can support whole-source withdrawal but need not support removal of one record or field.
 For sensor/time/field withdrawal, retain an index from that selector to all affected
@@ -78,7 +90,7 @@ permission to use either. None substitutes for another.
 
 | Future operation | Numerical information that can preserve it | What cannot be assumed sufficient |
 |---|---|---|
-| Current linear retained-variable query | Correct joint reduction over the retained variables, with applicable cross terms | Independent marginals when the query depends on correlation |
+| Current linear-Gaussian retained-variable query | Correct joint reduction over the retained variables, with applicable cross terms | Independent marginals when the query depends on correlation |
 | Selective contribution withdrawal | Adequately decomposed pre-elimination factors/statistics or lawful original-factor replay | A mixed marginal plus the list of contributing IDs |
 | Shared-calibration/drift/model revision | Retained conditional/joint model and observations/statistics sufficient for that revision, or lawful rebuild | Today's target marginal and a changed calibration label |
 | Nonlinear relinearization/new operating point | Original nonlinear factors/data and model, or a representation proved sufficient for the supported family | A first-order quadratic with only its anchor renamed |
@@ -89,6 +101,12 @@ Retaining original factor observations with their calibration/model recipe may s
 reprocessing images is a separate capability. A model-specific sufficient statistic may
 also suffice, but the retained rights must cover its information content. A label such
 as “derived” does not make a raw-equivalent statistic less sensitive.
+
+The promised query set includes body-fixed landmark/task-point queries where needed:
+retain surveyed structure uncertainty and pose/structure cross terms, or a lawful
+reconstruction path. A body-pose marginal and nominal point coordinates alone need
+not support them. A reduced-information answer may use a lossy statistic of all named
+observations, not just a smaller subset; bind that representation as well as coverage.
 
 Before irreversible eviction, state what operations become unsupported and when replay
 ceases to be available. If no retained representation supports a requested operation,
@@ -137,7 +155,8 @@ anchor is lost. Rank/singularity diagnostics must not be erased by a tight numer
 gauge prior. Production rank tolerances and uncertainty envelopes are still to be chosen.
 
 The nonlinear evidence is deliberately narrow: 0010–0011 use known planar landmarks
-and independent isotropic noise. A compact nonlinear statistic preserves that likelihood;
+and known-variance independent isotropic Gaussian noise. A compact nonlinear statistic
+preserves that likelihood;
 full circular angular intervals have model-specific calibration evidence. Local Gaussian
 intervals under-cover in weak cases, and a frozen quadratic can fail away from its anchor.
 This does not establish general SE(3), joint pose/point coverage, uncertain-landmark
@@ -194,6 +213,16 @@ Compute-time, acceptance-time and current-use authority can differ. Reachability
 grants authority nor conclusively revokes it. The future offline/freshness policy is an
 open decision; the local-network profile does not turn a stored grant into timeless consent.
 
+Assign the withdrawal handoff explicitly: an authorized application role resolves
+numerical support and learned descendants into affected opaque artifact/scope keys;
+the provider enforces the declared generic rights and durable control contract without
+interpreting factor mathematics. The adapter carries that mapping and its acknowledgment
+semantics. Changing a source grant is not the same acknowledgment as durably invalidating
+every affected serving scope. Pending expansion may use a conservative scope-wide barrier.
+The private support index needs authorized retention and a recovery location for the
+promised artifact lifetime; missing/unresolvable support means unavailable or declared
+coarse invalidation, never an assumed empty dependency set. Exact API design remains future work.
+
 Evidence: [0004](cycles/0004.md), [0009](cycles/0009.md), [0012](cycles/0012.md),
 [0013](cycles/0013.md), [0014](cycles/0014.md).
 
@@ -214,6 +243,15 @@ recoverable while dependent surviving artifacts could otherwise become admissibl
 Operation IDs bind content; define the deduplication/receipt retention window and reject
 conflicting reuse. A delayed retry confirms a historical commit, not renewed current use.
 
+Idempotency is also distinct from selection order. A first completion of an older
+prepared publication, or its retry after receipt expiry, must not restore a superseded
+current head. Retain an appropriate scoped predecessor/supersession or acceptance-frontier
+condition independently of retry receipts. An expected-head check or a type-defined
+compatible-head rule can provide this; do not invent a global total order for unrelated
+histories. Explicit historical selection remains separate. The earlier replacement
+witness supplies this obligation; the bounded 0014 retry sequence alone does not test
+first late completion or receipt collection.
+
 0014 tests 46 crash cuts under an **assumed** atomic record primitive and one serialized
 writer. A pending restrictive control blocks live serving. If a crash loses that event
 before durable commit, its local rule requires caller retry and permits the prior state
@@ -221,7 +259,9 @@ on restart. An earlier external effective-time promise requires stronger durable
 or fail-closed authority refresh before serving. Neither global freshness nor filesystem
 durability follows from these tests. Cross-domain fencing and partitions stay deferred.
 
-Evidence: [0008](cycles/0008.md), [0014](cycles/0014.md), including its preserved correction.
+Evidence: [0001](cycles/0001.md), [0008](cycles/0008.md), [0014](cycles/0014.md),
+including its preserved correction; the [architecture review](reviews/network_architecture.md)
+identifies the explicit composition obligation above.
 
 ### C8. Consumer truth and transition are separate
 
@@ -248,7 +288,7 @@ point or an ID alone is not evidence of support. C1–C8 are proposals, not inst
 
 | ID | Disposition | Scoped evidence, remaining decision or preservation condition |
 |---|---|---|
-| I01 | supported | Exact linear joint reduction preserves retained-variable answers; keep cross terms and C2's operation limits ([0001](cycles/0001.md)). |
+| I01 | supported | Exact linear-Gaussian joint reduction preserves retained-variable answers; keep cross terms and C2's operation limits ([0001](cycles/0001.md)). |
 | I02 | supported | Bounded replacement/tombstone and local crash/retry witnesses avoid duplicate information; preserve immutable revisions, receipts and current-use checks; distributed publication remains open ([0001](cycles/0001.md), [0014](cycles/0014.md)). |
 | I03 | supported | Shared latent/decomposed information handles the tested diamond; arbitrary overlap from aggregate lineage alone is unsupported; retain overlap statistics/replay or reject/reduce (C2/C3; [0005](cycles/0005.md)). |
 | I04 | supported | Restrict feedback or account for original information in the exact matched-base scalar fixture; keep current no-feedback rule unless a later replacement contract proves more (C3; [0006](cycles/0006.md)). |
@@ -276,7 +316,7 @@ point or an ID alone is not evidence of support. C1–C8 are proposals, not inst
 | S02 | supported | Exact known re-expression, same-jump/different-cause and shared bridge uncertainty witnesses establish event/epoch semantics; retain relation/covariance or explicit unknown; detection/physical response untested (C5; [0013](cycles/0013.md)). |
 | S03 | unsupported | Unconditional safe continuation after strict withdrawal is unsupported: old-state reuse may be forbidden and stopping space insufficient; a limited gated-stop witness exists, but continuation needs D7 and a later validated envelope (C8; [0002](cycles/0002.md), [0003](cycles/0003.md)). |
 | S04 | deferred-but-not-precluded | Preserve query-specific validity, lawful local tracking, epoch/reacquisition identity and uncertainty; later docking must establish stopping/acceptance margins, not infer them from a smooth transform (C4/C5/C8). |
-| S05 | deferred-but-not-precluded | Preserve acquisition time, clock identity/uncertainty, receipt and publication times, model interval and actual consumed revisions; keep a lawful replay/model path for later time reassociation (C1/C2/C5). |
+| S05 | deferred-but-not-precluded | Preserve original acquisition clock readings and applicable mapping/model history or equivalent reconstructible state, with shared uncertainty, revisions and intervals; retain receipt/publication times and lawful reassociation capability or explicit inability (C1–C3/C5). |
 | S06 | deferred-but-not-precluded | Preserve full SE(3) conventions, task-point geometry, joint cross covariance, compatible snapshots and directed reset relations; later validate large-rotation/lever-arm consumer behavior (C3–C5/C8). |
 | S07 | deferred-but-not-precluded | Preserve original nonlinear likelihood/model or sufficient authorized replay, robust-kernel/model revision and uncertainty/ambiguity tags; do not force all future answers into one Gaussian pose (C2/C4/C8). |
 | S08 | deferred-but-not-precluded | Preserve stable evidence IDs across grants, bounded retry/replay contracts, explicit scope/generation changes and invalidity; later prove progress/backlog bounds without changing permission semantics (C1/C6–C8). |
@@ -322,15 +362,15 @@ The adapter owns translation/conformance under the existing boundary discipline.
 | nestbox-ng `docs/GLOSSARY.md`, “Calibration,” “Operation,” “Provenance”; work-breakdown E2.1/E3.5 | Replace an unconditional “only body poses remain live”/“survey covariance retained” sufficiency implication with a representation capability contract; name retained nonlinear/model state, supported revisions/withdrawals and rebuild path. Calibration may be marginalized without erasing shared dependence. | C1–C4; 0001/0010/0012; D1–D3. |
 | `docs/CONVENTIONS.md` §§3,5,7; work-breakdown E3.3–E3.5 | Qualify covariance meaning and approximation/chart; expose rank/query validity without counting gauge pinning as physical precision. Preserve centralized tangent conversion and cross-covariance composition. Do not use a residual chi-square check alone as coverage validation of estimated pose. | C4; 0007/0010/0011. Exact gauge and approximation thresholds remain implementation work. |
 | `docs/GLOSSARY.md` “Solver domain,” invariant 8; `CONVENTIONS.md` §6; E3.10 | Keep no-feedback/raw-factor publication restrictions. Add export replacement identity, actual support/dependency/correlation contract and safe rejection when composition/overlap is unsupported; child edges are not automatically independent `Between` observations. | C1/C3/C5; 0005/0006/0013. General residual messaging is not proposed for initial implementation. |
-| `docs/CONVENTIONS.md` §4; `GLOSSARY.md` “Epoch”; E2.3/E3.7 | Distinguish coordinate realization, physical-state epoch and inference revision; event kind/knowledge and old-to-new relation are explicit. Retain half-open time and directed uncertainty-aware re-expression, with unknown bridges unavailable. | C5; 0013. Event detection remains separate. |
+| `docs/CONVENTIONS.md` §4; `GLOSSARY.md` “Epoch”; `SUBSTRATE.md` §4 T1–T5; E2.3/E3.7 | Distinguish coordinate realization, physical-state epoch and inference revision; event kind/knowledge and old-to-new relation are explicit. Retain half-open time and uncertainty-aware re-expression, with unknown bridges unavailable. For promised time reassociation, preserve original acquisition readings and clock mapping/model state, shared uncertainty, conversion revision and applicability. | C1–C3/C5; 0013; review NA2/U1. Clock/cause estimation remains deferred; the clock condition is not tested S05 support. |
 | `docs/GLOSSARY.md` `lookup()` and invariant 3; E7.1; `SUBSTRATE.md` §3.4 | Bind query answers to compatible contributing revisions, joint uncertainty, coverage, validity and acceptance context. Make private chain details resolvable by authorized roles while allowing an opaque public view. Add explicit historical/reduced/current request semantics. | C4–C6; 0013; D4/D5. A public opaque revision is not a privacy proof. |
 | `docs/SUBSTRATE.md` §3.1 L3/L5, §3.2 F1–F3, §3.3, §5, §7 E6 | Distinguish transport replay from numerical inclusion; name actual live-input coverage and sufficient checkpoints. State acknowledged custody without assuming producer-local disk. Reconcile hard feed-window/epoch expiry with any promised later withdrawal/reconstruction capability. Same log horizon alone cannot promise equal recovered answers. | C1/C2/C7; 0008/0009/0014; D3. A lossy short-lived feed can remain an intentional profile when missing-state behavior is explicit. |
-| `docs/SUBSTRATE.md` §§6.1–6.3 and §10.2 P4 | Separate rights/entitlement paths and affected support scope; specify policy/grant generation and derivative obligations. Refine the current “already published edges remain” clause into retained bytes versus permitted future use. Raw replicas alone do not describe all retained information. | C1/C3/C6; 0004/0012; D1–D4. This refines the documented P1/P2/P3 ambiguity, not automatic adoption of strict P3 everywhere. |
+| `docs/SUBSTRATE.md` §§6.1–6.3 and §10.2 P4 | Separate rights/entitlement paths and affected support scope; specify policy/grant generation and derivative obligations. Assign application support expansion, provider generic enforcement and adapter acknowledgment mapping; distinguish source-grant change from applied serving invalidation. Refine “already published edges remain” into retained bytes versus permitted future use. | C1/C3/C6; 0004/0012; review NA3; D1–D4/D6. Raw replicas alone do not describe retained information; P3 is not automatically adopted everywhere. |
 | `docs/SUBSTRATE.md` §§3.3,5.3,6.3,9.7,10,12; E3.1/E3.7 | Add generic durable acceptance/control acknowledgments, identity/content-bound retry and explicit startup/current-authority checks. A locally applied invalidation survives unfinished replacement. Current serving cannot be justified solely by “last solve plus age.” Add conformance cases for these boundaries. | C6/C7; 0014; D6. Storage primitive and external-time semantics need implementation decisions; no distributed transaction prescribed. |
 | E7 clients and E9–E12 consumer acceptance; `SUBSTRATE.md` §3.5 | Expose immediate validity/epoch/coverage changes separately from a consumer's optional transition; replace any unconditional safety implication of “halt” with a separately validated consumer operating contract. Keep current typed errors while defining application query validity precisely. | C8; 0002/0003/0013; D7. No controller implementation is selected here. |
 | soradyne `docs/20260911_shared_flow_demo_contracts.md` §§1–2 | Require opaque stable evidence/revision/dependency preservation, explicit replacement semantics, and distinguish build/acceptance/current-use authority. Preserve independently owned sources and separately granted compute/publish/read/retain roles. | C1/C5/C6; generic witnesses 0004/0013. Application support/dependence remains opaque. |
 | shared-flow §3 | Extend custody acknowledgments to named coverage/custodians and retention obligations for derivatives, checkpoints and invalidation state. State remaining-entitlement behavior and capability loss after eviction. Fast materialization and lawful archive retention remain separate. | C2/C6/C7; 0008/0009/0014; D1/D3. No unconditional retention or source-local-disk requirement. |
-| shared-flow §5 | Define generic immutable acceptance manifests/receipts, durable prerequisites, separate invalidation/replacement, and explicit current/historical result selection. Preserve fencing/authority context for both writer and direct-reader paths without claiming its mechanism implemented. | C5–C7; 0013/0014; D6. Compatible nested math is checked by the application. |
+| shared-flow §5 | Define generic immutable acceptance manifests/receipts, durable prerequisites, separate invalidation/replacement and explicit current/historical selection. Preserve scoped rejection of stale publication independently of receipt retention; distinguish source-control from serving-invalidation acknowledgments. Preserve authority context for writers and direct readers. | C5–C7; 0001/0013/0014; reviews NA1/NA3; D6. Compatible nested math is application-owned; no fencing implementation is claimed. |
 | shared-flow §6 F2/F4/F6 and adapter conformance | Add future generic fixtures for durable acknowledged recovery, scope-specific derivative withdrawal and opaque output/private provenance; retain F5/F7 for deferred fencing/backpressure implementation. Do not equate these research tests with passing the proposed demos. | Evidence mapping above; no new experiments or protocol edits in this closing cycle. |
 
 Existing stricter application privacy defaults (for example personal-frame topology)
@@ -346,9 +386,12 @@ they do not compose into a proof of full-system stability, privacy, distributed 
 or hardware safety. Production code and owning contracts are unchanged. Existing tests
 number 259; all fifteen saved source manifests across fourteen cycles are preserved.
 
-The synthesis is to be committed and verified remotely before two independent specialist
-reviews of that same snapshot. Their original reports and the parent's response will
-remain separate under `reviews/`; [cycle 0015](cycles/0015.md) records publication pins,
-validation and completion. After reports and immediate corrections are pushed and
-verified, pause the automation. No further research cycle is authorized by an unresolved
-row, review recommendation or the former full-matrix plan.
+The initial synthesis was pushed and verified before independent
+[network architecture](reviews/network_architecture.md) and
+[uncertainty propagation](reviews/uncertainty_propagation.md) reviews of that same snapshot.
+Both support closing the investigation without a new contradiction or more experiments.
+Their original reports are unchanged; the [parent response](reviews/PARENT_RESPONSE.md)
+records the accepted preservation/wording refinements. [Cycle 0015](cycles/0015.md)
+records publication pins, validation and completion. After reports and corrections are
+pushed and verified, pause the automation. No further research cycle is authorized by
+an unresolved row, review recommendation or the former full-matrix plan.
