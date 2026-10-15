@@ -38,11 +38,15 @@ and recovery strategies belong to the application.
   authorized output may remain available. An application restarting does not undo
   provider authorization or custody obligations.
 - Applications may initialize an empty fitting promptly and defer restoration of
-  numerical state. Stored output is not automatically a valid computation input or
-  checkpoint; the type can forbid its use as input altogether. Permission to retain,
-  read, or publish output does not confer permission or mathematical suitability to
-  use it as a new input. Generic storage does not choose an application's restart
-  or replacement strategy.
+  numerical state. A later clarification allows controlled reuse of retained state
+  when the application establishes its sufficiency and dependence on new inputs;
+  it must not become apparently new independent evidence. Permission to retain,
+  read, or publish output alone does not establish that suitability. If recovery
+  excludes affected information, it also excludes retained components whose
+  independence from that information cannot be established. Generic storage does
+  not choose the application's restart or replacement strategy. Distinct evidence
+  identifiers alone do not certify independence; the provider preserves opaque
+  application accounting without interpreting it.
 - Unknown support/dependence is an explicit application rejection, not evidence of
   independence and not a new provider error. Acquisition of useful new input and
   rebuilding are application control decisions. The provider must not manufacture
