@@ -2,7 +2,16 @@
 
 Index of files in `docs/`, with approximate dates, content summaries, and obsolescence notes.
 
-## Current architecture (2026-09-11)
+## Current architecture (2026-10-15)
+
+### `20261015_participation_lifecycle_minutes.md`
+- **Written:** 2026-10-15.
+- **Status:** agreed local good-faith profile; implementation pending.
+- **Content:** departure and optional history removal, explicitly retained shared
+  outputs, stable opaque evidence identity and backfill, restricted support metadata,
+  custody acknowledgments, and application-controlled empty fitting startup.
+- **Scope:** provider implications only; application schemas and mathematics stay
+  outside this contract. The completed investigation remains historical evidence.
 
 ### Information lifecycle investigation (2026-10-07; closing scope 2026-10-08)
 - **Location:** [research plan](../research/information_lifecycle/PLAN.md),
