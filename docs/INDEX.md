@@ -9,7 +9,8 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
 - **Status:** agreed local good-faith profile; implementation pending.
 - **Content:** departure and optional history removal, explicitly retained shared
   outputs, stable opaque evidence identity and backfill, restricted support metadata,
-  custody acknowledgments, and application-controlled empty fitting startup.
+  custody acknowledgments, default empty fitting startup, and controlled reuse of
+  retained state with application-owned dependence checks.
 - **Scope:** provider implications only; application schemas and mathematics stay
   outside this contract. The completed investigation remains historical evidence.
 
@@ -28,7 +29,9 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   mathematics reviews, which both support closing. Reports/corrections are pushed and
   verified, and the automation is paused; all four closing cycles are complete.
   Other work remains explicitly deferred without being ruled out by early design choices.
-  Owning contract changes stay proposals; no additional cycle is queued.
+  Owning contract changes were proposals at research closeout. Selected generic
+  participation requirements were adopted on 2026-10-15 in the current shared-flow
+  contract; no additional research cycle is queued and implementation remains pending.
 - **Latest evidence:** [cycle 0014](../research/information_lifecycle/cycles/0014.md)
   checks 46 local crash cuts and retries, durable manifest/acceptance binding, separate
   invalidation and replacement, and distinct control/publication acknowledgments. An
@@ -42,11 +45,15 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   no new architectural contradiction or further experiment is claimed.
 
 ### `20260911_shared_flow_demo_contracts.md`
-- **Status:** current design direction; implementation and demo fixtures pending.
+- **Status:** current design direction, amended 2026-10-15; implementation and demo
+  fixtures pending.
 - **Content:** one shared concept per flow, independent ownership/roles, plural
   capsule participation, opaque cross-capsule forwarding, substantial distributed
   retention, selective withdrawal, policy-defined fitting acceptance, and F1-F7
-  scenarios including mixed fast interaction and archival retry.
+  scenarios including mixed fast interaction and archival retry. LC-I/V/L/H/S/A/R
+  add stable evidence/backfill, private output views, leave/history removal and
+  completion, restricted support, default empty startup, and controlled retained-state
+  reuse; F8–F11 specify the additional unimplemented conformance examples.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow
   note, authorization model, transport architecture, and protocol prose. Existing app
   layout proposals remain proposals. The full protocol prose/PDF is not regenerated;

@@ -6,6 +6,10 @@ estimation-flow note, authorization model, and protocol prose. It keeps the flow
 one shared dynamic concept with constituent streams and fitting roles. It does not
 introduce application schemas or numerical estimation semantics into soradyne.
 
+**Participation amendment: 2026-10-15; adopted design, implementation pending.**
+See [meeting minutes](20261015_participation_lifecycle_minutes.md). This is a local
+good-faith profile, not a mandatory policy for every flow type.
+
 ## 1. One shared concept, one flow
 
 A flow exists through the participation of multiple people's authorized devices.
@@ -25,6 +29,13 @@ has its own permissions, delivery state, and retention rights. Application-suppl
 observation identity and dependencies remain opaque payloads and are preserved.
 Reusing inputs does not require a separate flow per source or a global source registry.
 Independent shared concepts/lifecycles may still justify separate referenced flows.
+
+**LC-I (evidence continuity).** Preserve application-supplied evidence identity,
+revision, replacement, and support references across delivery, grant changes,
+rejoining, and explicit historical backfill. A new authorization is not new evidence.
+Rejoining does not itself authorize old history; backfill requires a declared scope.
+The application determines inclusion and dependence. The provider must not infer
+these from payload equality, authorship, or transport sequence alone.
 
 ## 2. Authority and participation
 
@@ -47,6 +58,27 @@ that permission. The fitting's acceptance contract specifies the input/configura
 revision it used and what consumers may conclude from a result. Soradyne authenticates
 and routes it; it does not validate application mathematics.
 
+**LC-V (private inputs and output views).** A type may define all contributions as
+private while authorizing a specified shared output to survive departure and removal
+of input/participation history. Explain this at participation; continued authorized
+output use needs no repeated prompt. In this profile, current and future authorized
+participants in the same flow may read that output, without onward disclosure rights
+to unrelated flows. This is not a universal permission for arbitrary derivatives.
+Output access grants neither private source history nor contributor mappings. Keep
+authentication identity separate from minimum opaque application accounting, and
+minimize diagnostics. A token is not a proof of anonymity; its visibility and scope
+matter. Token/key construction is not selected by this contract.
+
+**LC-L (leave and cutoff).** Leaving ends participation through the selected grants;
+reachability loss alone does not. The local good-faith profile assumes no new input
+is acquired after departure. With a usable departure timestamp, reject acquisition
+strictly after it; earlier delayed input remains eligible under the prior scope and
+normal checks. Without a usable timestamp, accept received input under that assumption.
+This late-delivery permission does not admit new sessions or arbitrary writers.
+An application supplies the acquisition/control semantics; the provider enforces
+declared opaque scopes without interpreting content. Stronger offline freshness and
+malicious-participant handling remain deferred.
+
 ## 3. Memory is abundant; active computation need not be
 
 Default to substantial distributed retention when authorized, including useful derived
@@ -68,6 +100,32 @@ tracks the remaining entitlements and policy obligations. Ciphertext custody is
 distinct from plaintext read access; memory service is distinct from compute standby.
 Retention tied to an application event requires an explicit generic lifecycle signal;
 soradyne cannot recognize that event by inspecting application records.
+
+**LC-H (history removal).** Optional removal covers the selected participant's inputs,
+personal participation history, and obligated copies/caches/diagnostics in this flow.
+It leaves the defined retained output, the owner's archive, unrelated authorizations,
+and independently authored records outside that scope. A distinct independent right
+elsewhere does not permit borrowing private material for this flow. Previously
+delivered plaintext is not promised remotely erasable. Late admissible input may be
+processed transiently into the authorized output but must not repopulate removed
+history. Completion accounts for pending work and governs later arrivals too.
+
+**LC-S (restricted support).** Retained output may require opaque evidence/revision
+and affected-artifact accounting after private history is removed. The type states
+its permitted content, restricted readers, and lifetime: while represented information
+or admissible replay needs it. It is not a publicly readable participation log.
+Missing support is an application limitation, not an assumed empty dependency set.
+The provider preserves/enforces opaque references; applications resolve affected
+content and numerical capability. They may reject unsupported changes or choose a
+new computation instead of promising arbitrary subtraction from compressed outputs.
+
+**LC-A (distinct acknowledgments).** A participation-change acknowledgment means the
+grant change and applicable cutoff are installed. History-removal completion requires
+the obligated custodians to acknowledge cleanup and the rules preventing restoration;
+pending custodians keep completion pending. Retained authorized output may remain
+available. Applications resolve affected private-history/output scopes; the provider
+enforces generic custody and authority; adapters map the distinct acknowledgments.
+Exact APIs and distributed completion mechanisms are not implemented by these clauses.
 
 ## 4. Routing crosses ownership boundaries without disclosing payloads
 
@@ -109,6 +167,19 @@ Readers may request versioned outputs without being entitled to inspect the inte
 computation or its input provenance. Provider mechanisms remain generic; an adapter
 translates each application's contract without importing its vocabulary into the core.
 
+**LC-R (application-controlled initialization).** An application may start an empty
+fitting and defer numerical restoration. Retaining an output does not make it a valid
+input or checkpoint. A type may allow explicit reuse of a sufficient retained
+representation when the application accounts for its support and dependence on other
+inputs. The provider preserves those references but must not manufacture a replay path
+that treats existing information as new. Where recovery excludes affected information,
+the application must also exclude retained components whose independence from it is
+unestablished; differing IDs alone do not certify independence. Empty application
+startup does not reset grants or cancel custody/removal obligations. Unknown application
+dependence is surfaced by the application; the provider does not invent a transport
+error or broaden authorization to hide it. Existing permission to serve an output
+and readiness of a replacement computation are separate states.
+
 ## 6. Demonstrations to constrain implementation
 
 These are proposed tests, not existing successes. Implement generic fixtures before
@@ -129,6 +200,23 @@ from narrowing the protocol to slow records or a single computational leader. Ch
 payload sizes, rates, deadlines, storage commitments, and injected faults before each
 fixture is called runnable; evaluate all scenarios together rather than optimizing one
 by violating another. Additional demos are required for requirements not covered here.
+
+### Participation-profile conformance additions (not implemented)
+
+Use a generic fixture that computes a shared result from opaque private records.
+These are future acceptance requirements, not claims about the existing demos/tests.
+
+| ID | Disturbance | Acceptance / owning clause |
+|---|---|---|
+| F8 | Leave with/without timestamp; deliver delayed input; separately disconnect a peer | Apply acquisition cutoff or good-faith receive rule; disconnect alone does not remove participation (LC-L). |
+| F9 | Remove history with one of two custodians pending | Pending until obligated acknowledgments; private history disappears, defined output and unrelated authorization survive; late input cannot restore history (LC-H/LC-A). |
+| F10 | Rejoin, then explicitly authorize backfill | Rejoin alone grants no history; backfill preserves opaque evidence/revision/replacement IDs; application handles inclusion (LC-I). |
+| F11 | Output reader requests private history/support; application restarts empty, then requests retained-state reuse | Reject unauthorized disclosure; restricted accounting survives for its declared lifetime; startup does not reset provider obligations; reuse requires explicit application acceptance and preserves support IDs (LC-V/LC-S/LC-R). |
+
+Adapters must map LC-I/V/L/H/S/A/R to their consumer's owning clauses and tests in
+their parity ledger before claiming this profile. There is no implementation claim
+until generic fixtures, consumer fake, and adapter conformance all pass. Do not copy
+application-specific numerical routines into provider tests.
 
 ## 7. Immediate design/implementation sequence
 
