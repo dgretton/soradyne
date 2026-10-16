@@ -127,6 +127,34 @@ available. Applications resolve affected private-history/output scopes; the prov
 enforces generic custody and authority; adapters map the distinct acknowledgments.
 Exact APIs and distributed completion mechanisms are not implemented by these clauses.
 
+### Concrete participation-surface implications
+
+The surface must distinguish an opaque authorization instance from a persistent
+author and an application evidence ID. Enroll devices explicitly; leaving captures
+their prior input scope. New enrollments do not inherit that late-delivery exception.
+Acquisition/control time is application-supplied; publication time cannot replace it.
+A known cutoff without comparable acquisition time cannot establish eligibility.
+
+Private streams need author-selective read authorization. Renewed live authorization
+does not unlock earlier history; explicit historical permission selects a reader,
+stream and previous participation. Administration grants neither private inputs nor
+restricted accounting. Types declare private/output/accounting views; the provider
+does not infer these from content.
+
+Removal completion includes recipients and application-declared caches, not just
+currently reachable memory roles. Duties survive application restarts. Permitted late
+delivery carries a transient/no-retention disposition and is excluded from archival
+replay. Owner archives remain independent: removing a flow's private view must not
+delete or silently borrow those archives. Delivery positions remain stable across
+removal. Applications must explicitly declare affected private scopes; unsupported
+mixed personal views cannot be mislabeled as retained output.
+
+Event-driven retention needs an opaque application group and an authorized close
+signal. Repeating the signal cannot extend its deadline; later replay cannot recreate
+expired memory copies. Applications choose membership; the provider enforces expiry.
+These refine future F8–F11 and retention fixtures, not implemented mechanisms or
+passing demonstrations.
+
 ## 4. Routing crosses ownership boundaries without disclosing payloads
 
 Use the Bluetooth connectivity paradigm and transport traits across the authorized

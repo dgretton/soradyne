@@ -53,7 +53,9 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   scenarios including mixed fast interaction and archival retry. LC-I/V/L/H/S/A/R
   add stable evidence/backfill, private output views, leave/history removal and
   completion, restricted support, default empty startup, and controlled retained-state
-  reuse; F8–F11 specify the additional unimplemented conformance examples.
+  reuse; F8–F11 specify the additional unimplemented conformance examples. Surface
+  implications cover authorization instances, selective historical access, transient
+  delivery, custody acknowledgments and event-driven expiry.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow
   note, authorization model, transport architecture, and protocol prose. Existing app
   layout proposals remain proposals. The full protocol prose/PDF is not regenerated;
