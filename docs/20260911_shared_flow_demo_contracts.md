@@ -10,6 +10,12 @@ introduce application schemas or numerical estimation semantics into soradyne.
 See [meeting minutes](20261015_participation_lifecycle_minutes.md). This is a local
 good-faith profile, not a mandatory policy for every flow type.
 
+**Reconciliation/inspection clarification: 2026-10-16; implementation pending.**
+See [meeting minutes](20261016_reconciliation_and_inspection_minutes.md). Prompt
+eventual cleanup may use bounded protected staging; permitted shared outputs retain
+downstream influence. Types may expose provisional state separately from consumer
+acceptance. No new callable API or implemented demonstration is claimed.
+
 ## 1. One shared concept, one flow
 
 A flow exists through the participation of multiple people's authorized devices.
@@ -19,8 +25,11 @@ choose placement, redundancy, retention, disclosure, and recovery behavior.
 
 A flow can contain jets, replayable input streams, a convergent drip, and query-response
 streams. A fitting names work between streams. A policy assigns attempts and defines
-when a result is accepted/published. Exclusive assignment, redundant computation, and
-local materialization are alternatives only when compatible with the type's guarantees.
+when a result may be published and how a consumer-accepted view is selected. A type
+may expose coherent provisional/partial fitting state without universal quality gates;
+authority, disclosure and revision binding still apply. Exclusive assignment, redundant
+computation, and local materialization are alternatives only when compatible with the
+type's guarantees.
 Vector clocks partially order input histories; concurrent histories need the type's
 merge rule, not an invented total preference between computations.
 
@@ -69,6 +78,11 @@ authentication identity separate from minimum opaque application accounting, and
 minimize diagnostics. A token is not a proof of anonymity; its visibility and scope
 matter. Token/key construction is not selected by this contract.
 
+Defined output use includes the downstream influence the view is intended to preserve;
+history removal is not total influence withdrawal. Within the managed available view,
+there is no additional application per-use permission Boolean. This does not establish
+application sufficiency for informative reuse or authorize additional disclosure.
+
 **LC-L (leave and cutoff).** Leaving ends participation through the selected grants;
 reachability loss alone does not. The local good-faith profile assumes no new input
 is acquired after departure. With a usable departure timestamp, reject acquisition
@@ -108,7 +122,8 @@ and independently authored records outside that scope. A distinct independent ri
 elsewhere does not permit borrowing private material for this flow. Previously
 delivered plaintext is not promised remotely erasable. Late admissible input may be
 processed transiently into the authorized output but must not repopulate removed
-history. Completion accounts for pending work and governs later arrivals too.
+ordinary history. Bounded protected staging under LC-A is allowed. Completion accounts
+for pending work and installs the rules governing later arrivals too.
 
 **LC-S (restricted support).** Retained output may require opaque evidence/revision
 and affected-artifact accounting after private history is removed. The type states
@@ -127,6 +142,22 @@ available. Applications resolve affected private-history/output scopes; the prov
 enforces generic custody and authority; adapters map the distinct acknowledgments.
 Exact APIs and distributed completion mechanisms are not implemented by these clauses.
 
+This profile allows prompt eventual reconciliation: a periodic/event-driven pass can
+clean affected material that briefly reached protected storage. Declare/measure an
+operating target, report pending/overdue duties and prevent indefinite postponement.
+Roughly 5–10 seconds is an accepted healthy-local tolerance, not a universal SLA or
+change to every stream's deadline. Retained output influence has its separately
+authorized lifetime. No global computation barrier at request time is required.
+
+Staging preserves scope/protection, has bounded non-renewing expiry, and cannot become
+ordinary archival replay or forwarding. Retry/restart must preserve its obligations
+and prevent forwarding/removal cycles. A completed pass covers selected history and
+accounted pending work plus installed later-input rules; future eligible temporary
+work remains subject to prompt cleanup. Fence stale fitting attempts/callbacks/saves
+from restoring removed material after settlement. The mechanism may use a control
+revision or equivalent; this contract does not prescribe a distributed transaction.
+Grant withdrawal and exclusive publication fencing remain separate requirements.
+
 ### Concrete participation-surface implications
 
 The surface must distinguish an opaque authorization instance from a persistent
@@ -144,7 +175,8 @@ does not infer these from content.
 Removal completion includes recipients and application-declared caches, not just
 currently reachable memory roles. Duties survive application restarts. Permitted late
 delivery carries a transient/no-retention disposition and is excluded from archival
-replay. Owner archives remain independent: removing a flow's private view must not
+replay; bounded protected staging under LC-A is compatible with that disposition.
+Owner archives remain independent: removing a flow's private view must not
 delete or silently borrow those archives. Delivery positions remain stable across
 removal. Applications must explicitly declare affected private scopes; unsupported
 mixed personal views cannot be mislabeled as retained output.
@@ -200,13 +232,21 @@ fitting and defer numerical restoration. Retaining an output does not make it a 
 input or checkpoint. A type may allow explicit reuse of a sufficient retained
 representation when the application accounts for its support and dependence on other
 inputs. The provider preserves those references but must not manufacture a replay path
-that treats existing information as new. Where recovery excludes affected information,
-the application must also exclude retained components whose independence from it is
-unestablished; differing IDs alone do not certify independence. Empty application
-startup does not reset grants or cancel custody/removal obligations. Unknown application
+that treats existing information as new. Where recovery excludes affected informative input,
+the application must also exclude informative components whose independence from it is
+unestablished; differing IDs alone do not certify independence. A permitted value used
+only as initialization is a distinct application operation, not automatically another
+informative input. Its suitability and disclosure are application/type decisions.
+Empty application startup does not reset grants or cancel custody/removal obligations.
+Unknown application
 dependence is surfaced by the application; the provider does not invent a transport
 error or broaden authorization to hide it. Existing permission to serve an output
 and readiness of a replacement computation are separate states.
+
+Current inspectable output can coexist with the last consumer-accepted output. A type
+defines the distinction and its revision/status semantics; the protocol does not infer
+quality from publication or require numerical convergence before routing a permitted
+provisional view. Private diagnostics retain their own access/removal policy.
 
 ## 6. Demonstrations to constrain implementation
 
@@ -220,7 +260,7 @@ binding a real application. Their identifiers are local to this document.
 | F3 Blind bridge | A constrained piece is the sole cross-capsule route; it is not a stream reader | Authorized endpoints communicate; the bridge holds no plaintext access keys; reconnection/replay preserve identities; overload expires live records rather than silently accumulating stale work |
 | F4 Multiple uses, selective withdrawal | One source supplies two flows; revoke one use | The revoked audience loses future access and affected keys rotate; other authorized use and owner retention survive; inaccessible old plaintext is not falsely promised recoverable or erasable |
 | F5 Move work and partition | Transfer work to a better eligible piece, then sever the bridge and delay old writes | No authorization expansion; no oscillation; old writes cannot claim new authority; exclusive mode reports unavailable when authority cannot be maintained; recovery uses retained state |
-| F6 Private inputs, public result | Public output/query stream, private inputs; consumer receives an opaque revision | Reading results grants no input/history access; the fitting can serve a selected view without exposing its entire internal state |
+| F6 Private inputs, public result | Public output/query stream, private inputs; expose provisional and consumer-accepted views with opaque revisions | Reading either view grants no input/history access; status/revisions stay distinct; publication authority/disclosure hold without universal quality gating |
 | F7 Slow archive and fast interaction together | Album input/edit/history with retained resolution derivatives plus a bidirectional tactile-like synthetic jet; disconnect mid-transfer | Album retries use retained artifacts; configured live/control deadlines are measured, missed deadlines surface as degradation, archival replay cannot monopolize the link; no claim that simulated timing establishes physical haptic stability |
 
 F1-F6 constrain the shared-estimation transport surface. F7 prevents that use case
@@ -237,9 +277,9 @@ These are future acceptance requirements, not claims about the existing demos/te
 | ID | Disturbance | Acceptance / owning clause |
 |---|---|---|
 | F8 | Leave with/without timestamp; deliver delayed input; separately disconnect a peer | Apply acquisition cutoff or good-faith receive rule; disconnect alone does not remove participation (LC-L). |
-| F9 | Remove history with one of two custodians pending | Pending until obligated acknowledgments; private history disappears, defined output and unrelated authorization survive; late input cannot restore history (LC-H/LC-A). |
+| F9 | Remove history with one of two custodians pending; delay a pass/save and inject late input/retries | Pending/overdue status honest; bounded reconciliation preserves defined output/independent rights; stale saves cannot restore removed state; staging, if used, expires without replay, retry extension or forwarding cycles; restart preserves duties (LC-H/LC-A). |
 | F10 | Rejoin, then explicitly authorize backfill | Rejoin alone grants no history; backfill preserves opaque evidence/revision/replacement IDs; application handles inclusion (LC-I). |
-| F11 | Output reader requests private history/support; application restarts empty, then requests retained-state reuse | Reject unauthorized disclosure; restricted accounting survives for its declared lifetime; startup does not reset provider obligations; reuse requires explicit application acceptance and preserves support IDs (LC-V/LC-S/LC-R). |
+| F11 | Output reader inspects provisional/accepted views and requests private history/support; fitting restarts empty and requests retained-state reuse | Reject unauthorized disclosure; preserve restricted accounting/duties; permitted output use needs no repeated authorization; application determines reuse sufficiency and initialization separately; preserve support IDs (LC-V/LC-S/LC-R). |
 
 Adapters must map LC-I/V/L/H/S/A/R to their consumer's owning clauses and tests in
 their parity ledger before claiming this profile. There is no implementation claim

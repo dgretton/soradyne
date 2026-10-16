@@ -6,6 +6,11 @@
 implementation report. Generic provider implications only. Application mathematics
 and recovery strategies belong to the application.
 
+**Later clarification:** [October 16 minutes](20261016_reconciliation_and_inspection_minutes.md)
+permit prompt eventual reconciliation and bounded protected staging, and distinguish
+inspectable fitting output from consumer acceptance. The current owning contract
+incorporates those corrections; this document preserves the earlier rationale.
+
 ## Decisions
 
 - Preserve user autonomy with understandable leave and optional history-removal

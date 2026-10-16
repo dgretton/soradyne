@@ -2,7 +2,15 @@
 
 Index of files in `docs/`, with approximate dates, content summaries, and obsolescence notes.
 
-## Current architecture (2026-10-15)
+## Current architecture (2026-10-16)
+
+### `20261016_reconciliation_and_inspection_minutes.md`
+- **Written:** 2026-10-16; adopted design, implementation pending.
+- **Content:** prompt eventual cleanup, bounded protected staging, completion and
+  stale-save fencing, retained downstream influence, scoped output use, and provisional
+  versus consumer-accepted fitting views. Generic protocol implications only.
+- **Owning contract:** the amended shared-flow demonstrations below; F6/F9/F11 remain
+  proposed fixtures. No new public method or application numerical schema is implied.
 
 ### `20261015_participation_lifecycle_minutes.md`
 - **Written:** 2026-10-15.
@@ -45,7 +53,7 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   no new architectural contradiction or further experiment is claimed.
 
 ### `20260911_shared_flow_demo_contracts.md`
-- **Status:** current design direction, amended 2026-10-15; implementation and demo
+- **Status:** current design direction, amended 2026-10-15 and 2026-10-16; implementation and demo
   fixtures pending.
 - **Content:** one shared concept per flow, independent ownership/roles, plural
   capsule participation, opaque cross-capsule forwarding, substantial distributed
@@ -56,6 +64,9 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   reuse; F8–F11 specify the additional unimplemented conformance examples. Surface
   implications cover authorization instances, selective historical access, transient
   delivery, custody acknowledgments and event-driven expiry.
+  The October 16 clarification permits prompt reconciliation/bounded staging and
+  inspectable provisional output separate from consumer acceptance; completed removal
+  cannot be undone by stale fitting attempts or saves.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow
   note, authorization model, transport architecture, and protocol prose. Existing app
   layout proposals remain proposals. The full protocol prose/PDF is not regenerated;
