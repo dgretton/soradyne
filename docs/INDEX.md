@@ -2,7 +2,16 @@
 
 Index of files in `docs/`, with approximate dates, content summaries, and obsolescence notes.
 
-## Current architecture (2026-10-16)
+## Current architecture (2026-10-19)
+
+### `20261019_shared_flow_protocol_work.md`
+- **Written:** 2026-10-19; assessment and execution sequence, implementation pending.
+- **Content:** separates existing document-sync building blocks from the contracted
+  generic application surface. SP1–SP6 cover declarations and grants, exclusive
+  authority and sharing protection, durable custody, language binding, mixed traffic,
+  time, and separate-process/hardware fixtures. Publication authority is bound to the
+  declared role and rechecked before asynchronous replies leave the provider.
+- **Evidence:** source inspection only; no new provider runtime or F1–F11 pass claimed.
 
 ### `20261016_reconciliation_and_inspection_minutes.md`
 - **Written:** 2026-10-16; adopted design, implementation pending.
@@ -53,7 +62,7 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   no new architectural contradiction or further experiment is claimed.
 
 ### `20260911_shared_flow_demo_contracts.md`
-- **Status:** current design direction, amended 2026-10-15 and 2026-10-16; implementation and demo
+- **Status:** current design direction, amended through 2026-10-19; implementation and demo
   fixtures pending.
 - **Content:** one shared concept per flow, independent ownership/roles, plural
   capsule participation, opaque cross-capsule forwarding, substantial distributed
@@ -67,6 +76,8 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   The October 16 clarification permits prompt reconciliation/bounded staging and
   inspectable provisional output separate from consumer acceptance; completed removal
   cannot be undone by stale fitting attempts or saves.
+  The October 19 clarification requires explicit publication-role bindings and
+  authority checks on output retirement and asynchronous reply release.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow
   note, authorization model, transport architecture, and protocol prose. Existing app
   layout proposals remain proposals. The full protocol prose/PDF is not regenerated;

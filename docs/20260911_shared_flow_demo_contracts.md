@@ -221,6 +221,21 @@ alone do not establish exclusivity. State the connectivity/coordination assumpti
 under which progress is possible, and report unavailability when they fail. A different
 type may permit provisional competing results if its consumers explicitly support that.
 
+**Publication-boundary clarification (2026-10-19).** A type declares the required
+publishing role on each exclusive output drip or query-response stream. This binding
+is independent of memorization policy and input access. A publish/serve grant does
+not substitute for current assignment authority; neither an omitted assignment nor
+an assignment for another role or flow may authorize an update, retirement, or reply.
+Required output grants participate in role eligibility and revocation. Check authority
+when accepting output and again before releasing a reply from an asynchronous fitting
+attempt, including the requester's read and server's serve permissions. A reply that
+lost authority is rejected, not stamped with the successor's assignment or silently
+retried. Permitted retained artifacts remain readable under their declared view;
+old author identity alone does not imply a currently authorized serving attempt.
+For example, a room-summary publisher cannot use an archive-maintenance assignment
+to replace the room summary. These are requirements, not an implemented API or a
+distributed fencing mechanism. See [protocol work](20261019_shared_flow_protocol_work.md).
+
 Recovery must identify the retained inputs/checkpoints needed by the fitting. Publishing
 a convergent output does not imply that output is sufficient to restart its producer.
 Readers may request versioned outputs without being entitled to inspect the internal
