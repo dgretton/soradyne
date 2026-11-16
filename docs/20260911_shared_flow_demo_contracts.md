@@ -320,3 +320,35 @@ origin-local storage, and unconditional discard encoded superseded decisions. Th
 retained lease model is a limited abstract mechanism sketch, not an implementation
 or proof of network partition safety. See `models/README.md`. Replace broad formal
 claims with small models tied to named scenarios once their assumptions are settled.
+
+## 8. Constrained contributions and independent ownership (2026-11-16)
+
+These are generic provider obligations; public methods and runtime support remain
+unimplemented. A shared activity can receive both lasting deposits and borrowed
+records from the same personally owned piece. Neither flow administration nor
+possession of a recipient copy transfers record ownership.
+
+| Clause | Observable contract |
+|---|---|
+| CR1 — Personal enrollment | Preparation creates a pending piece identity; its actual person authorizes capsule enrollment. Authentication is a replaceable boundary. Revocation affects existing handles and cannot be undone by repeated enrollment. |
+| CR2 — Two-sided decisions | A destination can prepare a request, but the source person and destination person must each accept the same immutable terms. A piece cannot manufacture its person's consent. Rejection/cancellation does not grant access. |
+| CR3 — Immutable terms | Bind source, destination, flow/stream, requested data class, acquisition scope/time, ownership, retention, permitted processing and disclosure. A revision needs fresh decisions and stops new submissions to its predecessor; it must not silently widen an accepted request. Prior deposits retain their original terms. |
+| CR4 — Source attribution | The accepted source authenticates each submission. Preserve source and opaque evidence identity separately from storage receipt identity. Enforce declared data/acquisition boundaries, including uncertainty and late delivery. Payload classification remains application supplied. |
+| CR5 — Record ownership | A deposit can belong to a different capsule owner from the authoring piece. Memorization and owner-history access follow that authenticated record binding. Borrowed records retain source ownership. Both kinds can coexist inside one flow and from one source. |
+| CR6 — Receipt boundary | State exactly which memorizer commitment was completed. A local durable receipt is not a replica receipt. Submission retry preserves record identity and returns the original receipt; changed bytes/terms with that identity reject. Acknowledgment cannot precede the declared commit. |
+| CR7 — Scoped withdrawal | Closing acquisition preserves accepted deposits. Borrowed-history removal acts on the accepted use, retains owner history, and never sweeps in other independently owned deposits. Old decision/submission retries cannot restore removed recipient copies. |
+| CR8 — Application duties | Recipient delivery establishes its declared application cleanup obligation before returning data. Completion waits for each holder's acknowledgment, including after restart. A person/piece cannot acknowledge another holder's unfinished duty. The application drains in-flight deliveries and releases its copies before acknowledging. |
+
+A generic fixture can ask a visiting person's sensor for selected temperature
+observations, some deposited with the activity owner and some temporarily borrowed.
+Closing capture preserves deposits; removing the borrowed use removes only its
+recipient copies. Reopen storage, retry a lost receipt, and complete outstanding
+holder duties without changing source identity or ownership.
+
+An explicitly selected trusted-lab development profile may inject asserted actors
+and omit cryptographic proof and protected identity storage when no attacker has
+physical or network access. It must still execute the actual enrollment, decision,
+authorization, ownership and custody transitions. This profile is not evidence of
+the production protocol's cryptographic guarantees. Replacing authentication must
+preserve the application-visible decision contract. Current reference experiments
+outside this provider do not establish CR1–CR8 implementation here.

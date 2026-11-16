@@ -2,7 +2,7 @@
 
 Index of files in `docs/`, with approximate dates, content summaries, and obsolescence notes.
 
-## Current architecture (2026-10-19)
+## Current architecture (2026-11-16)
 
 ### `20261019_shared_flow_protocol_work.md`
 - **Written:** 2026-10-19; assessment and execution sequence, implementation pending.
@@ -62,7 +62,7 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   no new architectural contradiction or further experiment is claimed.
 
 ### `20260911_shared_flow_demo_contracts.md`
-- **Status:** current design direction, amended through 2026-10-19; implementation and demo
+- **Status:** current design direction, amended through 2026-11-16; implementation and demo
   fixtures pending.
 - **Content:** one shared concept per flow, independent ownership/roles, plural
   capsule participation, opaque cross-capsule forwarding, substantial distributed
@@ -76,6 +76,11 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   The October 16 clarification permits prompt reconciliation/bounded staging and
   inspectable provisional output separate from consumer acceptance; completed removal
   cannot be undone by stale fitting attempts or saves.
+  Section 8 (November 16) specifies CR1–CR8: personal enrollment, two-sided immutable
+  contribution requests, independent source/record ownership, durable receipt identity,
+  mixed deposit/borrowed records, scoped removal, and application cleanup duties.
+  A trusted-lab authentication shim is an explicit development profile; authorization
+  decisions remain real. Provider runtime implementation remains pending.
   The October 19 clarification requires explicit publication-role bindings and
   authority checks on output retirement and asynchronous reply release.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow
