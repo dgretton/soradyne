@@ -81,6 +81,10 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   mixed deposit/borrowed records, scoped removal, and application cleanup duties.
   A trusted-lab authentication shim is an explicit development profile; authorization
   decisions remain real. Provider runtime implementation remains pending.
+  Section 9 adds PR1–PR7 for a bounded fixed-assignment subtype: durable immutable
+  accepted revisions, predecessor checks, independent output access, restricted
+  accounting and lost-receipt recovery. Permission regrant cannot revive stale
+  authority. This is specification only; no provider runtime or demonstration is claimed.
   The October 19 clarification requires explicit publication-role bindings and
   authority checks on output retirement and asynchronous reply release.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow

@@ -352,3 +352,25 @@ authorization, ownership and custody transitions. This profile is not evidence o
 the production protocol's cryptographic guarantees. Replacing authentication must
 preserve the application-visible decision contract. Current reference experiments
 outside this provider do not establish CR1–CR8 implementation here.
+
+## 9. Durable accepted revisions under a fixed assignment (2026-11-16)
+
+A minimal research subtype may configure one durable assignment authority and a
+fixed publishing piece, with no automatic election or handoff. This is a bounded
+subtype of §5, not a change to production routing or a partition-safety claim.
+
+| Clause | Observable contract |
+|---|---|
+| PR1 — Declaration | The administering person explicitly fixes the output, role and personally enrolled publisher. Retained output and restricted accounting are distinct views; input submission cannot bypass the output role. Unsupported placement or replacement rejects. |
+| PR2 — Assignment and access | Each publication requires current authenticated enrollment, exact assignment scope/role/holder/epoch and an independent write authorization. Revoking and regranting writing cannot revive an old attempt. Permission changes persist and repeated identical controls do not create new epochs. Connectivity loss alone cannot assign a replacement. |
+| PR3 — Revisions | Retain immutable accepted revisions. A publication names its expected predecessor; a stale predecessor cannot replace newer output. Commit the result, restricted accounting, operation identity and receipt atomically at the declared memorizer boundary. |
+| PR4 — Retry and recovery | A still-authorized exact retry returns its original receipt without republishing or moving the accepted head backward. Mutated retries reject. Restart preserves assignment fencing, access decisions and history. A local receipt promises no remote replica. |
+| PR5 — Disclosure | Output authorization exposes result bytes and publication metadata only. Restricted input references/context require separate authority; output readers gain neither private input access nor publication rights. Recheck enrollment and access for retained reads. |
+| PR6 — Input entitlement | A first subtype may restrict fitting to explicitly selected, activity-owner-owned inputs. Validate every opaque reference against current ownership and activity scope at commit; borrowed/cross-activity references reject in that subtype. The application declares complete input selection and numerical interpretation. |
+| PR7 — Acceptance | The application/type selects acceptable output separately from provisional fitting state, and supplies opaque input/configuration/validity/accounting bindings. Publication revision and assignment epoch do not redefine application evidence identity or physical validity. |
+
+A temperature-fusion fixture can save accepted averages, restart the authority,
+retrieve an older accepted revision, reject a late update against a changed head,
+and give another capsule output-only access. It must not reveal sensor history or
+restricted accounting with that grant. These clauses specify public behavior;
+provider runtime methods and demonstrations remain unimplemented.
