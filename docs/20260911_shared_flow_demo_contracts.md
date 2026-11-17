@@ -394,3 +394,23 @@ delay a fitting while the borrowed use is removed, keep removal pending until th
 job drains, reject its late publication, and recover pending duties after process
 death. PR6 remains the owned-only alternative. No provider runtime implementation or
 passing fixture is implied by these specifications.
+
+## 11. Configured research service boundary (2026-11-17)
+
+A bounded subtype may expose the contribution, accepted-revision and managed-input
+contracts through a configured service. Transport must preserve these behaviors:
+
+| Clause | Observable requirement |
+|---|---|
+| PT1 — Profile | Explicitly configure one authority endpoint, supported version/operations, message limits and timeout behavior. Authentication remains injected; a trusted-lab assertion shim must be deliberately selected. Unknown capabilities reject. No automatic alternate authority follows from connection failure. |
+| PT2 — Public calls | Preserve typed opaque payloads and defined errors across process boundaries. Recheck enrollment and authorization on every call. A caller may inspect its own current authenticated actor identity without learning another capsule's owner. Preparing a piece creates no enrollment or access; output access still confers no private input/accounting rights. |
+| PT3 — Failure | Reject malformed or unsupported framing and bound messages without partial delivery. Missing/timed-out replies may follow committed operations. Preserve original operation identities on explicit retry; do not silently retry mutations or manufacture identities. Timeout is neither cancellation nor release. Reply-size failures cannot be reported as proof that no commit occurred. Private transport buffers remain subject to memorization duties until delivery work drains; release/acknowledgment must reject while those buffers can still deliver private data. |
+| PT4 — Authority | One configured durable authority survives service restart with decisions, assignments, memorization duties and accepted revisions intact. Exclude competing processes over the same configured local store; never treat cloned writable stores as coordinated authorities. Unreachability cannot replace an assigned publisher or acknowledge cleanup. |
+| PT5 — Process ownership | A managed fitting process holds exclusive local ownership of its configured piece runtime through delivery, work and draining. Competing processes reject before recovery or private delivery. OS process death may release a local lock but leaves durable application memorization duties pending. Explicit recovery follows actual stopped work and cleared private caches; distinct devices retain distinct piece identities. |
+
+A temperature-fusion fixture can run a contributor, fitting process and output-only
+reader against one service without database access, lose a committed reply, restart
+the service, and recover the same receipt. Another fitting process cannot release a
+live process's private inputs by merely opening a handle. Concrete transport formats
+and process-lock mechanisms are deployment choices. These are specifications only;
+no provider runtime or demonstration is claimed.

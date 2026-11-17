@@ -2,7 +2,7 @@
 
 Index of files in `docs/`, with approximate dates, content summaries, and obsolescence notes.
 
-## Current architecture (2026-11-16)
+## Current architecture (2026-11-17)
 
 ### `20261019_shared_flow_protocol_work.md`
 - **Written:** 2026-10-19; assessment and execution sequence, implementation pending.
@@ -62,6 +62,10 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   no new architectural contradiction or further experiment is claimed.
 
 ### `20260911_shared_flow_demo_contracts.md`
+- **November 17 addition:** §11 PT1–PT5 specifies a configured service boundary,
+  bounded messages, uncertain replies, private delivery draining, persistent authority
+  and exclusive local fitting-process ownership. This is generic design only; no
+  provider transport/runtime or passing demonstration is claimed.
 - **Status:** current design direction, amended through 2026-11-16; implementation and demo
   fixtures pending.
 - **Content:** one shared concept per flow, independent ownership/roles, plural
