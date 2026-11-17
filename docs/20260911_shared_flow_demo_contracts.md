@@ -374,3 +374,23 @@ retrieve an older accepted revision, reject a late update against a changed head
 and give another capsule output-only access. It must not reveal sensor history or
 restricted accounting with that grant. These clauses specify public behavior;
 provider runtime methods and demonstrations remain unimplemented.
+
+## 10. Managed fitting input selections (2026-11-16)
+
+This extends CR8 and PR6 without weakening the owned-input subtype. A fitting may
+explicitly select borrowed contributions under durable application memorization
+duties. The following are generic guarantees, not an interpretation of payloads.
+
+| Clause | Observable requirement |
+|---|---|
+| PI1 — Selection | An enrolled piece of the activity owner acquires an exact nonempty, duplicate-free ordered payload selection. Every reference must be owned by that capsule or currently authorized borrowed history in that activity. Acquisition atomically registers the selection and borrowed application memorization duties before delivery; unavailable references reject the whole operation. |
+| PI2 — Instance | The opaque selection identity binds its piece, activity and immutable references. Each payload retains its original contribution authorization instance. Acquisition closure/revision preserves previously accepted history; removal ends the borrowed use. Retry returns the same active selection, changed arguments reject, and release cannot be undone by retry. |
+| PI3 — Commit coverage | Delivery rechecks all selected references. A new accepted fitting revision using a managed selection must name exactly its full reference list and holding piece. Active selection, current borrowed authorization and all references are checked atomically with publication, independently of publishing assignment and stream authorization. The application declares selection and interprets payloads; the protocol does not prove numerical dependence. |
+| PI4 — Release | The holding piece releases a selection only after outstanding deliveries, computation and private caches have drained. Removal acknowledgment rejects while any unreleased selection of that piece references the affected contribution. Pending selection metadata and duties survive restart. Recovery requires the old process stopped and private caches removed; a newly opened handle is insufficient. Listing pending selections returns no payloads and releases nothing. |
+| PI5 — Retained state | Release/removal blocks new publication from stale work, preserving already accepted outputs, permitted restricted accounting, deposits and owner archives. An exact, currently publication-authorized retry of an already committed operation may recover its receipt without recreating copies or changing the output head. |
+
+A temperature-fusion fixture can mix deposited calibration with borrowed readings,
+delay a fitting while the borrowed use is removed, keep removal pending until the
+job drains, reject its late publication, and recover pending duties after process
+death. PR6 remains the owned-only alternative. No provider runtime implementation or
+passing fixture is implied by these specifications.

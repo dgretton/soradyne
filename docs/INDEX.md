@@ -85,6 +85,9 @@ Index of files in `docs/`, with approximate dates, content summaries, and obsole
   accepted revisions, predecessor checks, independent output access, restricted
   accounting and lost-receipt recovery. Permission regrant cannot revive stale
   authority. This is specification only; no provider runtime or demonstration is claimed.
+  Section 10 adds PI1–PI5 for exact managed fitting inputs, complete commit-time
+  authorization, durable application memorization duties and explicit crash recovery.
+  Borrowed removal fences new publication while retaining already accepted outputs.
   The October 19 clarification requires explicit publication-role bindings and
   authority checks on output retirement and asynchronous reply release.
 - **Precedence:** supersedes conflicting assumptions in the cascade, estimation-flow
