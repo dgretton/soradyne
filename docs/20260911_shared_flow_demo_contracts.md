@@ -353,21 +353,31 @@ the production protocol's cryptographic guarantees. Replacing authentication mus
 preserve the application-visible decision contract. Current reference experiments
 outside this provider do not establish CR1–CR8 implementation here.
 
-## 9. Durable accepted revisions under a fixed assignment (2026-11-16)
+## 9. Durable accepted revisions under an explicit assignment (2026-11-16; extended November 19)
 
 A minimal research subtype may configure one durable assignment authority and a
-fixed publishing piece, with no automatic election or handoff. This is a bounded
+selected publishing piece, with no automatic election. PR8 permits an explicit
+administering-person handoff. This is a bounded
 subtype of §5, not a change to production routing or a partition-safety claim.
 
 | Clause | Observable contract |
 |---|---|
-| PR1 — Declaration | The administering person explicitly fixes the output, role and personally enrolled publisher. Retained output and restricted accounting are distinct views; input submission cannot bypass the output role. Unsupported placement or replacement rejects. |
+| PR1 — Declaration | The administering person explicitly declares the output, fixed role and personally enrolled initial publisher. Declaration cannot replace a publisher; PR8 governs replacement. Retained output and restricted accounting are distinct views; input submission cannot bypass the output role. Unsupported placement rejects. |
 | PR2 — Assignment and access | Each publication requires current authenticated enrollment, exact assignment scope/role/holder/epoch and an independent write authorization. Revoking and regranting writing cannot revive an old attempt. Permission changes persist and repeated identical controls do not create new epochs. Connectivity loss alone cannot assign a replacement. |
 | PR3 — Revisions | Retain immutable accepted revisions. A publication names its expected predecessor; a stale predecessor cannot replace newer output. Commit the result, restricted accounting, operation identity and receipt atomically at the declared memorizer boundary. |
 | PR4 — Retry and recovery | A still-authorized exact retry returns its original receipt without republishing or moving the accepted head backward. Mutated retries reject. Restart preserves assignment fencing, access decisions and history. A local receipt promises no remote replica. |
 | PR5 — Disclosure | Output authorization exposes result bytes and publication metadata only. Restricted input references/context require separate authority; output readers gain neither private input access nor publication rights. Recheck enrollment and access for retained reads. |
 | PR6 — Input entitlement | A first subtype may restrict fitting to explicitly selected, activity-owner-owned inputs. Validate every opaque reference against current ownership and activity scope at commit; borrowed/cross-activity references reject in that subtype. The application declares complete input selection and numerical interpretation. |
 | PR7 — Acceptance | The application/type selects acceptable output separately from provisional fitting state, and supplies opaque input/configuration/validity/accounting bindings. Publication revision and assignment epoch do not redefine application evidence identity or physical validity. |
+| PR8 — Directed replacement | The authenticated administering person supplies the exact expected output assignment, a different currently enrolled piece of their capsule, and a stable output-scoped decision identity. Commit replacement, epoch advancement and decision atomically; stale or competing proposals reject. Exact decision retry recovers the original resulting assignment without reapplying it, even after later changes or target revocation; changed arguments reject. Recheck caller authority before recovery. Replacement neither grants writing or input access nor acknowledges previous application memorization duties. Former-assignment publications, including completed-operation retries, reject. Retained revisions and pending duties survive replacement and restart. |
+
+For example, a person can select a replacement room-average fitting piece, recover
+the same decision after a lost reply, and require its separate stream authorization
+and authorized input reconstruction. The original fitting still drains its copies;
+its late output cannot replace the accepted head. The decision receipt describes a
+past transition, not necessarily the current assignment. This bounded output-scoped
+primitive does not promise a renewable lease or role exclusivity across several
+outputs; runtime/model eligibility and stopping current service remain application duties.
 
 A temperature-fusion fixture can save accepted averages, restart the authority,
 retrieve an older accepted revision, reject a late update against a changed head,
